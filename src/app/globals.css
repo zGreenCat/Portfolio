@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root{
+  --color-bg: #F5F0E6;
+  --color-cream: #FFF8E7;
+  --color-green: #A9C5A0;
+  --color-dark-green: #4A5E52;
+  --color-brown: #C7B199;
+  
+  /* Legacy support */
+  --bg: #F5F0E6;
+  --cream: #FFF8E7;
+  --green: #A9C5A0;
+  --dark-green: #4A5E52;
+  --brown: #C7B199;
+}
+
+@layer utilities {
+  .bg-bg {
+    background-color: var(--color-bg);
+  }
+  .bg-cream {
+    background-color: var(--color-cream);
+  }
+  .bg-green {
+    background-color: var(--color-green);
+  }
+  .bg-dark-green {
+    background-color: var(--color-dark-green);
+  }
+  .text-dark-green {
+    color: var(--color-dark-green);
+  }
+  .text-cream {
+    color: var(--color-cream);
+  }
+  .text-green {
+    color: var(--color-green);
+  }
+  .border-green {
+    border-color: var(--color-green);
+  }
+}
+
+/* Lenis Smooth Scroll */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
+}
