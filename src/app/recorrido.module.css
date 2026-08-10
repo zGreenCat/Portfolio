@@ -6,7 +6,8 @@
      en un ciclo de carrera el punto más bajo es la punta de una pierna en
      diagonal, no un pie apoyado. */
   /* Lo escribe la página: cambia con el bioma. */
-  --char-feet: 9.44vh;
+  --char-feet: 102px;
+  --world-h: 100vh;
   /* Lo escribe la página: se apaga al caer la noche. */
   --world-grade: brightness(1.1) contrast(1.08) saturate(1.06);
 
@@ -247,46 +248,29 @@
   pointer-events: auto;
 }
 
+/* Solo posiciona: lo que se ve lo aporta el contenido (cofre, carteles).
+   Antes pintaba un panel de fondo, y las secciones cuyo contenido pasó a un
+   panel aparte dejaban aquí un rectángulo oscuro vacío. */
 .marker {
   position: absolute;
-  top: 22vh;
-  width: min(360px, 34vw);
-  padding: 20px 22px;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: rgb(24 28 34 / 0.88);
-  border: 3px solid #6f767f;
-  box-shadow:
-    inset 3px 3px 0 rgb(255 255 255 / 0.1),
-    inset -3px -3px 0 rgb(0 0 0 / 0.45),
-    6px 6px 0 rgb(0 0 0 / 0.3);
-}
-
-.markerEyebrow {
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #ffcf6b;
-  font-weight: 700;
-}
-
-.markerText {
-  margin: 0;
-  color: #b9bfc6;
-  font-size: 0.9rem;
 }
 
 /* ---------- navegación ---------- */
 
+/* Escritorio: barra horizontal. Móvil: botón hamburguesa que despliega.
+   Envolver a dos filas tapaba los paneles de las secciones. */
 .nav {
   position: fixed;
-  top: 18px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 12px;
+  right: 12px;
   z-index: 25;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
   opacity: 0;
   transition: opacity 0.5s ease;
   pointer-events: none;
@@ -297,16 +281,25 @@
   pointer-events: auto;
 }
 
+.navItems {
+  display: flex;
+  gap: 6px;
+}
+
+.navToggle {
+  display: none;
+}
+
 /* Botón del menú del juego: piedra, bisel claro arriba y oscuro abajo. */
 .navButton {
   font-family: inherit;
-  font-size: 12px;
-  letter-spacing: 0.12em;
+  font-size: clamp(10px, 1.1vw, 12px);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
   color: #e8e5dc;
   text-shadow: 2px 2px 0 rgb(0 0 0 / 0.6);
-  padding: 11px 18px;
+  padding: clamp(8px, 1.4vw, 11px) clamp(11px, 1.8vw, 18px);
   background: #6f6f6f;
   border: 3px solid #1d1f23;
   box-shadow:
@@ -314,6 +307,7 @@
     inset -3px -3px 0 rgb(0 0 0 / 0.35);
   cursor: pointer;
   transition: background 0.12s;
+  white-space: nowrap;
 }
 
 .navButton:hover,
@@ -334,6 +328,32 @@
 
 .navActive {
   background: #4f7a3a;
+}
+
+@media (max-width: 760px) {
+  .navToggle {
+    display: block;
+  }
+
+  /* Columna desplegable, no una fila que se envuelva sobre el contenido. */
+  .navItems {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 6px;
+    background: rgb(29 31 35 / 0.92);
+    border: 3px solid #1d1f23;
+    box-shadow: inset 3px 3px 0 rgb(255 255 255 / 0.12);
+  }
+
+  .navItems[hidden] {
+    display: none;
+  }
+
+  .navButton {
+    font-size: 12px;
+    padding: 11px 16px;
+    text-align: left;
+  }
 }
 
 /* ---------- splash ---------- */
@@ -368,31 +388,12 @@
 }
 
 
-/* El cofre se apoya en el suelo, no flota con el panel. */
-.marker:has(.chest) {
-  top: auto;
-  bottom: var(--char-feet);
-  width: auto;
-  padding: 0;
-  background: none;
-  border: 0;
-  box-shadow: none;
-}
-
+/* El cofre se apoya en el suelo del bioma. */
 .chest {
+  margin-bottom: var(--char-feet);
   width: clamp(90px, 9vw, 140px);
   height: auto;
   image-rendering: pixelated;
 }
 
 
-/* El bloque de contacto se apoya en el suelo, sin panel detrás. */
-.marker:has(a) {
-  top: auto;
-  bottom: 0;
-  width: auto;
-  padding: 0;
-  background: none;
-  border: 0;
-  box-shadow: none;
-}

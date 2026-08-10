@@ -53,10 +53,21 @@ const BLOCK_PX_SOURCE = 143
 /** Bloques que avanza cada ciclo. Caminar cubre menos suelo por zancada, así
  *  que su ciclo tiene que ir más apretado o los pies patinan. */
 const STRIDE: Record<CharacterState, number> = { run: 2.1, walk: 1.25, idle: 1, throw: 1 }
-/** Umbrales de velocidad, en px de mundo por frame. Por debajo del de caminar
- *  se considera parado. */
-const SPEED_RUN = 13
-const SPEED_WALK = 1.6
+/** Umbrales de marcha, en bloques por segundo. `walk` cubre 1,25 bloques en
+ *  25 frames: por encima de ~2 b/s su ciclo se dispara, así que ahí ya corre. */
+const SPEED_RUN = 2.2
+const SPEED_WALK = 0.45
+/** Tope de fotogramas por segundo de las hojas del personaje.
+ *
+ *  El ciclo va atado a la distancia recorrida para que los pies no patinen,
+ *  pero sin tope un golpe de rueda lo dispara a cientos de fps y parece un
+ *  fallo.
+ *
+ *  El tope va aquí y no en la velocidad del mundo: frenando el mundo, este se
+ *  quedaba por detrás del scroll y seguía avanzando durante segundos después
+ *  de soltar. A cambio, en un golpe muy fuerte los pies patinan un instante —
+ *  con todo pasando a esa velocidad, no se aprecia. */
+const MAX_SHEET_FPS = 34
 /** Frames seguidos por debajo del umbral antes de pasar a reposo. A 60 Hz son
  *  ~130 ms: evita que parpadee entre marchas sin que se note el retardo. */
 const IDLE_FRAMES = 8
@@ -67,7 +78,15 @@ const THROW_MS = 700
  *  como un viaje largo, no como un cambio de bioma. */
 const DUSK_FROM = 0.62
 const NIGHT_AT = 0.94
+/** Alto del personaje como fracción del alto del MUNDO, no de la pantalla. */
 const CHAR_HEIGHT_VH = 0.1986
+/** En vertical el mundo no ocupa toda la pantalla: escalarlo al alto dejaba
+ *  ver 5 bloques y el personaje se comía el 40% del ancho. Ocupando la franja
+ *  baja entra el triple de mundo y queda cielo arriba, que es donde vive el
+ *  título. */
+const PORTRAIT_WORLD = 0.46
+/** Por debajo de este ancho se usan las capas a mitad de resolución. */
+const HALF_RES_WIDTH = 900
 const PEEK_CELL_VH = 0.78
 const PEEK_CELL_PX = 600
 
@@ -123,8 +142,10 @@ const CLIFF_EDGE = 2533 / 3840
 const CLIFF_X = 48
 const CLIFF_FROM = 0.84
 
-/** Ancho del fundido entre biomas, en unidades de progreso. */
-const BLEND = 0.09
+/** Tramo de mundo, en unidades de progreso, en el que el personaje sube o baja
+ *  entre las superficies de dos biomas. El terreno cambia de golpe —como en el
+ *  juego— pero un salto de 37 px en los pies sí se notaría. */
+const FEET_EASE = 0.03
 /** Fuera de este radio el bioma se desmonta: cuatro capas de 3840×1440 son
  *  ~88 MB de memoria descomprimida, y cinco biomas a la vez matan un móvil. */
 const MOUNT_RADIUS = 0.34
@@ -132,8 +153,8 @@ const MOUNT_RADIUS = 0.34
 /** Distancias de apertura de los paneles, en unidades de progreso del mundo.
  *  Se cierran más lejos de lo que se abren: sin esa histéresis, un roce de
  *  rueda mientras lees el panel lo haría parpadear. */
-const PANEL_OPEN_AT = 0.035
-const PANEL_CLOSE_AT = 0.075
+const PANEL_OPEN_AT = 0.058
+const PANEL_CLOSE_AT = 0.098
 
 /** Cuánto está abierto el panel de una sección según lo cerca que estés. */
 function panelOpenness(at: number, world: number): number {
@@ -151,14 +172,50 @@ const SPLASHES = [
 ]
 
 /**
- * Peso de un bioma según lo cerca que estés. Los biomas no ocupan un tramo
- * cada uno: los cinco cubren el mundo entero y se funden por opacidad. Así no
- * hay que empalmar terrenos, que es lo caro de producir.
+ * Territorio de cada bioma, en progreso de mundo. La frontera cae a mitad de
+ * camino entre dos secciones.
+ *
+ * Cada bioma se **recorta** a su territorio en vez de fundirse con el vecino.
+ * Fundir mostraba los dos terrenos a la vez —cactus sobre cerezos— y además
+ * dejaba pasar el cielo, porque dos capas al 50% componen un 75%, no un 100%.
+ *
+ * Una frontera dura tampoco es una concesión: en Minecraft los biomas cambian
+ * de golpe.
  */
-function biomeOpacity(at: number, world: number): number {
-  const d = Math.abs(at - world)
-  if (d <= BLEND * 0.5) return 1
-  return Math.max(0, 1 - (d - BLEND * 0.5) / BLEND)
+function makeBounds(viewport: number) {
+  const bounds = SECTIONS.map((section, i) => {
+    const prev = SECTIONS[i - 1]
+    const next = SECTIONS[i + 1]
+    return {
+      from: prev ? (prev.at + section.at) / 2 : -Infinity,
+      to: next ? (section.at + next.at) / 2 : Infinity,
+    }
+  })
+
+  // La primera frontera se empuja más allá del borde derecho de la pantalla:
+  // con el bioma de inicio midiendo menos de un viewport, se veía el siguiente
+  // nada más entrar, antes de haber caminado nada.
+  const clear = (viewport * 1.12) / WORLD_LENGTH
+  if (bounds[0].to < clear) {
+    bounds[0].to = clear
+    bounds[1].from = clear
+  }
+  return bounds
+}
+
+let BOUNDS = makeBounds(1920)
+
+/** Índice del bioma que pisas, y cuánto has entrado en el siguiente. */
+function biomeAt(world: number): { index: number; blend: number; next: number } {
+  let index = 0
+  BOUNDS.forEach((b, i) => {
+    if (world >= b.from) index = i
+  })
+  const edge = BOUNDS[index].to
+  const next = Math.min(SECTIONS.length - 1, index + 1)
+  const blend =
+    edge === Infinity ? 0 : Math.min(1, Math.max(0, (world - (edge - FEET_EASE)) / FEET_EASE))
+  return { index, blend, next }
 }
 
 function preload(src: string): Promise<void> {
@@ -188,6 +245,10 @@ export default function RecorridoPage() {
   const [signsOpen, setSignsOpen] = useState(0)
   const [benchOpen, setBenchOpen] = useState(0)
   const [muted, setMutedState] = useState(false)
+  const [worldPx, setWorldPx] = useState(0)
+  const [half, setHalf] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [compact, setCompact] = useState(false)
   const [worldAt, setWorldAt] = useState(0)
   const [night, setNight] = useState(0)
   const [actorX, setActorX] = useState(ENTRY_TO)
@@ -201,6 +262,8 @@ export default function RecorridoPage() {
   const actorRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef<CharacterState>('idle')
   const teleportingRef = useRef(false)
+  /** Pide al bucle que salte sin suavizado ni tope: es un teletransporte. */
+  const snapRef = useRef(false)
 
   useEffect(() => setSplash(SPLASHES[Math.floor(Math.random() * SPLASHES.length)]), [])
   useEffect(() => setMutedState(isMuted()), [])
@@ -274,7 +337,13 @@ export default function RecorridoPage() {
 
   useEffect(() => {
     const fit = () => {
-      setCharHeight(window.innerHeight * CHAR_HEIGHT_VH)
+      const portrait = window.innerHeight > window.innerWidth
+      const world = window.innerHeight * (portrait ? PORTRAIT_WORLD : 1)
+      setWorldPx(world)
+      setHalf(window.innerWidth < HALF_RES_WIDTH)
+      BOUNDS = makeBounds(window.innerWidth)
+      setCompact(window.innerWidth <= 760)
+      setCharHeight(world * CHAR_HEIGHT_VH)
       setPeekScale((window.innerHeight * PEEK_CELL_VH) / PEEK_CELL_PX)
       setPageHeight(SCROLL_LENGTH + window.innerHeight)
     }
@@ -299,7 +368,7 @@ export default function RecorridoPage() {
     }
 
     const distance = ((ENTRY_TO - ENTRY_FROM) / 100) * window.innerWidth
-    const stride = BLOCK_PX_SOURCE * (window.innerHeight / LAYER_HEIGHT_SOURCE) * STRIDE.walk
+    const stride = BLOCK_PX_SOURCE * (worldPx / LAYER_HEIGHT_SOURCE) * STRIDE.walk
     const t0 = performance.now()
     let raf = 0
 
@@ -319,7 +388,7 @@ export default function RecorridoPage() {
 
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [phase])
+  }, [phase, worldPx])
 
   // --- recorrido: el scroll es una posición del mundo, no una línea de tiempo ---
   useEffect(() => {
@@ -340,13 +409,26 @@ export default function RecorridoPage() {
       target = Math.min(1, Math.max(0, window.scrollY / SCROLL_LENGTH))
     }
 
-    const block = BLOCK_PX_SOURCE * (window.innerHeight / LAYER_HEIGHT_SOURCE)
+    const block = BLOCK_PX_SOURCE * (worldPx / LAYER_HEIGHT_SOURCE)
     let previous = 0
+    let last = performance.now()
+    let sheetFrame = 0
 
-    const frame = () => {
-      // Suavizado: sin esto el mundo salta con cada muesca de la rueda.
-      current += (target - current) * 0.12
-      if (Math.abs(target - current) < 0.00002) current = target
+    const frame = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
+
+      if (snapRef.current) {
+        // La perla no camina: llega.
+        snapRef.current = false
+        current = target
+        previous = current * WORLD_LENGTH
+      } else {
+        // Suavizado, sin tope: el mundo sigue al scroll y se detiene cuando
+        // tú te detienes.
+        current += (target - current) * 0.12
+        if (Math.abs(target - current) < 0.00002) current = target
+      }
 
       const worldX = current * WORLD_LENGTH
       const nodes: [HTMLDivElement | null, number][] = [
@@ -361,7 +443,8 @@ export default function RecorridoPage() {
       })
 
       // Tres marchas por velocidad de avance: correr, caminar, parado.
-      const speed = Math.abs(worldX - previous)
+      const travelled = worldX - previous
+      const speed = dt > 0 ? Math.abs(travelled) / dt / block : 0
       previous = worldX
       if (speed <= SPEED_WALK) stillFor += 1
       else stillFor = 0
@@ -380,7 +463,12 @@ export default function RecorridoPage() {
       // worldX/stride son ciclos y ×count da el frame. Character envuelve.
       const active = stateRef.current
       const stride = block * STRIDE[active]
-      setRunFrame(Math.floor((worldX / stride) * FRAME_COUNT[active]))
+      // El avance del ciclo sale de la distancia, pero acotado: así los pies
+      // no patinan a velocidad normal y no se dispara en un golpe fuerte.
+      const wanted = (travelled / stride) * FRAME_COUNT[active]
+      const cap = MAX_SHEET_FPS * dt
+      sheetFrame += Math.max(-cap, Math.min(cap, wanted))
+      setRunFrame(Math.floor(sheetFrame))
       setStarted(current > 0.004)
       setWorldAt(current)
       setNight(Math.min(1, Math.max(0, (current - DUSK_FROM) / (NIGHT_AT - DUSK_FROM))))
@@ -389,17 +477,12 @@ export default function RecorridoPage() {
       const toCliff = Math.min(1, Math.max(0, (current - CLIFF_FROM) / (1 - CLIFF_FROM)))
       setActorX(ENTRY_TO + (CLIFF_X - ENTRY_TO) * toCliff)
 
-      // El suelo del personaje sigue al bioma: media de las superficies
-      // ponderada por su opacidad, así al cruzar el fundido sube o baja con él.
-      let wsum = 0
-      let acc = 0
-      SECTIONS.forEach((sec) => {
-        const w = biomeOpacity(sec.at, current)
-        if (w <= 0) return
-        wsum += w
-        acc += w * ((LAYER_HEIGHT_SOURCE - (sec.surfaceY + FEET_BELOW_SURFACE)) / LAYER_HEIGHT_SOURCE)
-      })
-      if (wsum > 0) setFeetVh(acc / wsum)
+      // El terreno cambia de golpe en la frontera, pero los pies no: se
+      // interpolan en un tramo corto para que no den un salto de 37 px.
+      const { index, blend, next } = biomeAt(current)
+      const feetOf = (i: number) =>
+        (LAYER_HEIGHT_SOURCE - (SECTIONS[i].surfaceY + FEET_BELOW_SURFACE)) / LAYER_HEIGHT_SOURCE
+      setFeetVh(feetOf(index) + (feetOf(next) - feetOf(index)) * blend)
 
       // Apertura por distancia: es una función de la posición, no un
       // disparador. Así no hay estado que sincronizar ni re-disparos al volver.
@@ -427,9 +510,29 @@ export default function RecorridoPage() {
       window.removeEventListener('scroll', onScroll)
       cancelAnimationFrame(raf)
     }
-  }, [phase])
+  }, [phase, worldPx])
+
+  /**
+   * Dónde aterriza la perla. No es exactamente la sección: caer justo encima
+   * deja la siguiente frontera de bioma dentro del cuadro.
+   *
+   * La frontera aparece en pantalla en `edge - worldX`, medido desde el borde
+   * IZQUIERDO. Para dejarla fuera hay que retroceder un viewport entero, no el
+   * hueco que queda a la derecha del personaje.
+   *
+   * El retroceso está acotado por `PANEL_OPEN_AT`: más atrás de eso, llegarías
+   * con el cofre entreabierto.
+   */
+  const landingFor = useCallback((index: number) => {
+    const section = SECTIONS[index]
+    const edge = BOUNDS[index].to
+    if (edge === Infinity) return section.at
+    const clear = edge - window.innerWidth / WORLD_LENGTH
+    return Math.max(section.at - PANEL_OPEN_AT, Math.min(section.at, clear))
+  }, [])
 
   const jumpTo = useCallback((at: number, id: string) => {
+    snapRef.current = true
     window.scrollTo({ top: at * SCROLL_LENGTH, behavior: 'auto' })
     window.history.replaceState(null, '', `#${id}`)
     setActive(id)
@@ -442,10 +545,11 @@ export default function RecorridoPage() {
         setShot(null)
         teleportingRef.current = false
         setHidden(false)
-        jumpTo(section.at, section.id)
+        jumpTo(landingFor(SECTIONS.indexOf(section)), section.id)
         return
       }
       play('button')
+      setMenuOpen(false)
       teleportingRef.current = true
       stateRef.current = 'throw'
       setCharacterState('throw')
@@ -465,12 +569,12 @@ export default function RecorridoPage() {
         fromY: handY,
         // Aterriza exactamente donde el personaje se planta: mismo eje, mismos pies.
         toX: window.innerWidth * (actorX / 100),
-        toY: window.innerHeight * (1 - feetVh),
+        toY: window.innerHeight - feetVh * worldPx,
         onCross: () => {
           // Se desvanece al salir la perla de plano, no al lanzarla: si no,
           // se queda un hueco vacío en la pantalla de origen.
           setHidden(true)
-          jumpTo(section.at, section.id)
+          jumpTo(landingFor(SECTIONS.indexOf(section)), section.id)
         },
         // La perla espera a que la mano llegue al frame de suelta.
         delayMs: (THROW_RELEASE.frame / FRAME_COUNT.throw) * THROW_MS,
@@ -487,14 +591,31 @@ export default function RecorridoPage() {
         },
       })
     },
-    [jumpTo, feetVh, charHeight, actorX],
+    [jumpTo, landingFor, feetVh, charHeight, actorX, worldPx],
   )
 
   const handleGreetingEnd = useCallback(() => setPhase('entering'), [])
 
   const filled = Math.round(progress * BAR_CELLS)
   const titleClass = started ? styles.titlesOut : phase === 'ready' ? styles.titlesIn : ''
-  const tileWidth = charHeight / CHAR_HEIGHT_VH ? (charHeight / CHAR_HEIGHT_VH) * LAYER_ASPECT : 2880
+  const tileWidth = (worldPx || 1080) * LAYER_ASPECT
+  /**
+   * Bordes del territorio de un bioma, en píxeles del contenedor de su capa.
+   *
+   * Lleva el término `-worldX*(1-speed)` para que la frontera caiga en la
+   * MISMA x de pantalla en todas las capas. Sin él, cada capa cortaba el bioma
+   * en un sitio distinto —el fondo mucho antes que el suelo— y se veía taiga
+   * detrás de bosque. La frontera es una línea vertical que se cruza andando,
+   * y detrás de ella el parallax sigue funcionando con normalidad.
+   */
+  const clipOf = (i: number, speed: number) => {
+    const worldX = worldAt * WORLD_LENGTH
+    const shift = worldX * (1 - speed)
+    return {
+      clipFrom: BOUNDS[i].from === -Infinity ? -1e7 : BOUNDS[i].from * WORLD_LENGTH - shift,
+      clipTo: BOUNDS[i].to === Infinity ? 1e7 : BOUNDS[i].to * WORLD_LENGTH - shift,
+    }
+  }
   /** Centra una tesela en la pantalla justo al llegar a su sección. Lo usan
    *  los elementos que son un LUGAR y no una textura repetible. */
   const centredAnchor = (at: number, speed: number, width: number) =>
@@ -514,7 +635,8 @@ export default function RecorridoPage() {
       style={
         {
           height: pageHeight,
-          '--char-feet': `${feetVh * 100}vh`,
+          '--char-feet': `${feetVh * worldPx}px`,
+          '--world-h': `${worldPx}px`,
           // El terreno se apaga y se enfría con la noche. Así el mismo render
           // sirve para cualquier hora sin volver a pasarlo por Mine-imator.
           '--world-grade': `brightness(${1.1 - night * 0.62}) contrast(${1.08 - night * 0.1}) saturate(${1.06 - night * 0.5}) hue-rotate(${night * 12}deg)`,
@@ -540,7 +662,10 @@ export default function RecorridoPage() {
                 src={`/layers/${s.biome}_${kind}.webp`}
                 travel={WORLD_LENGTH * LAYER_SPEED[kind]}
                 tileWidth={tileWidth}
-                opacity={biomeOpacity(s.at, worldAt)}
+                opacity={1}
+                {...clipOf(SECTIONS.indexOf(s), LAYER_SPEED[kind])}
+                half={half}
+                extend={s.biome === 'b5' ? 2 : 0}
                 anchor={
                   s.biome === 'b5'
                     ? cliffAnchor * LAYER_SPEED[kind]
@@ -574,7 +699,10 @@ export default function RecorridoPage() {
               src={`/layers/${s.biome}_ground.webp`}
               travel={WORLD_LENGTH}
               tileWidth={tileWidth}
-              opacity={biomeOpacity(s.at, worldAt)}
+              opacity={1}
+              {...clipOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
+              half={half}
+              extend={s.biome === 'b5' ? 2 : 0}
               anchor={s.biome === 'b5' ? cliffAnchor : undefined}
             />
           ))}
@@ -584,33 +712,31 @@ export default function RecorridoPage() {
         <Book title="Sobre mí" pages={ABOUT_PAGES} openness={bookOpen} />
         <CraftingTable openness={benchOpen} />
 
-        {/* Las secciones viajan con el suelo: son lugares, no pantallas. */}
+        {/* Las secciones viajan con el suelo: son lugares, no pantallas.
+            Solo las que tienen algo físico en el mundo: el libro, la mesa y el
+            inventario son paneles y se dibujan aparte. */}
         <div ref={markersRef} className={styles.markers}>
-          {SECTIONS.slice(1).map((section) => (
-            <section
-              key={section.id}
-              id={section.id}
-              className={styles.marker}
-              style={{ left: section.at * WORLD_LENGTH }}
-            >
-              {section.id === 'sobre-mi' || section.id === 'skills' ? null : section.id ===
-                'contacto' ? (
-                <Signs openness={signsOpen} />
-              ) : section.id === 'proyectos' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={chestOpen > 0.4 ? '/textures/chest_open.png' : '/textures/chest_closed.png'}
-                  alt=""
-                  className={styles.chest}
-                />
-              ) : (
-                <>
-                  <span className={styles.markerEyebrow}>{section.label}</span>
-                  <p className={styles.markerText}>Contenido pendiente</p>
-                </>
-              )}
-            </section>
-          ))}
+          {SECTIONS.filter((section) => section.id === 'proyectos' || section.id === 'contacto').map(
+            (section) => (
+              <section
+                key={section.id}
+                id={section.id}
+                className={styles.marker}
+                style={{ left: section.at * WORLD_LENGTH }}
+              >
+                {section.id === 'contacto' ? (
+                  <Signs openness={signsOpen} />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={chestOpen > 0.4 ? '/textures/chest_open.png' : '/textures/chest_closed.png'}
+                    alt=""
+                    className={styles.chest}
+                  />
+                )}
+              </section>
+            ),
+          )}
         </div>
 
         {phase === 'greeting' ? (
@@ -635,32 +761,46 @@ export default function RecorridoPage() {
           className={`${styles.nav} ${phase === 'ready' ? styles.navIn : ''}`}
           aria-label="Secciones"
         >
-          {SECTIONS.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              className={`${styles.navButton} ${active === section.id ? styles.navActive : ''}`}
-              onClick={() => navigate(section)}
-              aria-current={active === section.id ? 'true' : undefined}
-            >
-              {section.label}
-            </button>
-          ))}
           <button
             type="button"
-            className={styles.navButton}
+            className={`${styles.navButton} ${styles.navToggle}`}
             onClick={() => {
-              const next = !muted
-              setMuted(next)
-              setMutedState(next)
-              if (!next) play('button')
+              play('button')
+              setMenuOpen((open) => !open)
             }}
-            aria-pressed={muted}
-            aria-label={muted ? 'Activar sonido' : 'Silenciar'}
-            title={muted ? 'Activar sonido' : 'Silenciar'}
+            aria-expanded={menuOpen}
+            aria-controls="nav-items"
           >
-            {muted ? '🔇' : '🔊'}
+            {menuOpen ? '✕ Cerrar' : '☰ Menú'}
           </button>
+
+          <div id="nav-items" className={styles.navItems} hidden={compact && !menuOpen}>
+            {SECTIONS.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                className={`${styles.navButton} ${active === section.id ? styles.navActive : ''}`}
+                onClick={() => navigate(section)}
+                aria-current={active === section.id ? 'true' : undefined}
+              >
+                {section.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={styles.navButton}
+              onClick={() => {
+                const next = !muted
+                setMuted(next)
+                setMutedState(next)
+                if (!next) play('button')
+              }}
+              aria-pressed={muted}
+              aria-label={muted ? 'Activar sonido' : 'Silenciar'}
+            >
+              {muted ? '🔇 Sonido' : '🔊 Sonido'}
+            </button>
+          </div>
         </nav>
 
         <div className={`${styles.loader} ${phase !== 'loading' ? styles.loaderDone : ''}`}>

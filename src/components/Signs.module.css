@@ -1,3 +1,4 @@
+/* Clavados en el suelo del mundo, que en vertical no llega abajo del todo. */
 .row {
   position: absolute;
   bottom: var(--char-feet);
