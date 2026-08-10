@@ -243,11 +243,19 @@ proyectadas y el grado de CSS.
 Se probó con teselas de 16×16. Más nítido, más ligero e infinito, pero **plano**
 al lado de un personaje que es render 3D: el resultado parecía Terraria.
 
-### Los biomas se funden, no se empalman
+### Los biomas se recortan, no se funden ni se empalman
 
-Los cinco cubren el mundo entero y se mezclan por opacidad. Evita tener que
-hacer que el terreno de un bioma continúe en el siguiente, que es lo caro.
-Funciona porque la franja donde camina es plana.
+Cada bioma ocupa su territorio y se corta en la frontera. **Esto reemplazó al
+fundido por opacidad**, que se probó y falló por dos motivos: mostraba los dos
+terrenos a la vez —cactus sobre cerezos— y dejaba pasar el cielo, porque dos
+capas al 50% componen un 75% y no un 100%.
+
+Para producción significa lo mismo que antes: **no hay que empalmar el terreno
+de un bioma con el del siguiente**. La frontera es un corte vertical limpio, y
+en el juego los biomas también cambian de golpe.
+
+Lo único que sí importa es que **la franja por donde camina el personaje sea
+plana** y esté a la altura declarada en `surfaceY`.
 
 ### El teselado es en espejo
 
@@ -268,6 +276,25 @@ Se planteó para arreglar la silueta de `idle`, que de perfil puro se lee
 estrecha. Descartado: desalinearía todas las hojas entre sí.
 
 ---
+
+## Clima
+
+Las partículas son de código, no de render: nieve en `b2`, tormenta de arena en
+`b3`, pétalos en `b4`. Van en canvas por encima del terreno.
+
+Lo que sí afecta a la producción:
+
+**La tormenta de arena quita visibilidad al fondo.** El `far` de `b3` se atenúa
+hasta un 60% en el pico de racha. Un fondo que solo se lea por su detalle fino
+desaparece ahí; lo que aguanta es la **silueta**. El templo funciona porque es
+una masa reconocible.
+
+**Las rachas dejan claros.** La tormenta oscila entre el 45% y el 100% de fuerza,
+así que el fondo asoma cada pocos segundos. No hace falta renderizar el `far` de
+`b3` "para verse entre polvo": se renderiza normal y el polvo lo pone el código.
+
+**Los cerezos no necesitan pétalos en el render.** Si el `b4` los trae pintados,
+se suman a los del canvas y se ve cargado.
 
 ## Herramientas
 
