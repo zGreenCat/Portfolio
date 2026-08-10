@@ -7,6 +7,8 @@ import styles from './Book.module.css'
 interface BookProps {
   title: string
   pages: string[]
+  /** Retrato del autor, en el marco de ranura de la cabecera. */
+  portrait?: { src: string; alt: string }
   /** 0 = cerrado, 1 = abierto del todo. Lo gobierna la distancia. */
   openness: number
 }
@@ -18,7 +20,7 @@ interface BookProps {
  * Por eso el texto va troceado en páginas cortas en vez de en un bloque que
  * haya que recorrer.
  */
-export default function Book({ title, pages, openness }: BookProps) {
+export default function Book({ title, pages, portrait, openness }: BookProps) {
   const [page, setPage] = useState(0)
 
   // Al alejarse se cierra y vuelve a la primera página.
@@ -36,7 +38,15 @@ export default function Book({ title, pages, openness }: BookProps) {
 
   return (
     <div className={styles.book} style={style} role="region" aria-label={title}>
-      <span className={styles.title}>{title}</span>
+      <div className={styles.head}>
+        {portrait ? (
+          <span className={styles.portrait}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={portrait.src} alt={portrait.alt} className={styles.portraitImage} />
+          </span>
+        ) : null}
+        <span className={styles.title}>{title}</span>
+      </div>
       <p className={styles.text}>{pages[page]}</p>
       <div className={styles.footer}>
         <span className={styles.page}>
