@@ -46,6 +46,41 @@
   filter: var(--world-grade);
 }
 
+/*
+ * Velos de arena por profundidad.
+ *
+ * Un velo plano sobre todo el cuadro no lee como tormenta: lo que pasa de
+ * verdad es que la perspectiva aérea se hunde y lo lejano se borra mucho antes
+ * que lo cercano. Cada velo se cuela entre dos capas —van con el mismo
+ * z-index que la capa de debajo y después en el DOM— así que atenúan lo que
+ * tienen detrás sin tocar lo que tienen delante.
+ *
+ * Son del tamaño de la pantalla, no del mundo: cambiar su opacidad es
+ * composición y sale gratis. Meterlo en el `filter` de las capas habría
+ * obligado a re-rasterizar 20.000 px de ancho en cada frame.
+ */
+.scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgb(226 200 140);
+}
+
+.scrimFar {
+  z-index: 1;
+  opacity: calc(var(--sand, 0) * 0.6);
+}
+
+.scrimMid {
+  z-index: 2;
+  opacity: calc(var(--sand, 0) * 0.38);
+}
+
+.scrimNear {
+  z-index: 3;
+  opacity: calc(var(--sand, 0) * 0.19);
+}
+
 /* ---------- personaje en el mundo ---------- */
 
 /* Arranca fuera de cuadro. La posición inicial la fija el componente con
@@ -91,6 +126,7 @@
 }
 
 .loaderTitle {
+  font-family: var(--font-display);
   font-size: 15px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -122,6 +158,7 @@
 }
 
 .loaderHint {
+  font-family: var(--font-display);
   font-size: 11px;
   letter-spacing: 0.14em;
   color: #7e858b;
@@ -137,11 +174,34 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  isolation: isolate;
   opacity: 0;
   transform: translateY(18px);
   transition:
     opacity 0.7s ease,
     transform 0.7s ease;
+}
+
+/* Velo detrás del título. No es una caja: el degradado se apaga antes de tener
+   borde, así que baja el bosque lo justo para que las letras separen sin que
+   aparezca un panel flotando en mitad del mundo. */
+.titles::before {
+  content: '';
+  position: absolute;
+  left: 46%;
+  top: 50%;
+  translate: -50% -50%;
+  width: 210%;
+  height: 340%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    rgb(5 11 7 / 0.58) 0%,
+    rgb(5 11 7 / 0.38) 36%,
+    rgb(5 11 7 / 0.12) 58%,
+    rgb(5 11 7 / 0) 74%
+  );
 }
 
 .titlesIn {
@@ -155,24 +215,62 @@
 }
 
 .name {
+  font-family: var(--font-display);
   margin: 0;
-  font-size: clamp(2rem, 5vw, 3.6rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.4rem, 6.2vw, 4.8rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
   text-transform: uppercase;
   color: #fff;
-  text-shadow: 5px 5px 0 rgb(0 0 0 / 0.45);
+  /*
+   * Contorno duro y extrusión hacia abajo-derecha: el título deja de ser texto
+   * y pasa a ser un objeto con volumen, que es lo que sostiene el peso contra
+   * un fondo lleno de detalle.
+   *
+   * Ningún desenfoque. En el juego la sombra del texto es un desplazamiento
+   * entero de píxel; con blur esto pasaría a parecer un título web cualquiera
+   * puesto encima del bosque.
+   *
+   * La extrusión es verde muy oscura, no negra: pertenece al bioma en vez de
+   * flotar sobre él.
+   */
+  text-shadow:
+    2px 0 0 #131f0e,
+    -2px 0 0 #131f0e,
+    0 2px 0 #131f0e,
+    0 -2px 0 #131f0e,
+    2px 2px 0 #131f0e,
+    -2px 2px 0 #131f0e,
+    2px -2px 0 #131f0e,
+    -2px -2px 0 #131f0e,
+    3px 3px 0 #33512a,
+    4px 4px 0 #2e4926,
+    5px 5px 0 #294122,
+    6px 6px 0 #23391d,
+    7px 7px 0 #1e3119,
+    8px 8px 0 #192914,
+    9px 9px 0 #142110,
+    13px 13px 0 rgb(0 0 0 / 0.34);
 }
 
 .role {
-  font-size: clamp(0.75rem, 1.3vw, 0.9rem);
-  letter-spacing: 0.24em;
+  font-family: var(--font-display);
+  font-size: clamp(0.78rem, 1.4vw, 1rem);
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  color: #eaf2fa;
-  text-shadow: 3px 3px 0 rgb(0 0 0 / 0.4);
+  color: #f2f7fb;
+  /* El contorno vale más que la sombra: con letras finas y espaciadas, lo que
+     se pierde contra las hojas es el borde, no el volumen. */
+  text-shadow:
+    1px 0 0 #131f0e,
+    -1px 0 0 #131f0e,
+    0 1px 0 #131f0e,
+    0 -1px 0 #131f0e,
+    2px 2px 0 rgb(10 18 10 / 0.85);
 }
 
 .scrollHint {
+  font-family: var(--font-display);
   position: absolute;
   bottom: 32vh;
   left: 50%;
@@ -262,14 +360,17 @@
 
 /* Escritorio: barra horizontal. Móvil: botón hamburguesa que despliega.
    Envolver a dos filas tapaba los paneles de las secciones. */
+/* En escritorio va centrada arriba, como el menú de un juego. En estrecho
+   vuelve a la esquina, que es donde el hamburguesa tiene sentido. */
 .nav {
   position: fixed;
   top: 12px;
-  right: 12px;
+  left: 50%;
+  translate: -50% 0;
   z-index: 25;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   gap: 6px;
   opacity: 0;
   transition: opacity 0.5s ease;
@@ -283,6 +384,8 @@
 
 .navItems {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -292,7 +395,7 @@
 
 /* Botón del menú del juego: piedra, bisel claro arriba y oscuro abajo. */
 .navButton {
-  font-family: inherit;
+  font-family: var(--font-display);
   font-size: clamp(10px, 1.1vw, 12px);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -331,6 +434,13 @@
 }
 
 @media (max-width: 760px) {
+  .nav {
+    left: auto;
+    right: 12px;
+    translate: none;
+    align-items: flex-end;
+  }
+
   .navToggle {
     display: block;
   }
@@ -360,12 +470,19 @@
 
 /* La línea amarilla inclinada de la pantalla de título. Late, como en el juego. */
 .splash {
+  font-family: var(--font-display);
   align-self: flex-start;
   margin-top: -6px;
-  font-size: clamp(0.8rem, 1.6vw, 1.1rem);
+  font-size: clamp(0.85rem, 1.8vw, 1.25rem);
   font-weight: 700;
   color: #ffdc4a;
-  text-shadow: 3px 3px 0 rgb(0 0 0 / 0.5);
+  text-shadow:
+    1px 0 0 #3d2c00,
+    -1px 0 0 #3d2c00,
+    0 1px 0 #3d2c00,
+    0 -1px 0 #3d2c00,
+    3px 3px 0 #3d2c00,
+    4px 4px 0 rgb(0 0 0 / 0.4);
   transform: rotate(-14deg);
   transform-origin: left center;
   animation: splashPulse 1.1s ease-in-out infinite;
@@ -397,3 +514,12 @@
 }
 
 
+
+/* Con `prefers-reduced-motion` activo, el enlace a la versión en texto deja de
+   confundirse con el resto de botones de la barra. */
+.navQuiet {
+  background: #d9c27a;
+  border-color: #4a3d16;
+  color: #241d05;
+  text-shadow: none;
+}

@@ -6,8 +6,19 @@ interface StripProps {
   travel: number
   /** Ancho de la imagen una vez escalada a 100vh. */
   tileWidth: number
-  /** 0 = invisible. Es lo que funde un bioma con el siguiente. */
-  opacity: number
+  /** Fracción del avance del mundo que recorre esta capa. */
+  speed: number
+  /** Ancho de la ventana, en px. Marca cuánto margen hay que cubrir a cada
+   *  lado del territorio para que no se vea el borde de la tira. */
+  viewport: number
+  /** Territorio del bioma en coordenadas de mundo. Fuera de ahí no se dibuja:
+   *  recortar en vez de fundir evita ver dos terrenos a la vez, que es lo que
+   *  ponía un cactus sobre un cerezo. */
+  spanFrom: number
+  spanTo: number
+  /** Desplazamiento del recorte en el momento del montaje. El bucle lo
+   *  reescribe en cada frame; esto solo evita un frame sin recortar. */
+  shift: number
   /** Una sola copia anclada a esta X de mundo, sin repetir. Lo usa el
    *  acantilado: repetirlo daría un cantil detrás de otro. */
   anchor?: number
@@ -19,11 +30,6 @@ interface StripProps {
    *  el mundo anterior a ella, y ahí quedaba un hueco sin suelo. Al ir
    *  espejadas, el terreno continúa sin costura. */
   extend?: number
-  /** Territorio del bioma, en coordenadas del contenedor. Fuera de ahí no se
-   *  dibuja. Recortar en vez de fundir evita ver dos terrenos a la vez: un
-   *  cactus sobre un cerezo es inevitable si se mezcla por opacidad. */
-  clipFrom?: number
-  clipTo?: number
 }
 
 /**
@@ -35,6 +41,10 @@ interface StripProps {
  * paisaje queda simétrico cada dos repeticiones, cosa que apenas se nota en
  * terreno irregular y menos aún en las capas de fondo, que van con niebla.
  *
+ * Solo se montan las teselas que el bioma puede llegar a enseñar. Cubrir el
+ * mundo entero salían siete por capa y el recorte dejaba ver dos: las otras
+ * cinco eran nodos y composición para nada.
+ *
  * No lleva el `transform`: eso vive en el contenedor, que agrupa todos los
  * biomas de una misma velocidad para que se muevan como uno.
  */
@@ -42,30 +52,55 @@ export default function Strip({
   src,
   travel,
   tileWidth,
-  opacity,
+  speed,
+  viewport,
+  spanFrom,
+  spanTo,
+  shift,
   anchor,
   half,
   extend = 0,
-  clipFrom,
-  clipTo,
 }: StripProps) {
   const file = half ? src.replace('.webp', '@half.webp') : src
   const anchored = anchor !== undefined
-  const tiles = anchored ? 1 + extend : Math.max(2, Math.ceil((travel + tileWidth) / tileWidth) + 1)
-  // Con teselas antes del ancla, la fila arranca a su izquierda y la copia
-  // anclada tiene que caer en la paridad sin espejar.
-  const left = anchored ? (anchor ?? 0) - extend * tileWidth : 0
-  const parity = anchored ? extend % 2 : 0
+  const reach = travel + tileWidth
 
-  // El recorte va en coordenadas propias de la tira, que empieza en `left`.
+  let left: number
+  let tiles: number
+
+  if (anchored) {
+    tiles = 1 + extend
+    left = (anchor ?? 0) - extend * tileWidth
+  } else {
+    // Una coordenada de mundo X se ve mientras la cámara esté entre X-viewport
+    // y X, y ahí cae en la tira sobre cámara*speed … cámara*speed+viewport.
+    const min = Math.max(0, (spanFrom - viewport) * speed)
+    const max = Math.min(reach, (spanTo + viewport) * speed + viewport)
+    const first = Math.max(0, Math.floor(min / tileWidth))
+    const last = Math.min(Math.ceil(reach / tileWidth), Math.ceil(max / tileWidth))
+    left = first * tileWidth
+    tiles = Math.max(2, last - first)
+  }
+
+  // El volteo va por índice absoluto de tesela: si la tira empieza más allá del
+  // origen, la paridad tiene que seguir siendo la misma o aparece la costura.
+  const parity = anchored ? extend % 2 : (left / tileWidth) % 2
+
   const width = tiles * tileWidth
-  const clip =
-    clipFrom === undefined || clipTo === undefined
-      ? undefined
-      : `inset(0 ${Math.max(0, width - (clipTo - left))}px 0 ${Math.max(0, clipFrom - left)}px)`
+  const clip = `inset(0 ${Math.max(0, width - (spanTo - shift - left))}px 0 ${Math.max(0, spanFrom - shift - left)}px)`
 
   return (
-    <div className={styles.strip} style={{ opacity, left, clipPath: clip }} aria-hidden="true">
+    <div
+      className={styles.strip}
+      style={{ left, clipPath: clip }}
+      data-strip=""
+      data-from={spanFrom}
+      data-to={spanTo}
+      data-speed={speed}
+      data-left={left}
+      data-width={width}
+      aria-hidden="true"
+    >
       {Array.from({ length: tiles }, (_, index) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img

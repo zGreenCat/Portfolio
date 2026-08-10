@@ -1,10 +1,10 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, Ref } from 'react'
 
 import styles from './Character.module.css'
 
 export type CharacterState = 'run' | 'walk' | 'idle' | 'throw'
 
-const CELL_WIDTH = 460
+export const CELL_WIDTH = 460
 const CELL_HEIGHT = 600
 
 /**
@@ -44,11 +44,12 @@ interface CharacterProps {
   /** Alto que debe medir el personaje en pantalla, en píxeles. */
   charHeight: number
   /**
-   * Fija el frame en lugar de dejar correr el bucle por tiempo. Se usa para
-   * atar la zancada al avance real: si el ciclo va por su cuenta, los pies
-   * patinan sobre el suelo en cuanto la velocidad de scroll no coincide.
+   * El frame lo escribe el bucle sobre el nodo, no React: la zancada va atada
+   * al avance real y eso cambia en cada frame. Con `driven`, el sprite deja de
+   * animarse por CSS y espera esa escritura.
    */
-  frame?: number
+  driven?: boolean
+  spriteRef?: Ref<HTMLDivElement>
 }
 
 const labels: Record<CharacterState, string> = {
@@ -64,7 +65,7 @@ const labels: Record<CharacterState, string> = {
  * contenedor solo tiene que estar a la altura del suelo, y cambiar de hoja no
  * mueve nada.
  */
-export default function Character({ state, charHeight, frame }: CharacterProps) {
+export default function Character({ state, charHeight, driven, spriteRef }: CharacterProps) {
   const sheet = SHEETS[state]
   const scale = charHeight / sheet.charHeight
 
@@ -81,18 +82,17 @@ export default function Character({ state, charHeight, frame }: CharacterProps) 
     backgroundImage: `url(${sheet.src})`,
     backgroundSize: `${width * sheet.frames}px ${height}px`,
     '--sheet-span': `${width * sheet.frames}px`,
+    // El volteo al andar hacia atrás pivota sobre el centro del personaje, no
+    // sobre el borde de la celda: si no, al girarse daría un salto lateral.
+    transformOrigin: `${centerOffset}px center`,
   } as CSSProperties
-
-  if (frame !== undefined) {
-    const index = ((frame % sheet.frames) + sheet.frames) % sheet.frames
-    style.backgroundPositionX = `${-index * width}px`
-  }
 
   return (
     <div
+      ref={spriteRef}
       className={styles.character}
       data-state={state}
-      data-driven={frame !== undefined ? 'true' : undefined}
+      data-driven={driven ? 'true' : undefined}
       style={style}
       role="img"
       aria-label={labels[state]}

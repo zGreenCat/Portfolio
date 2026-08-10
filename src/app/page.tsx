@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 
 import Character, {
+  CELL_WIDTH,
   FRAME_COUNT,
   SHEET_GEOMETRY,
   THROW_RELEASE,
@@ -14,6 +16,7 @@ import CraftingTable from '@/components/CraftingTable'
 import Inventory from '@/components/Inventory'
 import NightSky from '@/components/NightSky'
 import Signs from '@/components/Signs'
+import type { WeatherState } from '@/components/Weather'
 import Weather, { type WeatherKind } from '@/components/Weather'
 import { isMuted, play, setMuted } from '@/lib/sounds'
 import { ABOUT_PAGES, PROJECTS } from '@/content/portfolio'
@@ -167,6 +170,22 @@ const FEET_EASE = 0.03
 /** Fuera de este radio el bioma se desmonta: cuatro capas de 3840×1440 son
  *  ~88 MB de memoria descomprimida, y cinco biomas a la vez matan un móvil. */
 const MOUNT_RADIUS = 0.34
+/** Radio en el que un bioma se descomprime por adelantado, antes de montarse.
+ *  Descomprimir una capa de 3840×1440 cuesta bastante y caía justo al cruzar
+ *  la frontera; adelantarlo lo mete en un tramo tranquilo. */
+const PREWARM_RADIUS = MOUNT_RADIUS + 0.14
+const PREWARM_DROP = PREWARM_RADIUS + 0.05
+
+/** Escalones de la noche y de la apertura de paneles. Los dos alimentan estado
+ *  de React: cuantizarlos convierte 60 re-render/s en unos pocos por tramo. La
+ *  noche además mueve un `filter` sobre superficies del ancho del mundo. */
+const NIGHT_STEPS = 24
+const PANEL_STEPS = 20
+
+const quantize = (value: number, steps: number) => Math.round(value * steps) / steps
+
+const layerSrc = (biome: string, kind: string, half: boolean) =>
+  `/layers/${biome}_${kind}${half ? '@half' : ''}.webp`
 
 /** Distancias de apertura de los paneles, en unidades de progreso del mundo.
  *  Se cierran más lejos de lo que se abren: sin esa histéresis, un roce de
@@ -251,7 +270,6 @@ export default function RecorridoPage() {
   const [characterState, setCharacterState] = useState<CharacterState>('idle')
   const [charHeight, setCharHeight] = useState(200)
   const [peekScale, setPeekScale] = useState(1)
-  const [runFrame, setRunFrame] = useState(0)
   const [started, setStarted] = useState(false)
   const [splash, setSplash] = useState(SPLASHES[0])
   const [active, setActive] = useState<string>('inicio')
@@ -263,21 +281,55 @@ export default function RecorridoPage() {
   const [signsOpen, setSignsOpen] = useState(0)
   const [benchOpen, setBenchOpen] = useState(0)
   const [muted, setMutedState] = useState(false)
+  /** Si el sistema pide menos movimiento, la versión en texto deja de ser un
+   *  enlace más de la barra y se señala: ya dijeron que no quieren esto. */
+  const [reduced, setReduced] = useState(false)
   const [worldPx, setWorldPx] = useState(0)
+  const [viewW, setViewW] = useState(1920)
   const [half, setHalf] = useState(false)
-  const [weather, setWeather] = useState<{ kind: WeatherKind | null; power: number }>({
-    kind: null,
-    power: 0,
-  })
+  /** Biomas montados, por índice. Solo cambia al cruzar un radio, no por frame. */
+  const [mounted, setMounted] = useState<number[]>([0])
   /** Avance del mundo en el último frame: arrastra las partículas. */
   const worldDeltaRef = useRef(0)
+  /**
+   * Todo lo que cambia en cada frame vive en refs y se escribe al DOM a mano.
+   * Como estado de React obligaba a reconciliar el árbol entero —cuatro capas,
+   * sus tiras y todas sus teselas— sesenta veces por segundo.
+   */
+  const worldAtRef = useRef(0)
+  const actorXRef = useRef(ENTRY_TO)
+  const feetVhRef = useRef(CHAR_FEET_VH)
+  const weatherRef = useRef<WeatherState>({ kind: null, power: 0 })
+  const mountKeyRef = useRef('0')
+  /** Fuerza actual de la tormenta de arena, ya cuantizada. */
+  const sandRef = useRef(-1)
+  /** Hacia dónde mira: 1 derecha, -1 izquierda. */
+  const facingRef = useRef(1)
+  /**
+   * Sección a la que volver al recargar, o null si es una visita limpia.
+   *
+   * El navegador restaura el scroll solo, y lo deja en el píxel exacto donde
+   * estabas: si eso cae entre dos biomas, apareces plantado en la franja de la
+   * frontera. Aquí se redondea a la sección más cercana para llegar a un sitio
+   * que sea un lugar y no una coordenada.
+   */
+  const resumeRef = useRef<number | null>(null)
+  /** Tiras montadas con su geometría ya leída: el recorte se reescribe en cada
+   *  frame y no conviene volver a consultar el DOM para eso. */
+  const stripsRef = useRef<
+    { el: HTMLElement; from: number; to: number; speed: number; left: number; width: number }[]
+  >([])
+  /** Capas ya descomprimidas y retenidas. Sin esto, el decode de una imagen de
+   *  3840×1440 caía justo al cruzar la frontera y ahí se veía el tirón. */
+  const warmRef = useRef(new Map<string, HTMLImageElement>())
   const [menuOpen, setMenuOpen] = useState(false)
   const [compact, setCompact] = useState(false)
-  const [worldAt, setWorldAt] = useState(0)
+  /** La noche va cuantizada: cambiarla mueve un `filter` CSS sobre superficies
+   *  del ancho del mundo, y re-filtrar eso en cada frame era carísimo. */
   const [night, setNight] = useState(0)
-  const [actorX, setActorX] = useState(ENTRY_TO)
-  const [feetVh, setFeetVh] = useState(CHAR_FEET_VH)
 
+  const rootRef = useRef<HTMLElement>(null)
+  const spriteRef = useRef<HTMLDivElement>(null)
   const farRef = useRef<HTMLDivElement>(null)
   const midRef = useRef<HTMLDivElement>(null)
   const nearRef = useRef<HTMLDivElement>(null)
@@ -291,6 +343,41 @@ export default function RecorridoPage() {
 
   useEffect(() => setSplash(SPLASHES[Math.floor(Math.random() * SPLASHES.length)]), [])
   useEffect(() => setMutedState(isMuted()), [])
+  useEffect(() => setReduced(window.matchMedia('(prefers-reduced-motion: reduce)').matches), [])
+
+  /**
+   * Escribe el frame del sprite sobre el nodo. El ciclo va atado al avance real
+   * del mundo, así que cambia en cada frame: como prop, re-renderizaba.
+   *
+   * La hoja se lee del propio nodo, NO de `stateRef`. El cambio de estado llega
+   * al DOM cuando React re-renderiza, un frame más tarde, y en esa ventana las
+   * dos fuentes discrepan: `run` mide 367 px de alto en 16 celdas y `walk` 399
+   * en 25, así que el ancho de celda no coincide y el corte cae en mitad de un
+   * frame. Se veían dos poses a la vez.
+   */
+  const writeFrame = useCallback(
+    (index: number) => {
+      const node = spriteRef.current
+      const shown = node?.dataset.state as CharacterState | undefined
+      if (!node || !shown) return
+      const sheet = SHEET_GEOMETRY[shown]
+      const width = CELL_WIDTH * ((worldPx * CHAR_HEIGHT_VH) / sheet.charHeight)
+      const wrapped = ((index % sheet.frames) + sheet.frames) % sheet.frames
+      node.style.backgroundPositionX = `${-wrapped * width}px`
+    },
+    [worldPx],
+  )
+
+  /**
+   * En reposo el ciclo vuelve al CSS, y hay que borrar el frame que dejó el
+   * bucle. El keyframe solo declara `to`, así que el `from` implícito sale del
+   * valor que haya puesto: con el inline viejo, el ciclo arrancaba desalineado.
+   */
+  useEffect(() => {
+    if (characterState === 'idle' && spriteRef.current) {
+      spriteRef.current.style.backgroundPositionX = ''
+    }
+  }, [characterState])
 
   // --- gesto de lanzamiento ---
   useEffect(() => {
@@ -311,24 +398,97 @@ export default function RecorridoPage() {
         setCharacterState('idle')
         return
       }
-      setRunFrame(Math.floor(t * FRAME_COUNT.throw))
+      writeFrame(Math.floor(t * FRAME_COUNT.throw))
       raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [characterState])
+  }, [characterState, writeFrame])
+
+  /**
+   * Se calcula al terminar la carga, no antes: hay que leer el scroll ya
+   * restaurado por el navegador. La posición manda sobre el hash porque refleja
+   * dónde estabas de verdad; el hash solo entra si no hay scroll, que es el
+   * caso de un enlace compartido abierto en frío.
+   */
+  const resumeTarget = useCallback(() => {
+    const progress = window.scrollY / SCROLL_LENGTH
+    if (progress > 0.01) {
+      let best = 0
+      SECTIONS.forEach((section, i) => {
+        if (Math.abs(section.at - progress) < Math.abs(SECTIONS[best].at - progress)) best = i
+      })
+      return best
+    }
+    const hash = window.location.hash.slice(1)
+    const byHash = SECTIONS.findIndex((section) => section.id === hash)
+    return byHash > 0 ? byHash : null
+  }, [])
+
+  /**
+   * Dónde aterriza la perla. No es exactamente la sección: caer justo encima
+   * deja la siguiente frontera de bioma dentro del cuadro.
+   *
+   * La frontera aparece en pantalla en `edge - worldX`, medido desde el borde
+   * IZQUIERDO. Para dejarla fuera hay que retroceder un viewport entero, no el
+   * hueco que queda a la derecha del personaje.
+   *
+   * El retroceso está acotado por `PANEL_OPEN_AT`: más atrás de eso, llegarías
+   * con el cofre entreabierto.
+   */
+  const landingFor = useCallback((index: number) => {
+    const section = SECTIONS[index]
+    const edge = BOUNDS[index].to
+    if (edge === Infinity) return section.at
+    const clear = edge - window.innerWidth / WORLD_LENGTH
+    return Math.max(section.at - PANEL_OPEN_AT, Math.min(section.at, clear))
+  }, [])
+
+  /**
+   * Prepara la vuelta: monta el bioma de destino, mueve el documento y deja la
+   * posición lista para que la coloque la entrada. Devuelve false si es una
+   * visita limpia y toca saludar.
+   */
+  const armResume = useCallback(() => {
+    const index = resumeTarget()
+    if (index === null) return false
+    const at = landingFor(index)
+    resumeRef.current = at
+
+    // El bioma tiene que estar montado antes de colocar el mundo: si no, no hay
+    // tiras que recortar y la caminata ocurre sobre el terreno equivocado.
+    const near: number[] = []
+    SECTIONS.forEach((section, i) => {
+      if (Math.abs(section.at - at) < MOUNT_RADIUS) near.push(i)
+    })
+    mountKeyRef.current = near.join(',')
+    setMounted(near)
+    setActive(SECTIONS[index].id)
+    window.history.replaceState(null, '', `#${SECTIONS[index].id}`)
+    window.scrollTo({ top: at * SCROLL_LENGTH, behavior: 'auto' })
+    return true
+  }, [landingFor, resumeTarget])
 
   // --- carga ---
   useEffect(() => {
     let cancelled = false
     const t0 = performance.now()
     let done = 0
+    // La carga sale por dos puertas —todas las imágenes, o el tope de tiempo— y
+    // solo puede salir por una: la segunda volvería a armar el reaterrizaje
+    // cuando el bucle ya lo consumió.
+    let settled = false
 
     const enter = () => {
       if (cancelled) return
       window.setTimeout(
         () => {
-          if (!cancelled) setPhase('greeting')
+          if (cancelled || settled) return
+          settled = true
+          window.clearTimeout(cap)
+          // Quien vuelve ya te vio saludar. La entrada caminando y el reposo sí
+          // se quedan: son lo que planta al personaje en el suelo.
+          setPhase(armResume() ? 'entering' : 'greeting')
         },
         Math.max(0, MIN_LOADING_MS - (performance.now() - t0)),
       )
@@ -342,15 +502,17 @@ export default function RecorridoPage() {
       })
     })
 
-    const cap = window.setTimeout(() => {
-      if (!cancelled) setPhase('greeting')
+    const cap: number = window.setTimeout(() => {
+      if (cancelled || settled) return
+      settled = true
+      setPhase(armResume() ? 'entering' : 'greeting')
     }, MAX_LOADING_MS)
 
     return () => {
       cancelled = true
       window.clearTimeout(cap)
     }
-  }, [])
+  }, [armResume])
 
   useEffect(() => {
     document.body.style.overflow = phase === 'ready' ? '' : 'hidden'
@@ -364,6 +526,7 @@ export default function RecorridoPage() {
       const portrait = window.innerHeight > window.innerWidth
       const world = window.innerHeight * (portrait ? PORTRAIT_WORLD : 1)
       setWorldPx(world)
+      setViewW(window.innerWidth)
       setHalf(window.innerWidth < HALF_RES_WIDTH)
       BOUNDS = makeBounds(window.innerWidth)
       setCompact(window.innerWidth <= 760)
@@ -376,11 +539,77 @@ export default function RecorridoPage() {
     return () => window.removeEventListener('resize', fit)
   }, [])
 
+  // Releer la geometría de las tiras montadas. El recorte se reescribe en cada
+  // frame y consultar el DOM ahí dentro sería absurdo.
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-strip]'))
+    stripsRef.current = nodes.map((el) => ({
+      el,
+      from: Number(el.dataset.from),
+      to: Number(el.dataset.to),
+      speed: Number(el.dataset.speed),
+      left: Number(el.dataset.left),
+      width: Number(el.dataset.width),
+    }))
+  }, [mounted, half, worldPx, viewW, phase])
+
+  /**
+   * Coloca el mundo en una posición: desplazamiento de capas, recorte de cada
+   * bioma, altura de los pies y hora del día.
+   *
+   * Lo comparten el bucle y el reaterrizaje al volver. Antes esto solo existía
+   * dentro del bucle, y como el bucle no arranca hasta `ready`, quien volvía
+   * veía el bioma inicial durante toda la caminata de entrada y un cambio de
+   * fondo de golpe al terminar.
+   */
+  const placeWorld = useCallback(
+    (at: number) => {
+      worldAtRef.current = at
+      const worldX = at * WORLD_LENGTH
+      const nodes: [HTMLDivElement | null, number][] = [
+        [farRef.current, LAYER_SPEED.far],
+        [midRef.current, LAYER_SPEED.mid],
+        [nearRef.current, LAYER_SPEED.near],
+        [groundRef.current, LAYER_SPEED.ground],
+        [markersRef.current, LAYER_SPEED.ground],
+      ]
+      nodes.forEach(([node, speed]) => {
+        if (node) node.style.transform = `translate3d(${-worldX * speed}px,0,0)`
+      })
+
+      // El término (1-speed) hace que la frontera caiga en la MISMA x de
+      // pantalla en todas las capas pese a que cada una corre a su ritmo. Sin
+      // él, el fondo cortaba el bioma mucho antes que el suelo.
+      stripsRef.current.forEach((strip) => {
+        const shift = worldX * (1 - strip.speed)
+        const right = Math.max(0, strip.width - (strip.to - shift - strip.left))
+        const inset = Math.max(0, strip.from - shift - strip.left)
+        strip.el.style.clipPath = `inset(0 ${right}px 0 ${inset}px)`
+      })
+
+      const spot = biomeAt(at)
+      const feetOf = (i: number) =>
+        (LAYER_HEIGHT_SOURCE - (SECTIONS[i].surfaceY + FEET_BELOW_SURFACE)) / LAYER_HEIGHT_SOURCE
+      const feet = feetOf(spot.index) + (feetOf(spot.next) - feetOf(spot.index)) * spot.blend
+      feetVhRef.current = feet
+      rootRef.current?.style.setProperty('--char-feet', `${feet * worldPx}px`)
+
+      const dark = Math.min(1, Math.max(0, (at - DUSK_FROM) / (NIGHT_AT - DUSK_FROM)))
+      setNight(quantize(dark, NIGHT_STEPS))
+      return spot
+    },
+    [worldPx],
+  )
+
   // --- entrada al mundo ---
   useEffect(() => {
     if (phase !== 'entering') return
     const actor = actorRef.current
     if (!actor) return
+
+    // Colocar el mundo ANTES de la caminata: quien vuelve tiene que entrar ya
+    // en su bioma, no verse trasladado al acabar de andar.
+    if (resumeRef.current !== null) placeWorld(resumeRef.current)
 
     stateRef.current = 'walk'
     setCharacterState('walk')
@@ -400,7 +629,7 @@ export default function RecorridoPage() {
       const t = Math.min(1, (now - t0) / (ENTRY_SECONDS * 1000))
       const eased = 1 - (1 - t) ** 3
       actor.style.left = `${ENTRY_FROM + (ENTRY_TO - ENTRY_FROM) * eased}%`
-      setRunFrame(Math.floor(((eased * distance) / stride) * FRAME_COUNT.walk))
+      writeFrame(Math.floor(((eased * distance) / stride) * FRAME_COUNT.walk))
       if (t < 1) {
         raf = requestAnimationFrame(step)
       } else {
@@ -412,7 +641,7 @@ export default function RecorridoPage() {
 
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [phase, worldPx])
+  }, [phase, worldPx, writeFrame, placeWorld])
 
   // --- recorrido: el scroll es una posición del mundo, no una línea de tiempo ---
   useEffect(() => {
@@ -426,6 +655,10 @@ export default function RecorridoPage() {
     const applyState = (next: CharacterState) => {
       if (stateRef.current === next) return
       stateRef.current = next
+      // Cortar el bucle CSS ya, sin esperar al re-render: si no, durante ese
+      // frame la animación de reposo sigue corriendo sobre el valor que acaba
+      // de escribir el bucle y arrastra el sprite entre dos celdas.
+      if (next !== 'idle' && spriteRef.current) spriteRef.current.dataset.driven = 'true'
       setCharacterState(next)
     }
 
@@ -455,16 +688,8 @@ export default function RecorridoPage() {
       }
 
       const worldX = current * WORLD_LENGTH
-      const nodes: [HTMLDivElement | null, number][] = [
-        [farRef.current, LAYER_SPEED.far],
-        [midRef.current, LAYER_SPEED.mid],
-        [nearRef.current, LAYER_SPEED.near],
-        [groundRef.current, LAYER_SPEED.ground],
-        [markersRef.current, LAYER_SPEED.ground],
-      ]
-      nodes.forEach(([node, speed]) => {
-        if (node) node.style.transform = `translate3d(${-worldX * speed}px,0,0)`
-      })
+      // Capas, recortes, pies y hora del día. Lo mismo que usa el reaterrizaje.
+      const { index, blend, next } = placeWorld(current)
 
       // Tres marchas por velocidad de avance: correr, caminar, parado.
       const travelled = worldX - previous
@@ -490,21 +715,32 @@ export default function RecorridoPage() {
       const stride = block * STRIDE[active]
       // El avance del ciclo sale de la distancia, pero acotado: así los pies
       // no patinan a velocidad normal y no se dispara en un golpe fuerte.
-      const wanted = (travelled / stride) * FRAME_COUNT[active]
+      // En valor absoluto: el ciclo siempre corre hacia delante. Con el signo,
+      // retroceder lo reproducía al revés y el personaje caminaba de espaldas.
+      const wanted = (Math.abs(travelled) / stride) * FRAME_COUNT[active]
       const cap = MAX_SHEET_FPS * dt
       sheetFrame += Math.max(-cap, Math.min(cap, wanted))
-      setRunFrame(Math.floor(sheetFrame))
+      // En reposo manda el bucle CSS: escribirle el frame lo dejaría clavado.
+      if (active !== 'idle') writeFrame(Math.floor(sheetFrame))
+
+      // Retroceder es darse la vuelta, no rebobinar. La banda muerta evita que
+      // un temblor de rueda lo haga girar sobre sí mismo.
+      if (!teleportingRef.current && Math.abs(travelled) > 0.6) {
+        const facing = travelled < 0 ? -1 : 1
+        if (facing !== facingRef.current) {
+          facingRef.current = facing
+          if (spriteRef.current) {
+            spriteRef.current.style.transform = facing < 0 ? 'scaleX(-1)' : ''
+          }
+        }
+      }
       setStarted(current > 0.004)
-      setWorldAt(current)
-      setNight(Math.min(1, Math.max(0, (current - DUSK_FROM) / (NIGHT_AT - DUSK_FROM))))
 
       // Se abre el encuadre al acercarse al acantilado.
       const toCliff = Math.min(1, Math.max(0, (current - CLIFF_FROM) / (1 - CLIFF_FROM)))
-      setActorX(ENTRY_TO + (CLIFF_X - ENTRY_TO) * toCliff)
-
-      // El terreno cambia de golpe en la frontera, pero los pies no: se
-      // interpolan en un tramo corto para que no den un salto de 37 px.
-      const { index, blend, next } = biomeAt(current)
+      const wantX = ENTRY_TO + (CLIFF_X - ENTRY_TO) * toCliff
+      actorXRef.current = wantX
+      if (actorRef.current) actorRef.current.style.left = `${wantX}%`
 
       // El clima se desvanece cerca de la frontera en vez de cortarse: nieve
       // que para en una línea vertical se lee como un fallo.
@@ -512,24 +748,84 @@ export default function RecorridoPage() {
       const there = SECTIONS[next]
       const own = 'weather' in here ? here.weather : null
       const upcoming = 'weather' in there ? there.weather : null
-      if (blend > 0.5 && upcoming) setWeather({ kind: upcoming, power: (blend - 0.5) * 2 })
-      else if (own) setWeather({ kind: own, power: Math.max(0, 1 - blend * 2) })
-      else setWeather({ kind: upcoming ?? null, power: upcoming ? Math.max(0, blend * 2 - 1) : 0 })
-      const feetOf = (i: number) =>
-        (LAYER_HEIGHT_SOURCE - (SECTIONS[i].surfaceY + FEET_BELOW_SURFACE)) / LAYER_HEIGHT_SOURCE
-      setFeetVh(feetOf(index) + (feetOf(next) - feetOf(index)) * blend)
+      const air = weatherRef.current
+      if (blend > 0.5 && upcoming) {
+        air.kind = upcoming
+        air.power = (blend - 0.5) * 2
+      } else if (own) {
+        air.kind = own
+        air.power = Math.max(0, 1 - blend * 2)
+      } else {
+        air.kind = upcoming ?? null
+        air.power = upcoming ? Math.max(0, blend * 2 - 1) : 0
+      }
+
+      /*
+       * Rachas. La tormenta sube y baja en vez de quedarse plana, y en las
+       * calmas asoma el templo del fondo: taparlo siempre o no taparlo nunca
+       * eran las dos malas respuestas.
+       *
+       * Dos senos de periodo inconmensurable, así no se oye el bucle. Multiplica
+       * la fuerza, con lo que arrastra a la vez partículas, velo y visibilidad
+       * del fondo: si solo pulsara una de las tres, se notaría el truco.
+       */
+      if (air.kind === 'sand') {
+        const wave = 0.6 * Math.sin(now / 3200) + 0.4 * Math.sin(now / 7900 + 1.7)
+        air.power *= 0.45 + 0.55 * (wave * 0.5 + 0.5)
+      }
+
+      // La arena también quita visibilidad al fondo, no solo cae. Los velos son
+      // del tamaño de la pantalla, así que esto es composición y no re-filtrado.
+      const sand = quantize(air.kind === 'sand' ? air.power : 0, 24)
+      if (sand !== sandRef.current) {
+        sandRef.current = sand
+        rootRef.current?.style.setProperty('--sand', `${sand}`)
+      }
 
       // Apertura por distancia: es una función de la posición, no un
       // disparador. Así no hay estado que sincronizar ni re-disparos al volver.
-      setChestOpen(panelOpenness(SECTIONS[2].at, current))
-      setBookOpen(panelOpenness(SECTIONS[1].at, current))
-      setSignsOpen(panelOpenness(SECTIONS[4].at, current))
-      setBenchOpen(panelOpenness(SECTIONS[3].at, current))
+      setChestOpen(quantize(panelOpenness(SECTIONS[2].at, current), PANEL_STEPS))
+      setBookOpen(quantize(panelOpenness(SECTIONS[1].at, current), PANEL_STEPS))
+      setSignsOpen(quantize(panelOpenness(SECTIONS[4].at, current), PANEL_STEPS))
+      setBenchOpen(quantize(panelOpenness(SECTIONS[3].at, current), PANEL_STEPS))
       setActive(
         SECTIONS.reduce((best, s) =>
           Math.abs(s.at - current) < Math.abs(best.at - current) ? s : best,
         ).id,
       )
+
+      // Qué biomas están montados. Solo se toca al cruzar el radio, y ese es el
+      // único cambio de estado que rehace el árbol de capas.
+      const near: number[] = []
+      SECTIONS.forEach((section, i) => {
+        if (Math.abs(section.at - current) < MOUNT_RADIUS) near.push(i)
+      })
+      const key = near.join(',')
+      if (key !== mountKeyRef.current) {
+        mountKeyRef.current = key
+        setMounted(near)
+      }
+
+      // Precalentado: descomprime las capas del bioma que viene y retiene la
+      // imagen, para que montarla luego no cueste nada. Se sueltan pasado el
+      // radio, con holgura, porque son decenas de MB cada una.
+      const warm = warmRef.current
+      SECTIONS.forEach((section) => {
+        const distance = Math.abs(section.at - current)
+        section.kinds.forEach((kind) => {
+          const src = layerSrc(section.biome, kind, half)
+          if (distance < PREWARM_RADIUS) {
+            if (!warm.has(src)) {
+              const image = new Image()
+              warm.set(src, image)
+              image.src = src
+              void image.decode().catch(() => {})
+            }
+          } else if (distance > PREWARM_DROP) {
+            warm.delete(src)
+          }
+        })
+      })
 
       raf = requestAnimationFrame(frame)
     }
@@ -537,6 +833,15 @@ export default function RecorridoPage() {
     const onScroll = read
 
     read()
+
+    // La vuelta ya dejó el mundo colocado y el documento desplazado antes de la
+    // caminata; aquí solo se adopta como punto de partida.
+    if (resumeRef.current !== null) {
+      target = resumeRef.current
+      resumeRef.current = null
+      window.scrollTo({ top: target * SCROLL_LENGTH, behavior: 'auto' })
+    }
+
     current = target
     window.addEventListener('scroll', onScroll, { passive: true })
     raf = requestAnimationFrame(frame)
@@ -545,26 +850,32 @@ export default function RecorridoPage() {
       window.removeEventListener('scroll', onScroll)
       cancelAnimationFrame(raf)
     }
-  }, [phase, worldPx])
+  }, [phase, worldPx, half, writeFrame, placeWorld])
 
-  /**
-   * Dónde aterriza la perla. No es exactamente la sección: caer justo encima
-   * deja la siguiente frontera de bioma dentro del cuadro.
-   *
-   * La frontera aparece en pantalla en `edge - worldX`, medido desde el borde
-   * IZQUIERDO. Para dejarla fuera hay que retroceder un viewport entero, no el
-   * hueco que queda a la derecha del personaje.
-   *
-   * El retroceso está acotado por `PANEL_OPEN_AT`: más atrás de eso, llegarías
-   * con el cofre entreabierto.
-   */
-  const landingFor = useCallback((index: number) => {
-    const section = SECTIONS[index]
-    const edge = BOUNDS[index].to
-    if (edge === Infinity) return section.at
-    const clear = edge - window.innerWidth / WORLD_LENGTH
-    return Math.max(section.at - PANEL_OPEN_AT, Math.min(section.at, clear))
-  }, [])
+
+  // Los bytes de todas las capas, en segundo plano y sin descomprimir. Cuando
+  // un bioma se monta ya no hay red de por medio: queda solo el decode, y de
+  // adelantarlo se encarga el precalentado del bucle. De ahí que la pantalla de
+  // carga siga siendo corta pese a que el mundo pesa 8 MB.
+  useEffect(() => {
+    if (phase === 'loading') return
+    let stop = false
+    const rest = SECTIONS.flatMap((section) =>
+      section.kinds.map((kind) => layerSrc(section.biome, kind, half)),
+    ).filter((src) => !PRELOAD.includes(src))
+
+    const pull = async () => {
+      for (const src of rest) {
+        if (stop) return
+        await fetch(src, { cache: 'force-cache' }).catch(() => {})
+      }
+    }
+    void pull()
+    return () => {
+      stop = true
+    }
+  }, [phase, half])
+
 
   const jumpTo = useCallback((at: number, id: string) => {
     snapRef.current = true
@@ -585,6 +896,11 @@ export default function RecorridoPage() {
       }
       play('button')
       setMenuOpen(false)
+      // De cara a la derecha para lanzar: la posición de la mano está medida
+      // sobre la hoja sin voltear, y con el personaje girado la perla saldría
+      // del lado contrario al que la dibuja.
+      facingRef.current = 1
+      if (spriteRef.current) spriteRef.current.style.transform = ''
       teleportingRef.current = true
       stateRef.current = 'throw'
       setCharacterState('throw')
@@ -593,18 +909,18 @@ export default function RecorridoPage() {
       // centro del personaje: la geometría de la hoja dice dónde está.
       const sheet = SHEET_GEOMETRY.throw
       const scale = charHeight / sheet.charHeight
-      const cellBottom = feetVh * window.innerHeight - (600 - sheet.footY) * scale
+      const cellBottom = feetVhRef.current * window.innerHeight - (600 - sheet.footY) * scale
       const cellTopY = window.innerHeight - cellBottom - 600 * scale
       const handX =
-        window.innerWidth * (actorX / 100) + (THROW_RELEASE.handX - sheet.centerX) * scale
+        window.innerWidth * (actorXRef.current / 100) + (THROW_RELEASE.handX - sheet.centerX) * scale
       const handY = cellTopY + THROW_RELEASE.handY * scale
 
       setShot({
         fromX: handX,
         fromY: handY,
         // Aterriza exactamente donde el personaje se planta: mismo eje, mismos pies.
-        toX: window.innerWidth * (actorX / 100),
-        toY: window.innerHeight - feetVh * worldPx,
+        toX: window.innerWidth * (actorXRef.current / 100),
+        toY: window.innerHeight - feetVhRef.current * worldPx,
         onCross: () => {
           // Se desvanece al salir la perla de plano, no al lanzarla: si no,
           // se queda un hueco vacío en la pantalla de origen.
@@ -626,7 +942,7 @@ export default function RecorridoPage() {
         },
       })
     },
-    [jumpTo, landingFor, feetVh, charHeight, actorX, worldPx],
+    [jumpTo, landingFor, charHeight, worldPx],
   )
 
   const handleGreetingEnd = useCallback(() => setPhase('entering'), [])
@@ -643,14 +959,11 @@ export default function RecorridoPage() {
    * detrás de bosque. La frontera es una línea vertical que se cruza andando,
    * y detrás de ella el parallax sigue funcionando con normalidad.
    */
-  const clipOf = (i: number, speed: number) => {
-    const worldX = worldAt * WORLD_LENGTH
-    const shift = worldX * (1 - speed)
-    return {
-      clipFrom: BOUNDS[i].from === -Infinity ? -1e7 : BOUNDS[i].from * WORLD_LENGTH - shift,
-      clipTo: BOUNDS[i].to === Infinity ? 1e7 : BOUNDS[i].to * WORLD_LENGTH - shift,
-    }
-  }
+  const spanOf = (i: number, speed: number) => ({
+    spanFrom: BOUNDS[i].from === -Infinity ? -Infinity : BOUNDS[i].from * WORLD_LENGTH,
+    spanTo: BOUNDS[i].to === Infinity ? Infinity : BOUNDS[i].to * WORLD_LENGTH,
+    shift: worldAtRef.current * WORLD_LENGTH * (1 - speed),
+  })
   /** Centra una tesela en la pantalla justo al llegar a su sección. Lo usan
    *  los elementos que son un LUGAR y no una textura repetible. */
   const centredAnchor = (at: number, speed: number, width: number) =>
@@ -666,11 +979,12 @@ export default function RecorridoPage() {
 
   return (
     <main
+      ref={rootRef}
       className={styles.page}
       style={
         {
           height: pageHeight,
-          '--char-feet': `${feetVh * worldPx}px`,
+          '--char-feet': `${feetVhRef.current * worldPx}px`,
           '--world-h': `${worldPx}px`,
           // El terreno se apaga y se enfría con la noche. Así el mismo render
           // sirve para cualquier hora sin volver a pasarlo por Mine-imator.
@@ -682,23 +996,23 @@ export default function RecorridoPage() {
         <NightSky night={night} />
 
         {(['far', 'mid', 'near'] as Kind[]).map((kind) => (
+          <Fragment key={kind}>
           <div
-            key={kind}
             ref={kind === 'far' ? farRef : kind === 'mid' ? midRef : nearRef}
             className={`${layerStyles.box} ${styles[kind]}`}
           >
-            {SECTIONS.filter(
-              (s) =>
-                Math.abs(s.at - worldAt) < MOUNT_RADIUS &&
-                (s.kinds as readonly string[]).includes(kind),
-            ).map((s) => (
+            {mounted
+              .filter((i) => (SECTIONS[i].kinds as readonly string[]).includes(kind))
+              .map((i) => SECTIONS[i])
+              .map((s) => (
               <Strip
                 key={s.biome}
                 src={`/layers/${s.biome}_${kind}.webp`}
                 travel={WORLD_LENGTH * LAYER_SPEED[kind]}
                 tileWidth={tileWidth}
-                opacity={1}
-                {...clipOf(SECTIONS.indexOf(s), LAYER_SPEED[kind])}
+                speed={LAYER_SPEED[kind]}
+                viewport={viewW}
+                {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED[kind])}
                 half={half}
                 extend={s.biome === 'b5' ? 2 : 0}
                 anchor={
@@ -711,31 +1025,41 @@ export default function RecorridoPage() {
               />
             ))}
           </div>
+          {/* Velo de arena entre esta capa y la siguiente. */}
+          <div
+            className={`${styles.scrim} ${
+              kind === 'far' ? styles.scrimFar : kind === 'mid' ? styles.scrimMid : styles.scrimNear
+            }`}
+            aria-hidden="true"
+          />
+          </Fragment>
         ))}
 
         {phase === 'entering' || phase === 'ready' ? (
           <div
             ref={actorRef}
             className={`${styles.actor} ${hidden ? styles.actorGone : ''}`}
-            style={{ left: phase === 'entering' ? `${ENTRY_FROM}%` : `${actorX}%` }}
+            style={{ left: phase === 'entering' ? `${ENTRY_FROM}%` : `${actorXRef.current}%` }}
           >
             <Character
               state={characterState}
               charHeight={charHeight}
-              frame={characterState === 'idle' ? undefined : runFrame}
+              driven={characterState !== 'idle'}
+              spriteRef={spriteRef}
             />
           </div>
         ) : null}
 
         <div ref={groundRef} className={`${layerStyles.box} ${styles.ground}`}>
-          {SECTIONS.filter((s) => Math.abs(s.at - worldAt) < MOUNT_RADIUS).map((s) => (
+          {mounted.map((i) => SECTIONS[i]).map((s) => (
             <Strip
               key={s.biome}
               src={`/layers/${s.biome}_ground.webp`}
               travel={WORLD_LENGTH}
               tileWidth={tileWidth}
-              opacity={1}
-              {...clipOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
+              speed={LAYER_SPEED.ground}
+              viewport={viewW}
+              {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
               half={half}
               extend={s.biome === 'b5' ? 2 : 0}
               anchor={s.biome === 'b5' ? cliffAnchor : undefined}
@@ -744,7 +1068,12 @@ export default function RecorridoPage() {
         </div>
 
         <Inventory title="Proyectos" projects={PROJECTS} openness={chestOpen} />
-        <Book title="Sobre mí" pages={ABOUT_PAGES} openness={bookOpen} />
+        <Book
+          title="Sobre mí"
+          pages={ABOUT_PAGES}
+          portrait={{ src: '/avatar.png', alt: 'Vicente Araya' }}
+          openness={bookOpen}
+        />
         <CraftingTable openness={benchOpen} />
 
         {/* Las secciones viajan con el suelo: son lugares, no pantallas.
@@ -774,7 +1103,7 @@ export default function RecorridoPage() {
           )}
         </div>
 
-        <Weather kind={weather.kind} intensity={weather.power} worldDeltaRef={worldDeltaRef} />
+        <Weather stateRef={weatherRef} worldDeltaRef={worldDeltaRef} />
 
         {phase === 'greeting' ? (
           <div className={styles.greeter}>
@@ -837,6 +1166,12 @@ export default function RecorridoPage() {
             >
               {muted ? '🔇 Sonido' : '🔊 Sonido'}
             </button>
+            <Link
+              href="/simple"
+              className={`${styles.navButton} ${reduced ? styles.navQuiet : ''}`}
+            >
+              Versión en texto
+            </Link>
           </div>
         </nav>
 
