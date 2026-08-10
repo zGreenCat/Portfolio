@@ -1,0 +1,8 @@
+/* Encima del mundo pero por debajo de los paneles y de la perla: el clima
+   pasa por delante del terreno, no por delante de lo que se lee. */
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+}

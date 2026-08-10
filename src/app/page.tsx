@@ -14,6 +14,7 @@ import CraftingTable from '@/components/CraftingTable'
 import Inventory from '@/components/Inventory'
 import NightSky from '@/components/NightSky'
 import Signs from '@/components/Signs'
+import Weather, { type WeatherKind } from '@/components/Weather'
 import { isMuted, play, setMuted } from '@/lib/sounds'
 import { ABOUT_PAGES, PROJECTS } from '@/content/portfolio'
 import Strip from '@/components/ParallaxLayer'
@@ -116,7 +117,15 @@ type Kind = (typeof ALL_KINDS)[number]
  *  quitarle la nieve— el personaje sube con el terreno. */
 const SECTIONS = [
   { id: 'inicio', label: 'Inicio', at: 0, biome: 'b1', surfaceY: 1278, kinds: ALL_KINDS },
-  { id: 'sobre-mi', label: 'Sobre mí', at: 0.24, biome: 'b2', surfaceY: 1267, kinds: ALL_KINDS },
+  {
+    id: 'sobre-mi',
+    label: 'Sobre mí',
+    at: 0.24,
+    biome: 'b2',
+    surfaceY: 1267,
+    kinds: ALL_KINDS,
+    weather: 'snow' as WeatherKind,
+  },
   // El templo del desierto no se tesela: es un edificio, y los edificios no
   // se repiten cada 300 metros. Va anclado a la sección.
   {
@@ -127,8 +136,17 @@ const SECTIONS = [
     surfaceY: 1278,
     kinds: ALL_KINDS,
     anchored: ['far'] as readonly string[],
+    weather: 'sand' as WeatherKind,
   },
-  { id: 'skills', label: 'Skills', at: 0.74, biome: 'b4', surfaceY: 1278, kinds: ALL_KINDS },
+  {
+    id: 'skills',
+    label: 'Skills',
+    at: 0.74,
+    biome: 'b4',
+    surfaceY: 1278,
+    kinds: ALL_KINDS,
+    weather: 'petals' as WeatherKind,
+  },
   // El acantilado es el final del mundo: una sola copia anclada, sin repetir,
   // y sin capas intermedias porque ahí ya no hay recorrido que acompañar.
   { id: 'contacto', label: 'Contacto', at: 0.96, biome: 'b5', surfaceY: 1241, kinds: END_KINDS },
@@ -247,6 +265,12 @@ export default function RecorridoPage() {
   const [muted, setMutedState] = useState(false)
   const [worldPx, setWorldPx] = useState(0)
   const [half, setHalf] = useState(false)
+  const [weather, setWeather] = useState<{ kind: WeatherKind | null; power: number }>({
+    kind: null,
+    power: 0,
+  })
+  /** Avance del mundo en el último frame: arrastra las partículas. */
+  const worldDeltaRef = useRef(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const [compact, setCompact] = useState(false)
   const [worldAt, setWorldAt] = useState(0)
@@ -444,6 +468,7 @@ export default function RecorridoPage() {
 
       // Tres marchas por velocidad de avance: correr, caminar, parado.
       const travelled = worldX - previous
+      worldDeltaRef.current = travelled
       const speed = dt > 0 ? Math.abs(travelled) / dt / block : 0
       previous = worldX
       if (speed <= SPEED_WALK) stillFor += 1
@@ -480,6 +505,16 @@ export default function RecorridoPage() {
       // El terreno cambia de golpe en la frontera, pero los pies no: se
       // interpolan en un tramo corto para que no den un salto de 37 px.
       const { index, blend, next } = biomeAt(current)
+
+      // El clima se desvanece cerca de la frontera en vez de cortarse: nieve
+      // que para en una línea vertical se lee como un fallo.
+      const here = SECTIONS[index]
+      const there = SECTIONS[next]
+      const own = 'weather' in here ? here.weather : null
+      const upcoming = 'weather' in there ? there.weather : null
+      if (blend > 0.5 && upcoming) setWeather({ kind: upcoming, power: (blend - 0.5) * 2 })
+      else if (own) setWeather({ kind: own, power: Math.max(0, 1 - blend * 2) })
+      else setWeather({ kind: upcoming ?? null, power: upcoming ? Math.max(0, blend * 2 - 1) : 0 })
       const feetOf = (i: number) =>
         (LAYER_HEIGHT_SOURCE - (SECTIONS[i].surfaceY + FEET_BELOW_SURFACE)) / LAYER_HEIGHT_SOURCE
       setFeetVh(feetOf(index) + (feetOf(next) - feetOf(index)) * blend)
@@ -738,6 +773,8 @@ export default function RecorridoPage() {
             ),
           )}
         </div>
+
+        <Weather kind={weather.kind} intensity={weather.power} worldDeltaRef={worldDeltaRef} />
 
         {phase === 'greeting' ? (
           <div className={styles.greeter}>
