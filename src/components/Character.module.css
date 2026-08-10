@@ -1,0 +1,44 @@
+/* El tamaño, la posición y la hoja los calcula el componente: dependen de la
+   geometría medida de cada sheet y del alto pedido. Aquí solo queda el bucle. */
+.character {
+  position: absolute;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+}
+
+.character[data-state='run'] {
+  animation: sheetCycle 0.47s steps(14) infinite;
+}
+
+.character[data-state='walk'] {
+  animation: sheetCycle 1.4s steps(25) infinite;
+}
+
+/* `throw` no tiene regla de bucle: es un disparo único y lo gobierna la
+   página frame a frame. */
+.character[data-state='idle'] {
+  animation: sheetCycle 2s steps(16) infinite;
+}
+
+/* --sheet-span lo pone el componente: ancho de celda × número de frames.
+   En píxeles, no en porcentaje: el porcentaje en background-position se
+   calcula contra la diferencia entre elemento e imagen, no contra la imagen. */
+@keyframes sheetCycle {
+  to {
+    background-position-x: calc(var(--sheet-span) * -1);
+  }
+}
+
+/* Estas dos reglas van después de las de estado: misma especificidad,
+   gana el orden de aparición. */
+
+/* Frame fijado desde JS: el bucle por tiempo sobra. */
+.character[data-driven='true'] {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character[data-state] {
+    animation: none;
+  }
+}

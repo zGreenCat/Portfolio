@@ -1,0 +1,28 @@
+/* Contenedor por velocidad: agrupa todos los biomas de una misma capa para
+   que se desplacen como uno. El transform lo escribe la página. */
+.box {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 100vh;
+  will-change: transform;
+}
+
+.strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: 100vh;
+}
+
+.tile {
+  flex: none;
+  height: 100vh;
+  width: auto;
+  max-width: none;
+  image-rendering: pixelated;
+  /* Un píxel de solape: sin esto el redondeo del navegador puede dejar una
+     línea de fondo entre teselas al desplazarlas. */
+  margin-right: -1px;
+}

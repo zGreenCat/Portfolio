@@ -1,0 +1,60 @@
+.sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    var(--sky-top) 0%,
+    var(--sky-mid) 55%,
+    var(--sky-bottom) 100%
+  );
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* Estrella: cuadrado, no círculo. En el juego es un píxel de textura. */
+.star {
+  position: absolute;
+  background: #fdfdff;
+}
+
+.twinkle {
+  animation: twinkle var(--twinkle-dur) ease-in-out infinite;
+  animation-delay: var(--twinkle-delay);
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: var(--star-alpha);
+  }
+  50% {
+    opacity: calc(var(--star-alpha) * 0.35);
+  }
+}
+
+/* Luna cuadrada, como el juego. El halo es muy leve: en Minecraft no brilla. */
+.moon {
+  position: absolute;
+  top: 12%;
+  right: 16%;
+  width: 84px;
+  height: 84px;
+  background: #eef1f8;
+  box-shadow:
+    0 0 0 10px rgb(238 241 248 / 0.09),
+    0 0 46px 12px rgb(180 200 255 / 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twinkle {
+    animation: none;
+    opacity: var(--star-alpha);
+  }
+}

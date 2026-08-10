@@ -1,0 +1,398 @@
+.page {
+  /* Altura del suelo, tomada de b1_ref: el personaje colocado por Mine-imator
+     en la propia escena, la única referencia que no depende de interpretar el
+     sprite. Sus pies caen en y=1304 de 1440, dentro de la banda de hierba
+     (1278-1331). Alinear con el BORDE superior de la hierba lo dejaba flotando:
+     en un ciclo de carrera el punto más bajo es la punta de una pierna en
+     diagonal, no un pie apoyado. */
+  /* Lo escribe la página: cambia con el bioma. */
+  --char-feet: 9.44vh;
+  /* Lo escribe la página: se apaga al caer la noche. */
+  --world-grade: brightness(1.1) contrast(1.08) saturate(1.06);
+
+  background: #b3d5ec;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Niebla en CSS: el render vino sin perspectiva atmosférica (`near` y `mid`
+   salieron con la misma saturación). Parche hasta que la escena la traiga. */
+.far {
+  z-index: 1;
+  filter: var(--world-grade) saturate(0.35) contrast(0.72) brightness(1.12);
+  opacity: 0.62;
+}
+
+.mid {
+  z-index: 2;
+  filter: var(--world-grade) saturate(0.62) contrast(0.85) brightness(1.06);
+  opacity: 0.85;
+}
+
+.near {
+  z-index: 3;
+  filter: var(--world-grade) saturate(0.86) contrast(0.95);
+}
+
+.ground {
+  z-index: 4;
+  filter: var(--world-grade);
+}
+
+/* ---------- personaje en el mundo ---------- */
+
+/* Arranca fuera de cuadro. La posición inicial la fija el componente con
+   ENTRY_FROM para que CSS y JS no se contradigan. */
+.actor {
+  position: absolute;
+  bottom: var(--char-feet);
+  z-index: 5;
+}
+
+/* Desaparece mientras la perla vuela: se ha teletransportado. */
+.actorGone {
+  opacity: 0;
+}
+
+.greeter {
+  position: absolute;
+  left: 0;
+  bottom: 14vh;
+  z-index: 7;
+}
+
+/* ---------- saludo en primer plano ---------- */
+
+/* ---------- carga ---------- */
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  background: #14171b;
+  transition: opacity 0.45s ease;
+}
+
+.loaderDone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loaderTitle {
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #e8e5dc;
+  text-shadow: 2px 2px 0 rgb(0 0 0 / 0.6);
+}
+
+.bar {
+  display: flex;
+  gap: 5px;
+  padding: 7px;
+  background: #22262d;
+  box-shadow:
+    inset 3px 3px 0 rgb(0 0 0 / 0.45),
+    inset -3px -3px 0 rgb(255 255 255 / 0.08);
+}
+
+.cell {
+  width: 22px;
+  height: 22px;
+  background: #343a43;
+}
+
+.cellOn {
+  background: #6fa845;
+  box-shadow:
+    inset 2px 2px 0 rgb(255 255 255 / 0.28),
+    inset -2px -2px 0 rgb(0 0 0 / 0.3);
+}
+
+.loaderHint {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #7e858b;
+}
+
+/* ---------- títulos y aviso ---------- */
+
+.titles {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+
+.titlesIn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.titlesOut {
+  opacity: 0;
+  transform: translateY(-24px);
+}
+
+.name {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 5px 5px 0 rgb(0 0 0 / 0.45);
+}
+
+.role {
+  font-size: clamp(0.75rem, 1.3vw, 0.9rem);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #eaf2fa;
+  text-shadow: 3px 3px 0 rgb(0 0 0 / 0.4);
+}
+
+.scrollHint {
+  position: absolute;
+  bottom: 32vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgb(0 0 0 / 0.5);
+  opacity: 0;
+  transition: opacity 0.6s ease 0.3s;
+}
+
+.scrollHintIn {
+  opacity: 1;
+}
+
+.arrow {
+  width: 16px;
+  height: 16px;
+  border-right: 5px solid #fff;
+  border-bottom: 5px solid #fff;
+  transform: rotate(45deg);
+  animation: nudge 1.6s ease-in-out infinite;
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: rotate(45deg) translate(0, 0);
+  }
+  50% {
+    transform: rotate(45deg) translate(4px, 4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrow {
+    animation: none;
+  }
+}
+
+.after {
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #1b1f24;
+  color: #e8e5dc;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+}
+
+
+/* ---------- secciones como lugares ---------- */
+
+.markers {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 6;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* Los carteles sí se pulsan: son enlaces. */
+.marker a {
+  pointer-events: auto;
+}
+
+.marker {
+  position: absolute;
+  top: 22vh;
+  width: min(360px, 34vw);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgb(24 28 34 / 0.88);
+  border: 3px solid #6f767f;
+  box-shadow:
+    inset 3px 3px 0 rgb(255 255 255 / 0.1),
+    inset -3px -3px 0 rgb(0 0 0 / 0.45),
+    6px 6px 0 rgb(0 0 0 / 0.3);
+}
+
+.markerEyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ffcf6b;
+  font-weight: 700;
+}
+
+.markerText {
+  margin: 0;
+  color: #b9bfc6;
+  font-size: 0.9rem;
+}
+
+/* ---------- navegación ---------- */
+
+.nav {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.navIn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Botón del menú del juego: piedra, bisel claro arriba y oscuro abajo. */
+.navButton {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #e8e5dc;
+  text-shadow: 2px 2px 0 rgb(0 0 0 / 0.6);
+  padding: 11px 18px;
+  background: #6f6f6f;
+  border: 3px solid #1d1f23;
+  box-shadow:
+    inset 3px 3px 0 rgb(255 255 255 / 0.28),
+    inset -3px -3px 0 rgb(0 0 0 / 0.35);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.navButton:hover,
+.navButton:focus-visible {
+  background: #8a8f7e;
+  outline: none;
+}
+
+.navButton:focus-visible {
+  border-color: #ffcf6b;
+}
+
+.navButton:active {
+  box-shadow:
+    inset 3px 3px 0 rgb(0 0 0 / 0.35),
+    inset -3px -3px 0 rgb(255 255 255 / 0.18);
+}
+
+.navActive {
+  background: #4f7a3a;
+}
+
+/* ---------- splash ---------- */
+
+/* La línea amarilla inclinada de la pantalla de título. Late, como en el juego. */
+.splash {
+  align-self: flex-start;
+  margin-top: -6px;
+  font-size: clamp(0.8rem, 1.6vw, 1.1rem);
+  font-weight: 700;
+  color: #ffdc4a;
+  text-shadow: 3px 3px 0 rgb(0 0 0 / 0.5);
+  transform: rotate(-14deg);
+  transform-origin: left center;
+  animation: splashPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes splashPulse {
+  0%,
+  100% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.07;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    animation: none;
+  }
+}
+
+
+/* El cofre se apoya en el suelo, no flota con el panel. */
+.marker:has(.chest) {
+  top: auto;
+  bottom: var(--char-feet);
+  width: auto;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.chest {
+  width: clamp(90px, 9vw, 140px);
+  height: auto;
+  image-rendering: pixelated;
+}
+
+
+/* El bloque de contacto se apoya en el suelo, sin panel detrás. */
+.marker:has(a) {
+  top: auto;
+  bottom: 0;
+  width: auto;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}

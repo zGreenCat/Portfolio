@@ -1,0 +1,85 @@
+.book {
+  position: absolute;
+  top: 14vh;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 12;
+  width: min(430px, 40vw);
+  padding: 30px 34px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Papel del libro escrito: crema con borde de cuero. */
+  background: #d8caa4;
+  border: 4px solid #6b4a2e;
+  box-shadow:
+    inset 3px 3px 0 #ece0c0,
+    inset -3px -3px 0 #b8a780,
+    8px 8px 0 rgb(0 0 0 / 0.35);
+  transform-origin: top center;
+}
+
+.title {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #7a5a34;
+  font-weight: 700;
+}
+
+.text {
+  margin: 0;
+  min-height: 8.5em;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #3a2a16;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.page {
+  font-size: 11px;
+  color: #7a5a34;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Los botones del libro son texto, no piedra: es papel. */
+.turn {
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #6b4a2e;
+  background: none;
+  border: 0;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.turn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.turn:not(:disabled):hover,
+.turn:not(:disabled):focus-visible {
+  color: #2f1f0d;
+  outline: none;
+}
+
+.turn:focus-visible {
+  box-shadow: 0 0 0 2px #6b4a2e;
+}
+
+.turns {
+  display: flex;
+  gap: 4px;
+}

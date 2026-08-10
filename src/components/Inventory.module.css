@@ -1,0 +1,194 @@
+.panel {
+  position: absolute;
+  top: 12vh;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 12;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Panel de GUI del juego: gris con bisel claro arriba y oscuro abajo. */
+  background: #c6c6c6;
+  border: 4px solid #565656;
+  box-shadow:
+    inset 4px 4px 0 #ffffff,
+    inset -4px -4px 0 #8b8b8b,
+    8px 8px 0 rgb(0 0 0 / 0.35);
+  transform-origin: top center;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #3f3f3f;
+  text-transform: uppercase;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 3px;
+}
+
+.slot {
+  position: relative;
+  width: clamp(34px, 3.4vw, 52px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: #8b8b8b;
+  box-shadow:
+    inset 3px 3px 0 #373737,
+    inset -3px -3px 0 #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: default;
+}
+
+.filled {
+  cursor: pointer;
+}
+
+.filled:hover,
+.filled:focus-visible {
+  background: #a4a4a4;
+  outline: none;
+}
+
+.filled:focus-visible {
+  box-shadow:
+    inset 3px 3px 0 #373737,
+    inset -3px -3px 0 #ffffff,
+    0 0 0 3px #ffdc4a;
+}
+
+.icon {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.placeholderIcon {
+  width: 62%;
+  height: 62%;
+  background: #4f7a3a;
+  box-shadow:
+    inset 2px 2px 0 rgb(255 255 255 / 0.35),
+    inset -2px -2px 0 rgb(0 0 0 / 0.3);
+}
+
+/* Tooltip de item: fondo casi negro con borde violeta, como en el juego. */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 3;
+  padding: 6px 9px;
+  min-width: max-content;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: rgb(16 0 26 / 0.94);
+  border: 2px solid #2d0a4e;
+  box-shadow: 0 0 0 2px rgb(80 20 140 / 0.55);
+  pointer-events: none;
+}
+
+.tooltipName {
+  font-size: 12px;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.tooltipMeta {
+  font-size: 11px;
+  color: #a98bd0;
+  white-space: nowrap;
+}
+
+/* ---------- detalle ---------- */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(520px, 60vw);
+}
+
+.detailName {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #2c2c2c;
+  font-weight: 700;
+}
+
+.detailText {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #4a4a4a;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tag {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  background: #8b8b8b;
+  color: #f2f2f2;
+  box-shadow:
+    inset 2px 2px 0 #6d6d6d,
+    inset -2px -2px 0 #a8a8a8;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.button {
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #e8e5dc;
+  text-shadow: 2px 2px 0 rgb(0 0 0 / 0.5);
+  padding: 9px 14px;
+  background: #6f6f6f;
+  border: 3px solid #1d1f23;
+  box-shadow:
+    inset 3px 3px 0 rgb(255 255 255 / 0.26),
+    inset -3px -3px 0 rgb(0 0 0 / 0.34);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.button:hover,
+.button:focus-visible {
+  background: #8a8f7e;
+  outline: none;
+}
+
+.button:focus-visible {
+  border-color: #ffdc4a;
+}
+
+.hint {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #5c5c5c;
+  text-transform: uppercase;
+}

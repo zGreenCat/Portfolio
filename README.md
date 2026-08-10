@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portfolio · Vicente Araya
 
-## Getting Started
-
-First, run the development server:
+Portfolio recorrible con estética de Minecraft. En vez de secciones apiladas,
+el sitio es **un mundo continuo** que se recorre de izquierda a derecha: el
+scroll desplaza el mundo y las secciones son lugares dentro de él.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev     # http://localhost:3000
+npm run build
+npx tsc --noEmit
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Cómo funciona
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**El scroll es una posición, no una línea de tiempo.** Una sola
+correspondencia `scroll → worldX` mueve las capas a distinta velocidad
+(parallax) y decide qué está abierto. No hay disparadores ni estado que
+sincronizar: todo es función de dónde estás.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Las secciones son lugares.** Cada una tiene su bioma y su posición (`at`).
+Los biomas no ocupan un tramo cada uno: los cinco cubren el mundo entero y se
+funden por opacidad, lo que evita tener que empalmar terrenos.
 
-## Learn More
+**Los paneles se abren por proximidad**, con histéresis para que un roce de
+rueda no los haga parpadear. Y se navegan **con ratón y teclado, nunca con
+scroll** — el scroll pertenece al mundo.
 
-To learn more about Next.js, take a look at the following resources:
+**La perla de ender** salta entre secciones. El corte de scroll ocurre mientras
+la perla está fuera de pantalla, así que no hay nada que disimular.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estructura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/app/page.tsx            el recorrido completo
+src/app/recorrido.module.css
+src/components/             personaje, paneles, perla, cielo
+src/content/portfolio.ts    proyectos, sobre mí, skills, contacto
+public/layers/              capas de mundo por bioma (b1…b5)
+public/sprites/             hojas de sprites del personaje
+```
 
-## Deploy on Vercel
+El contenido está separado del recorrido a propósito: se puede añadir un
+proyecto sin abrir el código de la animación.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Assets
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Los renders se producen en Mine-imator. Las reglas de cámara, encuadre,
+montaje de hojas y los pendientes están en **[ASSETS.md](./ASSETS.md)**.
