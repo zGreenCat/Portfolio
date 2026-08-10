@@ -1,6 +1,32 @@
 @import "tailwindcss";
 
+/* Space Grotesk (SIL Open Font License 1.1), servida desde el propio dominio.
+   Fuente variable: un solo archivo de 22 KB cubre de 400 a 700.
+
+   Deliberadamente NO es una fuente de píxel. El mundo ya es Minecraft al
+   completo; repetirlo en el texto deja todo en una sola nota y se lee como fan
+   art. Una grotesca moderna contra bloques crea contraste y se lee como una
+   decisión de diseño. */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/space-grotesk.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Silkscreen';
+  src: url('/fonts/silkscreen-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root{
+  /* Titulares y navegación. Los paneles del juego se quedan en monoespaciada:
+     ahí la referencia sí funciona porque son interfaz, no contenido. */
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   --color-bg: #F5F0E6;
   --color-cream: #FFF8E7;
   --color-green: #A9C5A0;
