@@ -169,9 +169,10 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 
 ## Trampas reales
 
-- **Código muerto del portfolio anterior:** `src/providers/LenisProvider.tsx` y
-  `src/utils/splitText.ts` no los importa nadie, y `gsap`, `lenis` y
-  `@studio-freight/lenis` siguen en `package.json` sin usarse.
+- **No reintroducir Lenis ni GSAP.** Se quitaron a propósito. El mundo ya suaviza
+  el scroll con su propio `current += (target - current) * 0.12`, y montar Lenis
+  encima hace que dos suavizados se peleen. GSAP son timelines, y aquí el scroll
+  es una posición: no hay línea de tiempo que animar.
 - **`ASSETS.md` manda sobre las decisiones de render.** No cambiar cámara,
   encuadre ni escala sin leerlo: varias de esas decisiones se tomaron después de
   descartar alternativas.

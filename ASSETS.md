@@ -103,14 +103,30 @@ razón para usar sprites.
 Si se rehace: frames a 30 fps, celda ~650×900, y la codificación la hace el
 código (WebM con alfa para Chrome y Firefox, HEVC para Safari).
 
-### 5 · Niebla en `b1` y `b2`
+### 5 · Separar `mid` de `near` — la niebla
 
-`b3` tiene degradado atmosférico real: la saturación baja de 0,451 en el suelo
-a 0,280 en la capa lejana, y el contraste a un tercio. En `b1` y `b2` las capas
-lejanas salen casi con la misma saturación que el suelo, así que la distancia
-no se lee y hay que compensarla con un filtro CSS.
+Medido: la saturación media de cada capa tal como están hoy.
 
-Si se vuelve a pasar por esos biomas, subirles la niebla como en `b3`.
+```
+        far    mid    near   ground
+b1     0.07   0.50   0.49   0.54
+b2     0.17   0.39   0.29   0.28
+b3     0.27   0.34   0.34   0.37
+b4     0.13   0.40   0.39   0.35
+```
+
+**Las `far` sí traen niebla**, en los cuatro biomas — una versión anterior de
+este documento decía lo contrario y era falso. Lo que falta es separación entre
+`mid` y `near`: salen prácticamente idénticas, así que las dos capas centrales
+se leen a la misma distancia y el parallax no cuenta profundidad.
+
+Se resuelve con **niebla por distancia en la escena**, no tintando capas a mano:
+con el truco de las pasadas, cada una recibe sola la que le toca por profundidad.
+Color `#b3d5ec`, que es el horizonte del cielo CSS a mediodía.
+
+Mientras tanto el CSS lo finge con un filtro por capa (`saturate(0.35)` en `far`,
+`0.62` en `mid`…). **Ese parche hay que bajarlo cuando los renders traigan niebla
+real**, o se suman y las capas centrales quedan lavadas.
 
 ### 6 · `layer_front` — opcional
 
@@ -119,6 +135,34 @@ Ahora `ground` lleva los árboles incrustados, así que el personaje solo puede 
 delante de todo o detrás de todo: nunca pasa por detrás de un tronco.
 
 ---
+
+### 7 · `b5` — la franja de paso no es plana
+
+Medido sobre `b5_ground.webp`, el suelo bajo los pies a lo largo del tramo:
+
+```
+worldAt   0.86   0.89   0.92   0.95   0.98   0.99   1.00
+suelo     1176   1193   1107   1231   1245   1295   1301
+                                              ↑ el acantilado
+```
+
+194 px de diferencia entre el punto más alto y el más bajo. `surfaceY` es **un
+solo número por bioma**, así que con el 1241 declarado el personaje flota al
+llegar al acantilado y se hunde en los baches del tramo de aproximación.
+
+Al re-renderizar: **la banda por la que camina tiene que quedar a una sola
+altura** de punta a punta, como en `b1` y `b3` (ahí la moda cubre 180 y 628
+columnas respectivamente, o sea que son planos de verdad). El relieve puede
+seguir existiendo a los lados y al fondo; lo que no puede es estar bajo los pies.
+
+Cuando esté plano, `surfaceY` pasa a ser la fila de esa banda y el problema
+desaparece sin tocar código.
+
+### 8 · `b5` — posible agujero en el suelo
+
+Hacia `worldAt` 0.85 y 0.90, la capa de suelo **no tiene ningún píxel opaco en
+la fila inferior**. O es el vacío bajo el acantilado entrando en cuadro antes de
+tiempo, o es un hueco en el render. Conviene mirarlo con la escena abierta.
 
 ## Reglas de producción
 
