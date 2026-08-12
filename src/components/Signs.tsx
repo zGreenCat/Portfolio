@@ -24,8 +24,12 @@ export default function Signs({ openness }: SignsProps) {
     pointerEvents: openness > 0.9 ? 'auto' : 'none',
   }
 
+    // Hasta que no está abierto del todo no se puede usar con el ratón
+    // (`pointerEvents: none`), pero sus botones seguían en el orden de
+    // tabulación desde el 2% de apertura: con teclado se entraba en un panel
+    // fantasma. `inert` lo saca del tab y del árbol de accesibilidad.
   return (
-    <div className={styles.row} style={style}>
+    <div className={styles.row} style={style} inert={openness <= 0.9}>
       {CONTACT.map((item) => (
         <a
           key={item.id}

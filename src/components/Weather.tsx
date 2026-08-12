@@ -261,5 +261,5 @@ export default function Weather({ stateRef, worldDeltaRef }: WeatherProps) {
     }
   }, [stateRef, worldDeltaRef])
 
-  return <canvas ref={canvasRef} className={styles.canvas} />
+  return <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
 }

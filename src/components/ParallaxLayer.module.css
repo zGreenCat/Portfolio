@@ -10,17 +10,18 @@
   will-change: transform;
 }
 
+/* El alto lo pone la página, capa a capa. Anclada abajo: la fila inferior del
+   render es la misma posición de mundo en todas, así que crecen hacia arriba. */
 .strip {
   position: absolute;
   bottom: 0;
   left: 0;
   display: flex;
-  height: var(--world-h, 100vh);
 }
 
 .tile {
   flex: none;
-  height: var(--world-h, 100vh);
+  height: 100%;
   width: auto;
   max-width: none;
   image-rendering: pixelated;

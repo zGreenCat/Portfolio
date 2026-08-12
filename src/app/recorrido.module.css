@@ -59,24 +59,62 @@
  * composición y sale gratis. Meterlo en el `filter` de las capas habría
  * obligado a re-rasterizar 20.000 px de ancho en cada frame.
  */
+/*
+ * Velos entre capas. Dos familias, cada una con su propia fuerza:
+ *
+ * `fog*` es la niebla de distancia. Solo la llevan los biomas donde el aire se
+ * ve —nieve y desierto—; en el bosque y los cerezos se apaga, porque ahí el
+ * fondo tiene que leerse limpio. Va en degradado, densa arriba y floja a la
+ * altura del suelo, así el fondo se disuelve en el cielo y aparece horizonte.
+ * Usa `--sky-mid`, de modo que a medianoche la niebla es azul noche.
+ *
+ * `sand*` es el tinte de la tormenta, que sube y baja con las rachas.
+ *
+ * Los dos van del tamaño de la pantalla, no del mundo: cambiar su opacidad es
+ * composición y sale gratis. Meterlo en el `filter` de las capas obligaría a
+ * re-rasterizar 20.000 px de ancho en cada frame.
+ */
 .scrim {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.fogFar,
+.fogMid,
+.fogNear {
+  background: linear-gradient(180deg, var(--sky-mid, #7fb0da) 0%, transparent 100%);
+}
+
+.sandFar,
+.sandMid,
+.sandNear {
   background: rgb(226 200 140);
 }
 
-.scrimFar {
+.fogFar {
+  z-index: 1;
+  opacity: calc(var(--fog, 0) * 0.9);
+}
+.sandFar {
   z-index: 1;
   opacity: calc(var(--sand, 0) * 0.6);
 }
 
-.scrimMid {
+.fogMid {
+  z-index: 2;
+  opacity: calc(var(--fog, 0) * 0.5);
+}
+.sandMid {
   z-index: 2;
   opacity: calc(var(--sand, 0) * 0.38);
 }
 
-.scrimNear {
+.fogNear {
+  z-index: 3;
+  opacity: calc(var(--fog, 0) * 0.16);
+}
+.sandNear {
   z-index: 3;
   opacity: calc(var(--sand, 0) * 0.19);
 }
@@ -522,4 +560,42 @@
   border-color: #4a3d16;
   color: #241d05;
   text-shadow: none;
+}
+
+/* Solo aparece al tabular: la primera parada del teclado no puede ser un botón
+   de la barra cuando la alternativa accesible está cinco botones más allá. */
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 40;
+  padding: 12px 18px;
+  background: #d9c27a;
+  border: 3px solid #4a3d16;
+  color: #241d05;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.skip:focus {
+  left: 12px;
+  top: 12px;
+}
+
+/* Para lectores de pantalla. No se usa `display: none` ni `visibility: hidden`
+   porque eso también la esconde de ellos, que es justo lo contrario. */
+.announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

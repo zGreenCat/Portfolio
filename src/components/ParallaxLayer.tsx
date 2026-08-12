@@ -4,8 +4,13 @@ interface StripProps {
   src: string
   /** Píxeles de mundo que recorre esta capa de punta a punta. */
   travel: number
-  /** Ancho de la imagen una vez escalada a 100vh. */
+  /** Ancho de la imagen una vez escalada. Igual para todas las capas: aunque
+   *  cada una mide distinto de alto, todas salen del mismo render de 3840. */
   tileWidth: number
+  /** Alto en pantalla de ESTA capa. Cada una conserva el suyo, así que una capa
+   *  con árboles altos sobresale por encima de la caja del mundo en vez de
+   *  quedar aplastada dentro de ella. */
+  tileHeight: number
   /** Fracción del avance del mundo que recorre esta capa. */
   speed: number
   /** Ancho de la ventana, en px. Marca cuánto margen hay que cubrir a cada
@@ -52,6 +57,7 @@ export default function Strip({
   src,
   travel,
   tileWidth,
+  tileHeight,
   speed,
   viewport,
   spanFrom,
@@ -92,7 +98,7 @@ export default function Strip({
   return (
     <div
       className={styles.strip}
-      style={{ left, clipPath: clip }}
+      style={{ left, clipPath: clip, height: tileHeight }}
       data-strip=""
       data-from={spanFrom}
       data-to={spanTo}

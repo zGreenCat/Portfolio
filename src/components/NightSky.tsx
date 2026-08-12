@@ -47,24 +47,32 @@ const STARS = Array.from({ length: STAR_COUNT }, (_, i) => {
  * al acercarse al acantilado, en vez de aparecer de golpe con el bioma. Y el
  * mismo terreno sirve para cualquier hora sin volver a renderizarlo.
  */
-export default function NightSky({ night }: NightSkyProps) {
-  // El atardecer es un punto intermedio, no una mezcla lineal de día y noche.
-  const top = night < 0.5 ? mix(DAY.top, DUSK.top, night * 2) : mix(DUSK.top, NIGHT.top, (night - 0.5) * 2)
-  const mid = night < 0.5 ? mix(DAY.mid, DUSK.mid, night * 2) : mix(DUSK.mid, NIGHT.mid, (night - 0.5) * 2)
-  const bottom =
-    night < 0.5
-      ? mix(DAY.bottom, DUSK.bottom, night * 2)
-      : mix(DUSK.bottom, NIGHT.bottom, (night - 0.5) * 2)
+/**
+ * Colores del cielo a una hora dada. Los usa también la niebla de las capas:
+ * el velo que aleja el fondo tiene que ser del color del aire, y a medianoche
+ * ese color no es azul de mediodía.
+ *
+ * El atardecer es un punto intermedio, no una mezcla lineal de día y noche.
+ */
+export function skyAt(night: number) {
+  const at = (a: number[], b: number[], c: number[]) =>
+    night < 0.5 ? mix(a, b, night * 2) : mix(b, c, (night - 0.5) * 2)
+  return {
+    top: at(DAY.top, DUSK.top, NIGHT.top),
+    mid: at(DAY.mid, DUSK.mid, NIGHT.mid),
+    bottom: at(DAY.bottom, DUSK.bottom, NIGHT.bottom),
+  }
+}
 
+export default function NightSky({ night }: NightSkyProps) {
   // Las estrellas solo asoman cuando el cielo ya está oscuro.
   const visible = Math.max(0, (night - 0.55) / 0.45)
 
   return (
     <>
-      <div
-        className={styles.sky}
-        style={{ '--sky-top': top, '--sky-mid': mid, '--sky-bottom': bottom } as CSSProperties}
-      />
+      {/* Los `--sky-*` los pone la página en la raíz: los comparte con la
+          niebla de las capas, que va en otra rama del árbol. */}
+      <div className={styles.sky} />
       {visible > 0 ? (
         <div className={styles.stars} style={{ opacity: visible }} aria-hidden="true">
           {STARS.map((star, index) => (

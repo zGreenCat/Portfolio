@@ -14,9 +14,10 @@ import EnderPearl, { type PearlThrow } from '@/components/EnderPearl'
 import Book from '@/components/Book'
 import CraftingTable from '@/components/CraftingTable'
 import Inventory from '@/components/Inventory'
-import NightSky from '@/components/NightSky'
+import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
 import type { WeatherState } from '@/components/Weather'
+import { BLOCK_PX_SOURCE, GROUND_BELOW, LAYER_HEIGHT, WORLD_UNIT } from '@/content/layers'
 import Weather, { type WeatherKind } from '@/components/Weather'
 import { isMuted, play, setMuted } from '@/lib/sounds'
 import { ABOUT_PAGES, PROJECTS } from '@/content/portfolio'
@@ -51,9 +52,8 @@ const PEEK = { cellWidth: 435, cellHeight: 600, columns: 8, rows: 4, frames: 32,
 const SCROLL_LENGTH = 7000
 /** Píxeles de mundo que recorre la capa del suelo de punta a punta. */
 const WORLD_LENGTH = 12000
-const LAYER_ASPECT = 3840 / 1440
-const LAYER_HEIGHT_SOURCE = 1440
-const BLOCK_PX_SOURCE = 143
+/** El ancho de una tesela, en unidades de la caja del mundo. */
+const LAYER_ASPECT = 3840 / WORLD_UNIT
 /** Bloques que avanza cada ciclo. Caminar cubre menos suelo por zancada, así
  *  que su ciclo tiene que ir más apretado o los pies patinan. */
 const STRIDE: Record<CharacterState, number> = { run: 2.1, walk: 1.25, idle: 1, throw: 1 }
@@ -83,7 +83,9 @@ const THROW_MS = 700
 const DUSK_FROM = 0.62
 const NIGHT_AT = 0.94
 /** Alto del personaje como fracción del alto del MUNDO, no de la pantalla. */
-const CHAR_HEIGHT_VH = 0.1986
+/** Alto del personaje como fracción de la caja del mundo. Medido sobre la
+ *  pasada `ref`, que trae al personaje colocado a escala de mundo: 271 px. */
+const CHAR_HEIGHT_VH = 271 / WORLD_UNIT
 /** En vertical el mundo no ocupa toda la pantalla: escalarlo al alto dejaba
  *  ver 5 bloques y el personaje se comía el 40% del ancho. Ocupando la franja
  *  baja entra el triple de mundo y queda cielo arriba, que es donde vive el
@@ -100,8 +102,10 @@ const ENTRY_FROM = -28
 const ENTRY_TO = 20
 /** Fila del render donde caen los pies en b1. De ahí sale --char-feet: los
  *  pies van 26 px por debajo de la superficie, dentro de la banda de hierba. */
-const FEET_BELOW_SURFACE = 26
-const CHAR_FEET_VH = (LAYER_HEIGHT_SOURCE - (1278 + FEET_BELOW_SURFACE)) / LAYER_HEIGHT_SOURCE
+/** Cuánto se hunde el pie por debajo de la superficie. Medido sobre la `ref`:
+ *  pies en la fila 2738 con la superficie en 2716. */
+const FEET_BELOW_SURFACE = 22
+const CHAR_FEET_VH = (GROUND_BELOW - FEET_BELOW_SURFACE) / WORLD_UNIT
 /** Entra caminando, no corriendo: viene de saludar, no de una carrera.
  *  Más lento que antes porque a paso de caminata 1,4 s se leía como prisa. */
 const ENTRY_SECONDS = 2.2
@@ -119,14 +123,15 @@ type Kind = (typeof ALL_KINDS)[number]
  *  su suelo queda 17 px más alto. En vez de pedir que lo igualen —que sería
  *  quitarle la nieve— el personaje sube con el terreno. */
 const SECTIONS = [
-  { id: 'inicio', label: 'Inicio', at: 0, biome: 'b1', surfaceY: 1278, kinds: ALL_KINDS },
+  { id: 'inicio', label: 'Inicio', at: 0, biome: 'b1', surfaceY: 2716, kinds: ALL_KINDS },
   {
     id: 'sobre-mi',
     label: 'Sobre mí',
     at: 0.24,
     biome: 'b2',
-    surfaceY: 1267,
+    surfaceY: 2705,
     kinds: ALL_KINDS,
+    fog: true,
     weather: 'snow' as WeatherKind,
   },
   // El templo del desierto no se tesela: es un edificio, y los edificios no
@@ -136,9 +141,10 @@ const SECTIONS = [
     label: 'Proyectos',
     at: 0.52,
     biome: 'b3',
-    surfaceY: 1278,
+    surfaceY: 2716,
     kinds: ALL_KINDS,
     anchored: ['far'] as readonly string[],
+    fog: true,
     weather: 'sand' as WeatherKind,
   },
   {
@@ -146,17 +152,17 @@ const SECTIONS = [
     label: 'Skills',
     at: 0.74,
     biome: 'b4',
-    surfaceY: 1278,
+    surfaceY: 2716,
     kinds: ALL_KINDS,
     weather: 'petals' as WeatherKind,
   },
   // El acantilado es el final del mundo: una sola copia anclada, sin repetir,
   // y sin capas intermedias porque ahí ya no hay recorrido que acompañar.
-  { id: 'contacto', label: 'Contacto', at: 0.96, biome: 'b5', surfaceY: 1241, kinds: END_KINDS },
+  { id: 'contacto', label: 'Contacto', at: 0.96, biome: 'b5', surfaceY: 2716, kinds: END_KINDS },
 ] as const
 
 /** Fracción de la tesela donde se acaba el suelo del acantilado. */
-const CLIFF_EDGE = 2533 / 3840
+const CLIFF_EDGE = 2371 / 3840
 /** En el acantilado el personaje se desplaza hacia el centro. El árbol queda
  *  772 px a la izquierda del borde del vacío, y con él al 20% se salía de
  *  cuadro. Además, encuadrar más abierto sienta mejor a un final. */
@@ -303,6 +309,11 @@ export default function RecorridoPage() {
   const mountKeyRef = useRef('0')
   /** Fuerza actual de la tormenta de arena, ya cuantizada. */
   const sandRef = useRef(-1)
+  /** Niebla de distancia. Solo la llevan la nieve y el desierto; en el bosque y
+   *  los cerezos el fondo se lee limpio. Se persigue con un suavizado en vez de
+   *  atarla a la frontera: aparecer de golpe en la línea del bioma canta. */
+  const fogRef = useRef(0)
+  const fogWrittenRef = useRef(-1)
   /** Hacia dónde mira: 1 derecha, -1 izquierda. */
   const facingRef = useRef(1)
   /**
@@ -588,9 +599,10 @@ export default function RecorridoPage() {
       })
 
       const spot = biomeAt(at)
-      const feetOf = (i: number) =>
-        (LAYER_HEIGHT_SOURCE - (SECTIONS[i].surfaceY + FEET_BELOW_SURFACE)) / LAYER_HEIGHT_SOURCE
-      const feet = feetOf(spot.index) + (feetOf(spot.next) - feetOf(spot.index)) * spot.blend
+      // Ya no depende del bioma: la importación recorta cada capa a la misma
+      // distancia bajo su superficie, así que el suelo cae siempre a la misma
+      // altura de pantalla y cruzar de bioma no da un escalón.
+      const feet = CHAR_FEET_VH
       feetVhRef.current = feet
       rootRef.current?.style.setProperty('--char-feet', `${feet * worldPx}px`)
 
@@ -621,7 +633,7 @@ export default function RecorridoPage() {
     }
 
     const distance = ((ENTRY_TO - ENTRY_FROM) / 100) * window.innerWidth
-    const stride = BLOCK_PX_SOURCE * (worldPx / LAYER_HEIGHT_SOURCE) * STRIDE.walk
+    const stride = BLOCK_PX_SOURCE * (worldPx / WORLD_UNIT) * STRIDE.walk
     const t0 = performance.now()
     let raf = 0
 
@@ -666,7 +678,7 @@ export default function RecorridoPage() {
       target = Math.min(1, Math.max(0, window.scrollY / SCROLL_LENGTH))
     }
 
-    const block = BLOCK_PX_SOURCE * (worldPx / LAYER_HEIGHT_SOURCE)
+    const block = BLOCK_PX_SOURCE * (worldPx / WORLD_UNIT)
     let previous = 0
     let last = performance.now()
     let sheetFrame = 0
@@ -776,6 +788,14 @@ export default function RecorridoPage() {
 
       // La arena también quita visibilidad al fondo, no solo cae. Los velos son
       // del tamaño de la pantalla, así que esto es composición y no re-filtrado.
+      const wantFog = 'fog' in SECTIONS[index] ? 1 : 0
+      fogRef.current += (wantFog - fogRef.current) * 0.05
+      const fog = quantize(fogRef.current, 24)
+      if (fog !== fogWrittenRef.current) {
+        fogWrittenRef.current = fog
+        rootRef.current?.style.setProperty('--fog', `${fog}`)
+      }
+
       const sand = quantize(air.kind === 'sand' ? air.power : 0, 24)
       if (sand !== sandRef.current) {
         sandRef.current = sand
@@ -947,9 +967,14 @@ export default function RecorridoPage() {
 
   const handleGreetingEnd = useCallback(() => setPhase('entering'), [])
 
+  const sky = skyAt(night)
   const filled = Math.round(progress * BAR_CELLS)
   const titleClass = started ? styles.titlesOut : phase === 'ready' ? styles.titlesIn : ''
   const tileWidth = (worldPx || 1080) * LAYER_ASPECT
+  /** Cada capa conserva su alto propio: se recortaron por arriba hasta donde
+   *  empieza su contenido, así que la de los árboles sobresale de la caja del
+   *  mundo y la del suelo pelado no arrastra cielo vacío. */
+  const heightOf = (name: string) => ((worldPx || 1080) * (LAYER_HEIGHT[name] ?? WORLD_UNIT)) / WORLD_UNIT
   /**
    * Bordes del territorio de un bioma, en píxeles del contenedor de su capa.
    *
@@ -989,9 +1014,26 @@ export default function RecorridoPage() {
           // El terreno se apaga y se enfría con la noche. Así el mismo render
           // sirve para cualquier hora sin volver a pasarlo por Mine-imator.
           '--world-grade': `brightness(${1.1 - night * 0.62}) contrast(${1.08 - night * 0.1}) saturate(${1.06 - night * 0.5}) hue-rotate(${night * 12}deg)`,
+          // Los comparten el cielo y la niebla de las capas.
+          '--sky-top': sky.top,
+          '--sky-mid': sky.mid,
+          '--sky-bottom': sky.bottom,
         } as React.CSSProperties
       }
     >
+      {/* Primer elemento enfocable de la página. Quien llegue con teclado o
+          lector de pantalla se topa con un mundo de canvas sin contenido; esto
+          es la salida, y tiene que estar antes que los cinco botones de la
+          barra en vez de enterrada detrás de ellos. */}
+      <Link href="/simple" className={styles.skip}>
+        Ir a la versión en texto, sin animaciones
+      </Link>
+
+      {/* La página nunca navega, así que cambiar de sección era silencioso. */}
+      <p className={styles.announce} aria-live="polite">
+        {SECTIONS.find((section) => section.id === active)?.label ?? ''}
+      </p>
+
       <div className={styles.stage}>
         <NightSky night={night} />
 
@@ -1010,6 +1052,7 @@ export default function RecorridoPage() {
                 src={`/layers/${s.biome}_${kind}.webp`}
                 travel={WORLD_LENGTH * LAYER_SPEED[kind]}
                 tileWidth={tileWidth}
+                tileHeight={heightOf(`${s.biome}_${kind}`)}
                 speed={LAYER_SPEED[kind]}
                 viewport={viewW}
                 {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED[kind])}
@@ -1025,10 +1068,17 @@ export default function RecorridoPage() {
               />
             ))}
           </div>
-          {/* Velo de arena entre esta capa y la siguiente. */}
+          {/* Niebla de distancia y tinte de tormenta, entre esta capa y la
+              siguiente. Cada uno con su fuerza y sus biomas. */}
           <div
             className={`${styles.scrim} ${
-              kind === 'far' ? styles.scrimFar : kind === 'mid' ? styles.scrimMid : styles.scrimNear
+              kind === 'far' ? styles.fogFar : kind === 'mid' ? styles.fogMid : styles.fogNear
+            }`}
+            aria-hidden="true"
+          />
+          <div
+            className={`${styles.scrim} ${
+              kind === 'far' ? styles.sandFar : kind === 'mid' ? styles.sandMid : styles.sandNear
             }`}
             aria-hidden="true"
           />
@@ -1057,6 +1107,7 @@ export default function RecorridoPage() {
               src={`/layers/${s.biome}_ground.webp`}
               travel={WORLD_LENGTH}
               tileWidth={tileWidth}
+              tileHeight={heightOf(`${s.biome}_ground`)}
               speed={LAYER_SPEED.ground}
               viewport={viewW}
               {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
