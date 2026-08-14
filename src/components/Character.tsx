@@ -2,7 +2,7 @@ import type { CSSProperties, Ref } from 'react'
 
 import styles from './Character.module.css'
 
-export type CharacterState = 'run' | 'walk' | 'idle' | 'throw'
+export type CharacterState = 'run' | 'walk' | 'idle' | 'throw' | 'sit'
 
 export const CELL_WIDTH = 460
 const CELL_HEIGHT = 600
@@ -23,6 +23,10 @@ const SHEETS = {
   walk: { src: '/sprites/walk.webp', frames: 25, charHeight: 399, footY: 526, centerX: 242 },
   idle: { src: '/sprites/idle.webp', frames: 16, charHeight: 404, footY: 548, centerX: 232 },
   throw: { src: '/sprites/throw.webp', frames: 19, charHeight: 400, footY: 523, centerX: 190 },
+  // La geometría sale del frame 1, que es el personaje DE PIE: así la hoja se
+  // ancla contra `idle` en vez de estimar dónde queda el cuerpo al sentarse,
+  // que es lo que cambia de sitio. `centerX` coincide con el de `idle`.
+  sit: { src: '/sprites/sit.webp', frames: 31, charHeight: 411, footY: 556, centerX: 232 },
 } as const
 
 /** Frame en el que la mano suelta la perla, y dónde está esa mano dentro de la
@@ -34,6 +38,7 @@ export const FRAME_COUNT: Record<CharacterState, number> = {
   walk: SHEETS.walk.frames,
   idle: SHEETS.idle.frames,
   throw: SHEETS.throw.frames,
+  sit: SHEETS.sit.frames,
 }
 
 /** Geometría de cada hoja, para que la página pueda situar la mano. */
@@ -57,6 +62,7 @@ const labels: Record<CharacterState, string> = {
   walk: 'Personaje caminando',
   idle: 'Personaje en reposo',
   throw: 'Personaje lanzando una perla',
+  sit: 'Personaje sentado en el borde del acantilado',
 }
 
 /**

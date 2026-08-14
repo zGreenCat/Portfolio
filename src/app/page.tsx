@@ -56,7 +56,7 @@ const WORLD_LENGTH = 12000
 const LAYER_ASPECT = 3840 / WORLD_UNIT
 /** Bloques que avanza cada ciclo. Caminar cubre menos suelo por zancada, así
  *  que su ciclo tiene que ir más apretado o los pies patinan. */
-const STRIDE: Record<CharacterState, number> = { run: 2.1, walk: 1.25, idle: 1, throw: 1 }
+const STRIDE: Record<CharacterState, number> = { run: 2.1, walk: 1.25, idle: 1, throw: 1, sit: 1 }
 /** Umbrales de marcha, en bloques por segundo. `walk` cubre 1,25 bloques en
  *  25 frames: por encima de ~2 b/s su ciclo se dispara, así que ahí ya corre. */
 const SPEED_RUN = 2.2
@@ -168,6 +168,24 @@ const CLIFF_EDGE = 2371 / 3840
  *  cuadro. Además, encuadrar más abierto sienta mejor a un final. */
 const CLIFF_X = 48
 const CLIFF_FROM = 0.84
+/**
+ * Sentarse es lo único del recorrido que NO va atado a la posición: es un gesto
+ * que se hace en el sitio al llegar al borde, no algo que se rasque con la
+ * rueda. Avanza por tiempo y se queda en el último frame.
+ *
+ * Retroceder lo reproduce hacia atrás al mismo ritmo, así que el personaje se
+ * levanta en vez de saltar de golpe a estar de pie.
+ */
+const SIT_AT = 0.998
+/** Hay que retroceder de verdad para que se levante. Sin esta holgura, un roce
+ *  de rueda en el borde bajaba del umbral y arrancaba el gesto contrario al
+ *  instante: ir y venir así se lee como si la animación siguiera a la rueda. */
+const SIT_RELEASE = 0.97
+const SIT_SECONDS = 1.35
+/** Tope de velocidad, en bloques por segundo, SOLO para recuperar la distancia
+ *  que se acumuló mientras el mundo estaba congelado. El suavizado normal sigue
+ *  sin tope: ponérselo a todo ya causó sensación de lag en su día. */
+const CATCH_UP_BLOCKS = 14
 
 /** Tramo de mundo, en unidades de progreso, en el que el personaje sube o baja
  *  entre las superficies de dos biomas. El terreno cambia de golpe —como en el
@@ -316,6 +334,16 @@ export default function RecorridoPage() {
   const fogWrittenRef = useRef(-1)
   /** Hacia dónde mira: 1 derecha, -1 izquierda. */
   const facingRef = useRef(1)
+  /** Cuánto ha entrado en el gesto de sentarse, 0 a 1. Avanza por tiempo. */
+  const sitRef = useRef(0)
+  /** Si toca estar sentado. Cambia con histéresis, no en un solo umbral. */
+  const sitWantRef = useRef(false)
+  /** Sentido del gesto en curso: +1 sentándose, -1 levantándose. */
+  const sitDirRef = useRef(-1)
+  /** Posición del mundo congelada mientras dura el gesto, o null si no lo hay. */
+  const sitLockRef = useRef<number | null>(null)
+  /** Recuperando la distancia acumulada mientras el mundo estuvo congelado. */
+  const catchUpRef = useRef(false)
   /**
    * Sección a la que volver al recargar, o null si es una visita limpia.
    *
@@ -686,17 +714,58 @@ export default function RecorridoPage() {
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
+      const before = current
 
       if (snapRef.current) {
         // La perla no camina: llega.
         snapRef.current = false
         current = target
         previous = current * WORLD_LENGTH
+        // Y cancela el gesto: no tiene sentido levantarse de un sitio en el que
+        // ya no estás. Sin esto el mundo se quedaba congelado en el acantilado.
+        sitRef.current = 0
+        sitLockRef.current = null
+        sitDirRef.current = -1
+        sitWantRef.current = false
+        catchUpRef.current = false
       } else {
         // Suavizado, sin tope: el mundo sigue al scroll y se detiene cuando
         // tú te detienes.
         current += (target - current) * 0.12
         if (Math.abs(target - current) < 0.00002) current = target
+      }
+
+      /*
+       * El personaje se sienta y se levanta EN EL SITIO: mientras dure el gesto
+       * —y mientras siga sentado— la posición del mundo queda clavada donde
+       * llegó. Sin esto, al retroceder se iba hacia atrás mientras se levantaba.
+       *
+       * Usa el `sitRef` del frame anterior. Eso evita subir el bloque del gesto
+       * por delante de `placeWorld`, que es lo que rompió el intento previo; el
+       * desfase de un frame no se ve en un gesto de segundo y medio.
+       */
+      if (sitRef.current > 0) {
+        if (sitLockRef.current === null) sitLockRef.current = current
+        current = sitLockRef.current
+      } else {
+        // Al soltar, el scroll puede haberse ido lejos mientras el mundo estaba
+        // quieto. Se marca para recuperarlo con tope en vez de de un salto.
+        if (sitLockRef.current !== null && Math.abs(target - sitLockRef.current) > 0.002) {
+          catchUpRef.current = true
+        }
+        sitLockRef.current = null
+      }
+
+      /*
+       * Recuperación acotada. Sin esto el primer frame tras levantarse cierra
+       * cientos de píxeles de golpe y el personaje sale disparado hacia atrás.
+       * El tope va en bloques por segundo, así que no depende de la resolución.
+       */
+      if (catchUpRef.current) {
+        const step = current - before
+        const cap = (CATCH_UP_BLOCKS * block * dt) / WORLD_LENGTH
+        if (Math.abs(step) > cap) current = before + Math.sign(step) * cap
+        if (Math.abs(target - current) < 0.0005) catchUpRef.current = false
       }
 
       const worldX = current * WORLD_LENGTH
@@ -711,11 +780,40 @@ export default function RecorridoPage() {
       if (speed <= SPEED_WALK) stillFor += 1
       else stillFor = 0
 
+      /*
+       * Sentarse y levantarse son dos gestos, no un control continuo, y sus
+       * condiciones son asimétricas a propósito:
+       *
+       *   sentarse   depende de haber LLEGADO   → mira `current`
+       *   levantarse depende de que te hayas IDO → mira `target`
+       *
+       * Mirar `target` para sentarse lo disparaba al tocar fondo el scroll,
+       * antes de que el personaje llegara al borde. Y mirar `current` para
+       * levantarse no funciona porque con el mundo congelado deja de moverse.
+       *
+       * El orden importa: sentado, `current >= SIT_AT` es cierto siempre, así
+       * que la condición de levantarse tiene que evaluarse primero.
+       */
+      if (target < SIT_RELEASE) sitWantRef.current = false
+      else if (current >= SIT_AT) sitWantRef.current = true
+
+      // El sentido solo se replantea con el gesto en reposo —en 0 o en 1—, así
+      // que a media animación se termina lo empezado en vez de darse la vuelta.
+      if (sitRef.current === 0 || sitRef.current === 1) {
+        sitDirRef.current = sitWantRef.current ? 1 : -1
+      }
+      sitRef.current = Math.min(
+        1,
+        Math.max(0, sitRef.current + (sitDirRef.current * dt) / SIT_SECONDS),
+      )
+      const sitAt = sitRef.current
+
       if (!teleportingRef.current) {
         // El retardo se cuenta en frames, no con un temporizador: dentro del
         // bucle, un setTimeout se reiniciaba en cada vuelta y no llegaba a
         // cumplirse nunca, así que se quedaba caminando para siempre.
-        if (stillFor >= IDLE_FRAMES) applyState('idle')
+        if (sitAt > 0) applyState('sit')
+        else if (stillFor >= IDLE_FRAMES) applyState('idle')
         else if (speed > SPEED_RUN) applyState('run')
         else if (speed > SPEED_WALK) applyState('walk')
       }
@@ -732,12 +830,20 @@ export default function RecorridoPage() {
       const wanted = (Math.abs(travelled) / stride) * FRAME_COUNT[active]
       const cap = MAX_SHEET_FPS * dt
       sheetFrame += Math.max(-cap, Math.min(cap, wanted))
-      // En reposo manda el bucle CSS: escribirle el frame lo dejaría clavado.
-      if (active !== 'idle') writeFrame(Math.floor(sheetFrame))
+      if (active === 'sit') {
+        // El frame lo marca la posición, no la distancia recorrida: el gesto
+        // tiene principio y final, no es un ciclo.
+        writeFrame(Math.min(FRAME_COUNT.sit - 1, Math.floor(sitAt * FRAME_COUNT.sit)))
+      } else if (active !== 'idle') {
+        // En reposo manda el bucle CSS: escribirle el frame lo dejaría clavado.
+        writeFrame(Math.floor(sheetFrame))
+      }
 
       // Retroceder es darse la vuelta, no rebobinar. La banda muerta evita que
-      // un temblor de rueda lo haga girar sobre sí mismo.
-      if (!teleportingRef.current && Math.abs(travelled) > 0.6) {
+      // un temblor de rueda lo haga girar sobre sí mismo. Sentado no se gira:
+      // la hoja está dibujada mirando al vacío y voltearla lo pondría de
+      // espaldas al horizonte mientras se levanta.
+      if (!teleportingRef.current && sitAt === 0 && Math.abs(travelled) > 0.6) {
         const facing = travelled < 0 ? -1 : 1
         if (facing !== facingRef.current) {
           facingRef.current = facing
@@ -880,9 +986,16 @@ export default function RecorridoPage() {
   useEffect(() => {
     if (phase === 'loading') return
     let stop = false
-    const rest = SECTIONS.flatMap((section) =>
-      section.kinds.map((kind) => layerSrc(section.biome, kind, half)),
-    ).filter((src) => !PRELOAD.includes(src))
+    // Las hojas que no bloquean la carga pero sí hacen falta luego: sin esto,
+    // `sit` se descarga justo al llegar al acantilado y se nota.
+    const rest = [
+      '/sprites/walk.webp',
+      '/sprites/throw.webp',
+      '/sprites/sit.webp',
+      ...SECTIONS.flatMap((section) =>
+        section.kinds.map((kind) => layerSrc(section.biome, kind, half)),
+      ),
+    ].filter((src) => !PRELOAD.includes(src))
 
     const pull = async () => {
       for (const src of rest) {
