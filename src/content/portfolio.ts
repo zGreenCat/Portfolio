@@ -20,6 +20,7 @@ export const ABOUT_PAGES = [
 export const PROJECTS: Project[] = [
   {
     id: 'portal-coloso',
+    shot: '/projects/portal-coloso.webp',
     name: 'Portal Coloso',
     summary: 'Gestión académica con IA · UCN',
     description:
@@ -28,6 +29,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'nasa-space-apps',
+    shot: '/projects/nasa-space-apps.webp',
     name: 'NASA Space Apps Challenge',
     summary: 'Exploración de literatura científica con RAG',
     description:
@@ -37,6 +39,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'hackadisc',
+    shot: '/projects/hackadisc.webp',
     name: 'HackaDisc — 1.er lugar',
     summary: 'Dashboard predictivo de cobranza · Insecap',
     description:
@@ -46,6 +49,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'smartpack',
+    shot: '/projects/smartpack.webp',
     name: 'SmartPack',
     summary: 'Logística e inventario · Co-Founder',
     description:
@@ -63,6 +67,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'rincon-chilenito',
+    shot: '/projects/rincon-chilenito.webp',
     name: 'El Rincón Chilenito',
     summary: 'E-commerce y POS · Shinsekai',
     description:
@@ -71,6 +76,7 @@ export const PROJECTS: Project[] = [
   },
   {
     id: 'ekiproject',
+    shot: '/projects/ekiproject.webp',
     name: 'EkiProject',
     summary: 'Landing corporativa',
     description:

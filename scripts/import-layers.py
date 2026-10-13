@@ -63,17 +63,25 @@ def main():
         for kind in kinds:
             src = f"{SRC}/{biome}/{biome}_{kind}.png"
             im = Image.open(src).convert("RGBA")
+            name = f"{biome}_{kind}"
             top = content_top(im)
             # Margen de un bloque por si el alfa del borde se pierde al codificar.
             top = max(0, top - 8)
-            cropped = im.crop((0, top, im.width, bottom))
-            name = f"{biome}_{kind}"
+            # b5_far se renderizó ANTES de que se bajara el terreno de b5, así
+            # que su escena tiene el suelo 79 px más arriba. Recortarlo por la
+            # línea nueva lo dejaría flotando esa distancia sobre el terreno que
+            # se pisa; se compensa cortándolo por la de su propia escena.
+            #
+            # QUITAR EN CUANTO SE RE-RENDERICE b5_far.
+            cut = bottom - 79 if name == "b5_far" else bottom
+            cropped = im.crop((0, top, im.width, cut))
             cropped.save(f"{OUT}/{name}.webp", "WEBP", quality=QUALITY, method=6)
             half = cropped.resize((cropped.width // 2, cropped.height // 2), Image.LANCZOS)
             half.save(f"{OUT}/{name}@half.webp", "WEBP", quality=QUALITY, method=6)
             manifest[name] = cropped.height
             kb = os.path.getsize(f"{OUT}/{name}.webp") // 1024
-            print(f"  {name:<12} recorte {top:>5}..{bottom}  alto {cropped.height:>5}  {kb:>4} KB")
+            flag = "  ← compensado" if name == "b5_far" else ""
+            print(f"  {name:<12} recorte {top:>5}..{cut}  alto {cropped.height:>5}  {kb:>4} KB{flag}")
     with open("src/content/layers.json", "w") as f:
         json.dump({"block": BLOCK, "below": BELOW, "biomes": surfaces, "heights": manifest}, f, indent=2)
     print(f"\nmanifiesto: src/content/layers.json ({len(manifest)} capas)")

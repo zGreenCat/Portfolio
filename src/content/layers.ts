@@ -26,7 +26,7 @@ export const LAYER_HEIGHT: Record<string, number> = {
   'b4_ground': 1587,
   'b4_mid': 1570,
   'b4_near': 1690,
-  'b5_far': 1179,
+  'b5_far': 1100,
   'b5_ground': 1587,
 }
 

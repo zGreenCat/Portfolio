@@ -599,3 +599,46 @@
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * Modo ligero, para máquinas sin aceleración por hardware.
+ *
+ * Fuera los `filter` de las capas: son lo que hunde el recorrido sin GPU,
+ * porque obligan a repintar decenas de megapíxeles en cada frame en vez de
+ * mover una textura ya filtrada.
+ *
+ * La noche no se pierde: pasa a ser un velo del tamaño de la PANTALLA sobre
+ * todo el mundo. Un relleno plano de 2 Mpx cuesta una fracción de lo que
+ * cuesta filtrar 43, y a cambio se pierde el enfriado de color y la
+ * perspectiva atmosférica por capa.
+ */
+[data-lite='true'] .far,
+[data-lite='true'] .mid,
+[data-lite='true'] .near,
+[data-lite='true'] .ground {
+  filter: none;
+}
+
+[data-lite='true'] .far {
+  opacity: 0.5;
+}
+
+[data-lite='true'] .mid {
+  opacity: 0.78;
+}
+
+/* Solo existe en modo ligero: con GPU la noche la hace el `filter`, que además
+   enfría los colores en vez de limitarse a oscurecerlos. */
+.nightVeil {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  display: none;
+  background: #0a1020;
+}
+
+[data-lite='true'] .nightVeil {
+  display: block;
+  opacity: calc(var(--night, 0) * 0.62);
+}

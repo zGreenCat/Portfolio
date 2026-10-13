@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
+import Panel from './Panel'
 import styles from './Inventory.module.css'
 
 export interface Project {
@@ -11,7 +12,9 @@ export interface Project {
   description: string
   tags: string[]
   url?: string
-  icon?: string
+  /** Captura del proyecto, 16:9. Opcional: sin ella la diapositiva se queda en
+   *  texto, sin dejar un hueco roto. Así se pueden ir añadiendo de una en una. */
+  shot?: string
 }
 
 interface InventoryProps {
@@ -21,141 +24,123 @@ interface InventoryProps {
   openness: number
 }
 
-/** Cofre sencillo de Minecraft: 27 huecos. Los vacíos dicen "cabe más". */
-const SLOTS = 27
-const COLUMNS = 9
-
 /**
- * Inventario del cofre. Se navega **con el ratón y el teclado, nunca con
- * scroll**: el scroll pertenece al mundo, y disputárselo rompería el recorrido.
- * Por eso la rejilla es de tamaño fijo y el detalle sustituye a la rejilla en
- * vez de alargar el panel.
+ * Los proyectos, uno por diapositiva.
+ *
+ * Las ranuras del cofre siguen aquí, pero **como paginador**: marcan en cuál
+ * estás y saltan a cualquiera. Antes eran una rejilla que había que abrir para
+ * ver nada; así conservan la metáfora del inventario y encima sirven.
+ *
+ * Se navega con botones y teclado, **nunca con scroll**: el scroll pertenece al
+ * mundo y disputárselo rompería el recorrido.
  */
 export default function Inventory({ title, projects, openness }: InventoryProps) {
-  const [hovered, setHovered] = useState<number | null>(null)
-  const [selected, setSelected] = useState<Project | null>(null)
-  const gridRef = useRef<HTMLDivElement>(null)
+  const [index, setIndex] = useState(0)
+  /** Capturas que no existen todavía. Las rutas van cableadas desde el
+   *  contenido, así que basta con soltar el archivo para que aparezca; hasta
+   *  entonces la diapositiva se queda en texto en vez de enseñar un roto. */
+  const [missing, setMissing] = useState<Record<string, true>>({})
+  const slotsRef = useRef<HTMLDivElement>(null)
 
-  // Al alejarse, el panel se cierra y no debe recordar la selección.
+  // Al alejarse, el panel se cierra y vuelve al primero.
   useEffect(() => {
-    if (openness < 0.15) {
-      setSelected(null)
-      setHovered(null)
-    }
+    if (openness < 0.15) setIndex(0)
   }, [openness])
 
+  const total = projects.length
+  const go = (delta: number) => setIndex((i) => (i + delta + total) % total)
+
+  // Flechas para moverse entre proyectos, como en el libro.
   useEffect(() => {
-    if (!selected) return
+    if (openness <= 0.9) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSelected(null)
+      if (event.key === 'ArrowRight') go(1)
+      else if (event.key === 'ArrowLeft') go(-1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selected])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openness, total])
 
-  if (openness <= 0.01) return null
+  const project = projects[index]
+  if (!project) return null
 
-  const moveFocus = (from: number, delta: number) => {
-    const next = from + delta
-    if (next < 0 || next >= SLOTS) return
-    const button = gridRef.current?.querySelectorAll('button')[next]
-    if (button instanceof HTMLElement) button.focus()
-  }
-
-  const style: CSSProperties = {
-    opacity: openness,
-    scale: `${0.94 + openness * 0.06}`,
-    pointerEvents: openness > 0.9 ? 'auto' : 'none',
-  }
-
-    // Hasta que no está abierto del todo no se puede usar con el ratón
-    // (`pointerEvents: none`), pero sus botones seguían en el orden de
-    // tabulación desde el 2% de apertura: con teclado se entraba en un panel
-    // fantasma. `inert` lo saca del tab y del árbol de accesibilidad.
   return (
-    <div
-      className={styles.panel}
-      style={style}
+    <Panel
+      eyebrow={`Proyecto ${index + 1} de ${total}`}
+      title={project.name}
       role="dialog"
-      aria-label={title}
-      inert={openness <= 0.9}
+      openness={openness}
     >
-      {selected ? (
-        <div className={styles.detail}>
-          <span className={styles.title}>{title}</span>
-          <h3 className={styles.detailName}>{selected.name}</h3>
-          <p className={styles.detailText}>{selected.description}</p>
-          <div className={styles.tags}>
-            {selected.tags.map((tag) => (
-              <span key={tag} className={styles.tag}>
-                {tag}
-              </span>
-            ))}
-          </div>
-          <div className={styles.actions}>
-            {selected.url ? (
-              <a className={styles.button} href={selected.url} target="_blank" rel="noreferrer">
-                Abrir proyecto
-              </a>
-            ) : null}
-            <button type="button" className={styles.button} onClick={() => setSelected(null)}>
-              Volver
-            </button>
-          </div>
-        </div>
+      {project.shot && !missing[project.id] ? (
+        <span className={styles.shot}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={project.shot}
+            alt={`Captura de ${project.name}`}
+            className={styles.shotImage}
+            loading="lazy"
+            decoding="async"
+            onError={() => setMissing((m) => ({ ...m, [project.id]: true }))}
+          />
+        </span>
       ) : (
-        <>
-          <span className={styles.title}>{title}</span>
-          <div className={styles.grid} ref={gridRef}>
-            {Array.from({ length: SLOTS }, (_, index) => {
-              const project = projects[index]
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  className={`${styles.slot} ${project ? styles.filled : ''}`}
-                  disabled={!project}
-                  aria-label={project ? project.name : 'Hueco vacío'}
-                  onMouseEnter={() => setHovered(index)}
-                  onMouseLeave={() => setHovered((current) => (current === index ? null : current))}
-                  onFocus={() => setHovered(index)}
-                  onBlur={() => setHovered((current) => (current === index ? null : current))}
-                  onClick={() => project && setSelected(project)}
-                  onKeyDown={(event) => {
-                    const map: Record<string, number> = {
-                      ArrowRight: 1,
-                      ArrowLeft: -1,
-                      ArrowDown: COLUMNS,
-                      ArrowUp: -COLUMNS,
-                    }
-                    const delta = map[event.key]
-                    if (delta === undefined) return
-                    event.preventDefault()
-                    moveFocus(index, delta)
-                  }}
-                >
-                  {project ? (
-                    project.icon ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={project.icon} alt="" className={styles.icon} />
-                    ) : (
-                      <span className={styles.placeholderIcon} />
-                    )
-                  ) : null}
-
-                  {project && hovered === index ? (
-                    <span className={styles.tooltip}>
-                      <span className={styles.tooltipName}>{project.name}</span>
-                      <span className={styles.tooltipMeta}>{project.summary}</span>
-                    </span>
-                  ) : null}
-                </button>
-              )
-            })}
-          </div>
-          <span className={styles.hint}>Pasa el ratón · clic para abrir</span>
-        </>
+        /* Sin captura, el hueco se conserva y dice por qué. Una diapositiva más
+           corta entre otras seis se lee como un fallo; esto se lee como un dato. */
+        <span className={`${styles.shot} ${styles.noShot}`}>
+          <span className={styles.noShotText}>Producto interno · sin demo pública</span>
+        </span>
       )}
-    </div>
+
+      <p className={styles.summary}>{project.summary}</p>
+      <p className={styles.description}>{project.description}</p>
+
+      <ul className={styles.tags}>
+        {project.tags.map((tag) => (
+          <li key={tag} className={styles.tag}>
+            {tag}
+          </li>
+        ))}
+      </ul>
+
+      <span className={styles.linkSlot}>
+        {project.url ? (
+          <a className={styles.open} href={project.url} target="_blank" rel="noreferrer noopener">
+            Abrir proyecto ↗
+          </a>
+        ) : null}
+      </span>
+
+      <div className={styles.pager}>
+        <button type="button" className={styles.arrow} onClick={() => go(-1)} aria-label="Anterior">
+          ‹
+        </button>
+
+        {/* Las ranuras del cofre, ahora como indicador de posición. */}
+        <div className={styles.slots} ref={slotsRef} role="tablist" aria-label={title}>
+          {projects.map((item, slot) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={slot === index}
+              aria-label={item.name}
+              className={`${styles.slot} ${slot === index ? styles.current : ''}`}
+              onClick={() => setIndex(slot)}
+            >
+              <span className={styles.pip} />
+            </button>
+          ))}
+        </div>
+
+        <button type="button" className={styles.arrow} onClick={() => go(1)} aria-label="Siguiente">
+          ›
+        </button>
+
+        <span className={styles.count}>
+          {index + 1} / {total}
+        </span>
+      </div>
+    </Panel>
   )
 }

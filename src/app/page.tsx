@@ -16,6 +16,7 @@ import CraftingTable from '@/components/CraftingTable'
 import Inventory from '@/components/Inventory'
 import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
+import Splash from '@/components/Splash'
 import type { WeatherState } from '@/components/Weather'
 import { BLOCK_PX_SOURCE, GROUND_BELOW, LAYER_HEIGHT, WORLD_UNIT } from '@/content/layers'
 import Weather, { type WeatherKind } from '@/components/Weather'
@@ -27,7 +28,7 @@ import SpriteGrid from '@/components/SpriteGrid'
 
 import styles from './recorrido.module.css'
 
-type Phase = 'loading' | 'greeting' | 'entering' | 'ready'
+type Phase = 'loading' | 'split' | 'greeting' | 'entering' | 'ready'
 
 const PRELOAD = [
   '/sprites/peek_wave.webp',
@@ -50,6 +51,22 @@ const PEEK = { cellWidth: 435, cellHeight: 600, columns: 8, rows: 4, frames: 32,
 
 /** Alto de página dedicado al recorrido. */
 const SCROLL_LENGTH = 7000
+
+/**
+ * La pantalla partida de entrada ocupa el primer viewport de scroll. El mundo
+ * empieza después, así que scrollear la aparta y sigue el recorrido — sin clic
+ * ni carga de por medio.
+ *
+ * Las tres funciones de abajo son la ÚNICA correspondencia entre scroll y
+ * mundo. Estaba repetida en seis sitios y añadir el desplazamiento a mano en
+ * cada uno era pedir que alguno se quedara atrás.
+ */
+const splitScroll = () => (typeof window === 'undefined' ? 0 : window.innerHeight)
+const worldFromScroll = (y: number) =>
+  Math.min(1, Math.max(0, (y - splitScroll()) / SCROLL_LENGTH))
+const scrollFromWorld = (at: number) => splitScroll() + at * SCROLL_LENGTH
+/** Cuánto scroll basta para apartarla del todo. */
+const SPLIT_FADE = 0.8
 /** Píxeles de mundo que recorre la capa del suelo de punta a punta. */
 const WORLD_LENGTH = 12000
 /** El ancho de una tesela, en unidades de la caja del mundo. */
@@ -187,6 +204,22 @@ const SIT_SECONDS = 1.35
  *  sin tope: ponérselo a todo ya causó sensación de lag en su día. */
 const CATCH_UP_BLOCKS = 14
 
+/**
+ * Modo ligero: se enciende solo cuando la máquina no da.
+ *
+ * El caso que lo motiva es la aceleración por hardware desactivada. Con GPU el
+ * `filter` de las capas se aplica una vez sobre una textura y moverla sale
+ * gratis; sin ella, el navegador repinta ~43 Mpx filtrados en cada frame sobre
+ * la CPU y el recorrido se arrastra.
+ *
+ * Se mide el tiempo real de frame, no las capacidades del navegador: no hay
+ * forma fiable de preguntar si la GPU está activa, y el síntoma es lo que
+ * importa. Solo cuentan los frames en los que el mundo se mueve — parado, un
+ * frame lento no significa nada.
+ */
+const LITE_SAMPLE = 120
+const LITE_MS = 33
+
 /** Tramo de mundo, en unidades de progreso, en el que el personaje sube o baja
  *  entre las superficies de dos biomas. El terreno cambia de golpe —como en el
  *  juego— pero un salto de 37 px en los pies sí se notaría. */
@@ -300,6 +333,10 @@ export default function RecorridoPage() {
   const [shot, setShot] = useState<PearlThrow | null>(null)
   const [hidden, setHidden] = useState(false)
   const [pageHeight, setPageHeight] = useState(SCROLL_LENGTH)
+  /** 0 = la pantalla partida está entera, 1 = apartada del todo. */
+  const [splitAway, setSplitAway] = useState(0)
+  /** Una vez apartada no vuelve: subir del todo no debería reponer la entrada. */
+  const splitGoneRef = useRef(false)
   const [chestOpen, setChestOpen] = useState(0)
   const [bookOpen, setBookOpen] = useState(0)
   const [signsOpen, setSignsOpen] = useState(0)
@@ -344,6 +381,9 @@ export default function RecorridoPage() {
   const sitLockRef = useRef<number | null>(null)
   /** Recuperando la distancia acumulada mientras el mundo estuvo congelado. */
   const catchUpRef = useRef(false)
+  /** Frames lentos acumulados con el mundo en marcha. */
+  const slowRef = useRef({ frames: 0, total: 0 })
+  const [lite, setLite] = useState(false)
   /**
    * Sección a la que volver al recargar, o null si es una visita limpia.
    *
@@ -451,7 +491,7 @@ export default function RecorridoPage() {
    * caso de un enlace compartido abierto en frío.
    */
   const resumeTarget = useCallback(() => {
-    const progress = window.scrollY / SCROLL_LENGTH
+    const progress = worldFromScroll(window.scrollY)
     if (progress > 0.01) {
       let best = 0
       SECTIONS.forEach((section, i) => {
@@ -503,8 +543,11 @@ export default function RecorridoPage() {
     mountKeyRef.current = near.join(',')
     setMounted(near)
     setActive(SECTIONS[index].id)
+    // Quien vuelve no pasa por la entrada.
+    splitGoneRef.current = true
+    setSplitAway(1)
     window.history.replaceState(null, '', `#${SECTIONS[index].id}`)
-    window.scrollTo({ top: at * SCROLL_LENGTH, behavior: 'auto' })
+    window.scrollTo({ top: scrollFromWorld(at), behavior: 'auto' })
     return true
   }, [landingFor, resumeTarget])
 
@@ -527,7 +570,7 @@ export default function RecorridoPage() {
           window.clearTimeout(cap)
           // Quien vuelve ya te vio saludar. La entrada caminando y el reposo sí
           // se quedan: son lo que planta al personaje en el suelo.
-          setPhase(armResume() ? 'entering' : 'greeting')
+          setPhase(armResume() ? 'entering' : 'split')
         },
         Math.max(0, MIN_LOADING_MS - (performance.now() - t0)),
       )
@@ -544,7 +587,7 @@ export default function RecorridoPage() {
     const cap: number = window.setTimeout(() => {
       if (cancelled || settled) return
       settled = true
-      setPhase(armResume() ? 'entering' : 'greeting')
+      setPhase(armResume() ? 'entering' : 'split')
     }, MAX_LOADING_MS)
 
     return () => {
@@ -554,7 +597,10 @@ export default function RecorridoPage() {
   }, [armResume])
 
   useEffect(() => {
-    document.body.style.overflow = phase === 'ready' ? '' : 'hidden'
+    // Solo durante la carga: a partir del split el scroll hace falta para
+    // apartarlo, y bloquearlo durante el saludo dejaría a la persona clavada
+    // cuatro segundos justo después de haber scrolleado.
+    document.body.style.overflow = phase === 'loading' ? 'hidden' : ''
     return () => {
       document.body.style.overflow = ''
     }
@@ -571,7 +617,7 @@ export default function RecorridoPage() {
       setCompact(window.innerWidth <= 760)
       setCharHeight(world * CHAR_HEIGHT_VH)
       setPeekScale((window.innerHeight * PEEK_CELL_VH) / PEEK_CELL_PX)
-      setPageHeight(SCROLL_LENGTH + window.innerHeight)
+      setPageHeight(SCROLL_LENGTH + window.innerHeight + splitScroll())
     }
     fit()
     window.addEventListener('resize', fit)
@@ -641,6 +687,26 @@ export default function RecorridoPage() {
     [worldPx],
   )
 
+  /**
+   * Aparta la pantalla partida con el scroll, y suelta el saludo a un cuarto
+   * del recorrido: así el personaje ya está saludando por detrás cuando la
+   * entrada acaba de irse, en vez de empezar cuando ya no queda nada que ver.
+   */
+  useEffect(() => {
+    if (phase === 'loading' || splitGoneRef.current) return
+
+    const onScroll = () => {
+      const away = Math.min(1, window.scrollY / (splitScroll() * SPLIT_FADE))
+      setSplitAway(quantize(away, 40))
+      if (away > 0.25) setPhase((p) => (p === 'split' ? 'greeting' : p))
+      if (away >= 1) splitGoneRef.current = true
+    }
+
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [phase])
+
   // --- entrada al mundo ---
   useEffect(() => {
     if (phase !== 'entering') return
@@ -703,7 +769,7 @@ export default function RecorridoPage() {
     }
 
     const read = () => {
-      target = Math.min(1, Math.max(0, window.scrollY / SCROLL_LENGTH))
+      target = worldFromScroll(window.scrollY)
     }
 
     const block = BLOCK_PX_SOURCE * (worldPx / WORLD_UNIT)
@@ -774,6 +840,18 @@ export default function RecorridoPage() {
 
       // Tres marchas por velocidad de avance: correr, caminar, parado.
       const travelled = worldX - previous
+
+      // Vigilante de rendimiento. Solo mide con el mundo en marcha.
+      if (!lite && Math.abs(travelled) > 0.5) {
+        const sample = slowRef.current
+        sample.frames += 1
+        sample.total += dt * 1000
+        if (sample.frames >= LITE_SAMPLE) {
+          if (sample.total / sample.frames > LITE_MS) setLite(true)
+          sample.frames = 0
+          sample.total = 0
+        }
+      }
       worldDeltaRef.current = travelled
       const speed = dt > 0 ? Math.abs(travelled) / dt / block : 0
       previous = worldX
@@ -965,7 +1043,7 @@ export default function RecorridoPage() {
     if (resumeRef.current !== null) {
       target = resumeRef.current
       resumeRef.current = null
-      window.scrollTo({ top: target * SCROLL_LENGTH, behavior: 'auto' })
+      window.scrollTo({ top: scrollFromWorld(target), behavior: 'auto' })
     }
 
     current = target
@@ -976,7 +1054,7 @@ export default function RecorridoPage() {
       window.removeEventListener('scroll', onScroll)
       cancelAnimationFrame(raf)
     }
-  }, [phase, worldPx, half, writeFrame, placeWorld])
+  }, [phase, worldPx, half, lite, writeFrame, placeWorld])
 
 
   // Los bytes de todas las capas, en segundo plano y sin descomprimir. Cuando
@@ -1012,7 +1090,7 @@ export default function RecorridoPage() {
 
   const jumpTo = useCallback((at: number, id: string) => {
     snapRef.current = true
-    window.scrollTo({ top: at * SCROLL_LENGTH, behavior: 'auto' })
+    window.scrollTo({ top: scrollFromWorld(at), behavior: 'auto' })
     window.history.replaceState(null, '', `#${id}`)
     setActive(id)
   }, [])
@@ -1118,6 +1196,7 @@ export default function RecorridoPage() {
   return (
     <main
       ref={rootRef}
+      data-lite={lite ? 'true' : undefined}
       className={styles.page}
       style={
         {
@@ -1131,6 +1210,7 @@ export default function RecorridoPage() {
           '--sky-top': sky.top,
           '--sky-mid': sky.mid,
           '--sky-bottom': sky.bottom,
+          '--night': night,
         } as React.CSSProperties
       }
     >
@@ -1169,7 +1249,7 @@ export default function RecorridoPage() {
                 speed={LAYER_SPEED[kind]}
                 viewport={viewW}
                 {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED[kind])}
-                half={half}
+                half={half || lite}
                 extend={s.biome === 'b5' ? 2 : 0}
                 anchor={
                   s.biome === 'b5'
@@ -1198,6 +1278,9 @@ export default function RecorridoPage() {
           </Fragment>
         ))}
 
+        {/* La noche del modo ligero. Va sobre el mundo y bajo el personaje. */}
+        <div className={styles.nightVeil} aria-hidden="true" />
+
         {phase === 'entering' || phase === 'ready' ? (
           <div
             ref={actorRef}
@@ -1224,7 +1307,7 @@ export default function RecorridoPage() {
               speed={LAYER_SPEED.ground}
               viewport={viewW}
               {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
-              half={half}
+              half={half || lite}
               extend={s.biome === 'b5' ? 2 : 0}
               anchor={s.biome === 'b5' ? cliffAnchor : undefined}
             />
@@ -1267,7 +1350,7 @@ export default function RecorridoPage() {
           )}
         </div>
 
-        <Weather stateRef={weatherRef} worldDeltaRef={worldDeltaRef} />
+        {lite ? null : <Weather stateRef={weatherRef} worldDeltaRef={worldDeltaRef} />}
 
         {phase === 'greeting' ? (
           <div className={styles.greeter}>
@@ -1356,6 +1439,8 @@ export default function RecorridoPage() {
           <span className={styles.loaderHint}>Generando terreno</span>
         </div>
       </div>
+
+      <Splash away={splitAway} />
 
       <EnderPearl shot={shot} />
     </main>

@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
-
 import { RECIPES, TECH_KIND } from '@/content/portfolio'
 
+import Panel from './Panel'
 import styles from './CraftingTable.module.css'
 
 interface CraftingTableProps {
@@ -12,100 +11,39 @@ interface CraftingTableProps {
 }
 
 /**
- * Mesa de crafteo: las tecnologías como ingredientes y lo que construyen como
- * resultado.
+ * Skills como recetas: qué combinación de tecnologías produce qué, y en qué
+ * proyectos se usó.
  *
- * Sale de los stacks reales de los proyectos. Una lista plana de iconos no
- * dice nada; una receta cuenta qué combina con qué y para qué sirve.
+ * Sale de los stacks reales. Una lista plana de logos no dice nada; una receta
+ * cuenta con qué se combina cada cosa y para qué sirvió.
  *
- * Se navega con ratón y teclado, nunca con scroll: el scroll mueve el mundo.
+ * Las cinco se ven a la vez. Antes iban de una en una en una rejilla 3×3 y
+ * había que pasar cuatro veces para verlas todas — con el cajón lateral hay
+ * sitio de sobra y ese clic no compraba nada.
  */
 export default function CraftingTable({ openness }: CraftingTableProps) {
-  const [index, setIndex] = useState(0)
-  const [hovered, setHovered] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (openness < 0.15) {
-      setIndex(0)
-      setHovered(null)
-    }
-  }, [openness])
-
-  if (openness <= 0.01) return null
-
-  const recipe = RECIPES[index]
-  const style: CSSProperties = {
-    opacity: openness,
-    scale: `${0.94 + openness * 0.06}`,
-    pointerEvents: openness > 0.9 ? 'auto' : 'none',
-  }
-
-    // Hasta que no está abierto del todo no se puede usar con el ratón
-    // (`pointerEvents: none`), pero sus botones seguían en el orden de
-    // tabulación desde el 2% de apertura: con teclado se entraba en un panel
-    // fantasma. `inert` lo saca del tab y del árbol de accesibilidad.
   return (
-    <div
-      className={styles.panel}
-      style={style}
-      role="region"
-      aria-label="Skills"
-      inert={openness <= 0.9}
-    >
-      <span className={styles.title}>Mesa de crafteo · Skills</span>
+    <Panel eyebrow="Mesa de crafteo" title="Skills" openness={openness}>
+      <ul className={styles.recipes}>
+        {RECIPES.map((recipe) => {
+          const tech = recipe.grid.filter((cell): cell is string => cell !== null)
+          return (
+            <li key={recipe.id} className={styles.recipe}>
+              <h3 className={styles.result}>{recipe.result}</h3>
 
-      <div className={styles.bench}>
-        <div className={styles.grid}>
-          {recipe.grid.map((tech, slot) => (
-            <button
-              key={slot}
-              type="button"
-              className={`${styles.slot} ${tech ? styles.filled : ''}`}
-              disabled={!tech}
-              aria-label={tech ?? 'Hueco vacío'}
-              onMouseEnter={() => setHovered(slot)}
-              onMouseLeave={() => setHovered((c) => (c === slot ? null : c))}
-              onFocus={() => setHovered(slot)}
-              onBlur={() => setHovered((c) => (c === slot ? null : c))}
-            >
-              {tech ? (
-                <span className={`${styles.item} ${styles[TECH_KIND[tech] ?? 'infra']}`}>
-                  {tech}
-                </span>
-              ) : null}
-              {tech && hovered === slot ? <span className={styles.tooltip}>{tech}</span> : null}
-            </button>
-          ))}
-        </div>
+              <ul className={styles.tech}>
+                {tech.map((name) => (
+                  <li key={name} className={`${styles.item} ${styles[TECH_KIND[name] ?? 'infra']}`}>
+                    {name}
+                  </li>
+                ))}
+              </ul>
 
-        <span className={styles.arrow} aria-hidden="true">
-          ▶
-        </span>
-
-        <div className={styles.result}>
-          <span className={styles.resultItem}>{recipe.result}</span>
-        </div>
-      </div>
-
-      <div className={styles.footer}>
-        <span className={styles.note}>{recipe.note}</span>
-        <div className={styles.turns}>
-          <button
-            type="button"
-            className={styles.turn}
-            onClick={() => setIndex((i) => (i - 1 + RECIPES.length) % RECIPES.length)}
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            className={styles.turn}
-            onClick={() => setIndex((i) => (i + 1) % RECIPES.length)}
-          >
-            ›
-          </button>
-        </div>
-      </div>
-    </div>
+              <p className={styles.note}>{recipe.note}</p>
+            </li>
+          )
+        })}
+      </ul>
+    </Panel>
   )
 }

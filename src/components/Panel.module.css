@@ -1,0 +1,110 @@
+/*
+ * Cajón lateral: el contenido a la derecha, el mundo oscurecido detrás.
+ *
+ * Va a la derecha porque el personaje camina al 20% del ancho. Los paneles
+ * centrados de antes lo tapaban justo al llegar a la sección, que es cuando
+ * más apetece verlo. Aquí sigue caminando a la vista mientras lees.
+ */
+.wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
+/* En degradado, no con borde recto: un corte vertical duro sobre el terreno
+   canta como una barra: difuminado se lee como profundidad de campo. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgb(6 9 12 / 0) 0%,
+    rgb(6 9 12 / 0.12) 34%,
+    rgb(6 9 12 / 0.5) 54%,
+    rgb(6 9 12 / 0.74) 76%,
+    rgb(6 9 12 / 0.8) 100%
+  );
+}
+
+.drawer {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(42%, 620px);
+  /* El hueco de arriba libra la barra de navegación, que va por encima. */
+  padding: clamp(84px, 9vh, 116px) clamp(24px, 3vw, 46px) clamp(28px, 4vh, 48px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vh, 22px);
+  overflow-y: auto;
+  /* Si el contenido cabe no hay scroll, y el scroll sigue siendo del mundo.
+     Si no cabe, al menos se alcanza sin arrastrar la página por debajo. */
+  overscroll-behavior: contain;
+  color: #eef2f0;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #93a89c;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-wrap: balance;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 0.5);
+}
+
+.rule {
+  height: 1px;
+  background: rgb(238 242 240 / 0.16);
+}
+
+/* El ancho de lectura manda sobre el del cajón.
+ *
+ * `flex: 1` es lo que fija los controles abajo: sin altura propia, un
+ * `margin-top: auto` dentro no tiene espacio que repartir y el paginador
+ * quedaba pegado al texto, subiendo y bajando según lo largo que fuera cada
+ * proyecto. `min-height: 0` deja que encoja si el contenido se pasa, en vez de
+ * desbordar el cajón. */
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: clamp(12px, 2vh, 18px);
+  max-width: 56ch;
+}
+
+/* En estrecho un cajón lateral es ilegible: pasa a hoja inferior. */
+@media (max-width: 760px) {
+  .scrim {
+    background: linear-gradient(
+      180deg,
+      rgb(6 9 12 / 0) 0%,
+      rgb(6 9 12 / 0.2) 26%,
+      rgb(6 9 12 / 0.72) 50%,
+      rgb(6 9 12 / 0.82) 100%
+    );
+  }
+
+  .drawer {
+    inset: auto 0 0 0;
+    width: auto;
+    height: 72%;
+    padding: clamp(20px, 4vh, 28px) 20px clamp(22px, 4vh, 30px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    transition: none;
+  }
+}
