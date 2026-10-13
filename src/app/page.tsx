@@ -16,7 +16,6 @@ import CraftingTable from '@/components/CraftingTable'
 import Inventory from '@/components/Inventory'
 import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
-import Splash from '@/components/Splash'
 import type { WeatherState } from '@/components/Weather'
 import { BLOCK_PX_SOURCE, GROUND_BELOW, LAYER_HEIGHT, WORLD_UNIT } from '@/content/layers'
 import Weather, { type WeatherKind } from '@/components/Weather'
@@ -28,7 +27,7 @@ import SpriteGrid from '@/components/SpriteGrid'
 
 import styles from './recorrido.module.css'
 
-type Phase = 'loading' | 'split' | 'greeting' | 'entering' | 'ready'
+type Phase = 'loading' | 'greeting' | 'entering' | 'ready'
 
 const PRELOAD = [
   '/sprites/peek_wave.webp',
@@ -53,20 +52,11 @@ const PEEK = { cellWidth: 435, cellHeight: 600, columns: 8, rows: 4, frames: 32,
 const SCROLL_LENGTH = 7000
 
 /**
- * La pantalla partida de entrada ocupa el primer viewport de scroll. El mundo
- * empieza después, así que scrollear la aparta y sigue el recorrido — sin clic
- * ni carga de por medio.
- *
- * Las tres funciones de abajo son la ÚNICA correspondencia entre scroll y
- * mundo. Estaba repetida en seis sitios y añadir el desplazamiento a mano en
- * cada uno era pedir que alguno se quedara atrás.
+ * La ÚNICA correspondencia entre scroll y mundo. Estaba repetida en seis
+ * sitios; tenerla aquí es lo que permite moverla sin que alguno se quede atrás.
  */
-const splitScroll = () => (typeof window === 'undefined' ? 0 : window.innerHeight)
-const worldFromScroll = (y: number) =>
-  Math.min(1, Math.max(0, (y - splitScroll()) / SCROLL_LENGTH))
-const scrollFromWorld = (at: number) => splitScroll() + at * SCROLL_LENGTH
-/** Cuánto scroll basta para apartarla del todo. */
-const SPLIT_FADE = 0.8
+const worldFromScroll = (y: number) => Math.min(1, Math.max(0, y / SCROLL_LENGTH))
+const scrollFromWorld = (at: number) => at * SCROLL_LENGTH
 /** Píxeles de mundo que recorre la capa del suelo de punta a punta. */
 const WORLD_LENGTH = 12000
 /** El ancho de una tesela, en unidades de la caja del mundo. */
@@ -333,10 +323,6 @@ export default function RecorridoPage() {
   const [shot, setShot] = useState<PearlThrow | null>(null)
   const [hidden, setHidden] = useState(false)
   const [pageHeight, setPageHeight] = useState(SCROLL_LENGTH)
-  /** 0 = la pantalla partida está entera, 1 = apartada del todo. */
-  const [splitAway, setSplitAway] = useState(0)
-  /** Una vez apartada no vuelve: subir del todo no debería reponer la entrada. */
-  const splitGoneRef = useRef(false)
   const [chestOpen, setChestOpen] = useState(0)
   const [bookOpen, setBookOpen] = useState(0)
   const [signsOpen, setSignsOpen] = useState(0)
@@ -543,9 +529,6 @@ export default function RecorridoPage() {
     mountKeyRef.current = near.join(',')
     setMounted(near)
     setActive(SECTIONS[index].id)
-    // Quien vuelve no pasa por la entrada.
-    splitGoneRef.current = true
-    setSplitAway(1)
     window.history.replaceState(null, '', `#${SECTIONS[index].id}`)
     window.scrollTo({ top: scrollFromWorld(at), behavior: 'auto' })
     return true
@@ -570,7 +553,7 @@ export default function RecorridoPage() {
           window.clearTimeout(cap)
           // Quien vuelve ya te vio saludar. La entrada caminando y el reposo sí
           // se quedan: son lo que planta al personaje en el suelo.
-          setPhase(armResume() ? 'entering' : 'split')
+          setPhase(armResume() ? 'entering' : 'greeting')
         },
         Math.max(0, MIN_LOADING_MS - (performance.now() - t0)),
       )
@@ -587,7 +570,7 @@ export default function RecorridoPage() {
     const cap: number = window.setTimeout(() => {
       if (cancelled || settled) return
       settled = true
-      setPhase(armResume() ? 'entering' : 'split')
+      setPhase(armResume() ? 'entering' : 'greeting')
     }, MAX_LOADING_MS)
 
     return () => {
@@ -597,10 +580,7 @@ export default function RecorridoPage() {
   }, [armResume])
 
   useEffect(() => {
-    // Solo durante la carga: a partir del split el scroll hace falta para
-    // apartarlo, y bloquearlo durante el saludo dejaría a la persona clavada
-    // cuatro segundos justo después de haber scrolleado.
-    document.body.style.overflow = phase === 'loading' ? 'hidden' : ''
+    document.body.style.overflow = phase === 'ready' ? '' : 'hidden'
     return () => {
       document.body.style.overflow = ''
     }
@@ -617,7 +597,7 @@ export default function RecorridoPage() {
       setCompact(window.innerWidth <= 760)
       setCharHeight(world * CHAR_HEIGHT_VH)
       setPeekScale((window.innerHeight * PEEK_CELL_VH) / PEEK_CELL_PX)
-      setPageHeight(SCROLL_LENGTH + window.innerHeight + splitScroll())
+      setPageHeight(SCROLL_LENGTH + window.innerHeight)
     }
     fit()
     window.addEventListener('resize', fit)
@@ -686,26 +666,6 @@ export default function RecorridoPage() {
     },
     [worldPx],
   )
-
-  /**
-   * Aparta la pantalla partida con el scroll, y suelta el saludo a un cuarto
-   * del recorrido: así el personaje ya está saludando por detrás cuando la
-   * entrada acaba de irse, en vez de empezar cuando ya no queda nada que ver.
-   */
-  useEffect(() => {
-    if (phase === 'loading' || splitGoneRef.current) return
-
-    const onScroll = () => {
-      const away = Math.min(1, window.scrollY / (splitScroll() * SPLIT_FADE))
-      setSplitAway(quantize(away, 40))
-      if (away > 0.25) setPhase((p) => (p === 'split' ? 'greeting' : p))
-      if (away >= 1) splitGoneRef.current = true
-    }
-
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [phase])
 
   // --- entrada al mundo ---
   useEffect(() => {
@@ -1439,8 +1399,6 @@ export default function RecorridoPage() {
           <span className={styles.loaderHint}>Generando terreno</span>
         </div>
       </div>
-
-      <Splash away={splitAway} />
 
       <EnderPearl shot={shot} />
     </main>
