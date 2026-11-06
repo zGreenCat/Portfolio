@@ -63,9 +63,19 @@ LAYER_SPEED   = { far: 0.15, mid: 0.3, near: 0.55, ground: 1 }
 ### Capas y biomas
 
 Cada bioma (`b1`…`b5`) tiene hasta cuatro capas en `public/layers/`. Se montan
-solo los biomas dentro de `MOUNT_RADIUS`: una capa de 3840×1440 ocupa ~21 MB
-descomprimida y cinco biomas a la vez matan un móvil. Por debajo de
-`HALF_RES_WIDTH` (900 px) se usan las variantes `@half`.
+solo los biomas dentro de `MOUNT_RADIUS`: una capa ocupa decenas de MB
+descomprimida y cinco a la vez matan un móvil. Por debajo de `HALF_RES_WIDTH`
+(900 px) se usan las variantes `@half`.
+
+**Las capas no se copian a mano.** Se renderizan todas al mismo lienzo de
+3840×3000 y `scripts/import-layers.py` las recorta, codifica y genera
+`src/content/layers.ts` con el alto de cada una y las constantes de escala
+(`BLOCK_PX_SOURCE`, `GROUND_BELOW`, `WORLD_UNIT`). **Ese archivo se genera: no
+editarlo a mano.** El porqué de cada recorte está en `ASSETS.md`.
+
+Cada capa conserva su propio alto y va anclada abajo, así que la de los árboles
+sobresale por encima de la caja del mundo en vez de quedar aplastada dentro. Eso
+es lo que arregló el recorte de copas en móvil vertical.
 
 **Los biomas se recortan a su territorio, no se funden.** Fundir por opacidad
 mostraba dos terrenos a la vez —cactus sobre cerezos— y además dejaba pasar el
@@ -106,6 +116,25 @@ Reglas al tocar el bucle:
 
 En reposo el ciclo lo lleva el CSS (`data-driven` ausente → animación activa).
 El bucle **no** debe escribir el frame en `idle`.
+
+### Sentarse: lo único que no es una posición
+
+Al llegar al acantilado el personaje se sienta, y ese gesto **va por tiempo, no
+por scroll**: `SIT_AT`, `SIT_RELEASE`, `SIT_SECONDS`. Es la excepción
+deliberada a la regla de arriba — sentarse es algo que se hace al llegar, no una
+consecuencia de dónde está la rueda.
+
+Tres cosas que costaron y conviene no deshacer:
+
+- **Las condiciones son asimétricas.** Sentarse mira `current` (haber llegado);
+  levantarse mira `target` (haberte ido). Con el mundo congelado `current` deja
+  de moverse, así que mirarlo para decidir levantarse dejaría al personaje
+  sentado para siempre. Y el orden importa: la condición de levantarse se
+  evalúa primero.
+- **El mundo se congela mientras dura el gesto** (`sitLockRef`), y también
+  mientras sigue sentado. Es además el freno del scroll en el borde.
+- **Al soltar, la recuperación va acotada** a `CATCH_UP_BLOCKS`. Sin tope, el
+  primer frame cierra cientos de píxeles de golpe y el personaje sale disparado.
 
 ### Precarga en dos tiempos
 
@@ -161,6 +190,49 @@ Y respira: dos senos de periodo inconmensurable multiplican la fuerza, así que
 en las calmas asoma el templo del fondo. El multiplicador afecta a partículas,
 velo y visibilidad a la vez; si solo pulsara una de las tres se notaría.
 
+### Los paneles: un cajón lateral
+
+`Panel.tsx` es la carcasa común de los tres —libro, inventario y mesa de
+crafteo—: posición, velo, entrada, apertura y el bloqueo de foco. Cada
+componente se queda solo con su contenido.
+
+Va **a la derecha** porque el personaje camina al 20% del ancho: los paneles
+centrados de antes lo tapaban justo al llegar a la sección, que es cuando más
+apetece verlo. El velo sobre el mundo va en degradado, no con borde recto.
+
+El marco es sobrio a propósito. Lo que conserva la identidad del juego es lo que
+va **dentro** —las ranuras de inventario, el marco del retrato—, no la caja de
+piedra biselada que lo envolvía. Los botones y la paginación van limpios: son
+navegación, no la metáfora.
+
+**Reglas de maquetación dentro del cajón:**
+
+- `.body` lleva `flex: 1` y `min-height: 0`. Sin altura propia, un
+  `margin-top: auto` dentro no tiene espacio que repartir.
+- Los bloques de alto variable llevan `min-height` reservado para el peor caso
+  —descripción, etiquetas y el hueco del enlace—, porque **tres de los siete
+  proyectos no tienen URL** y sin reservarlo el paginador saltaba una línea.
+- `Book` pagina por **tandas de párrafos** (`perPage`), no uno por página: el
+  contenido se queda en párrafos semánticos porque `/simple` los quiere sueltos.
+
+Los proyectos son un carrusel con una captura por diapositiva
+(`public/projects/<id>.webp`, carga diferida). Si falta una, la diapositiva se
+queda en texto sin dejar un hueco roto.
+
+### Modo ligero
+
+Se enciende solo: si el recorrido baja de 30 fps durante 120 frames **con el
+mundo en marcha**, `data-lite` entra en la raíz y apaga los `filter` de las
+capas, fuerza media resolución y quita el clima.
+
+El caso que lo motiva es la aceleración por hardware desactivada. Con GPU el
+filtro se aplica una vez sobre una textura y moverla sale gratis; sin ella el
+navegador repinta ~43 Mpx filtrados en cada frame sobre la CPU.
+
+No se pregunta al navegador si la GPU está activa —no hay forma fiable— y solo
+cuentan los frames en los que el mundo se mueve: parado, un frame lento no
+significa nada. La noche no se pierde: pasa a un velo del tamaño de la pantalla.
+
 ## Contenido
 
 `src/content/portfolio.ts`: `ABOUT_PAGES`, `PROJECTS`, `CONTACT`, `RECIPES`
@@ -169,6 +241,15 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 
 ## Trampas reales
 
+- **`src/content/layers.ts` está generado.** Lo escribe
+  `scripts/import-layers.py`; editarlo a mano se pierde en la siguiente
+  importación.
+- **El mapeo scroll↔mundo vive en `worldFromScroll` / `scrollFromWorld`.**
+  Estuvo repetido en seis sitios y moverlo sin unificarlo dejó alguno atrás.
+- **La entrada partida se quitó, no se perdió.** Foto y skin a pantalla
+  completa, apartándose con scroll. Se revirtió en `402cd9b` porque se desplegó
+  con marcadores grises; el trabajo está en `470cc76` y vuelve con
+  `git revert 402cd9b` en cuanto existan la foto y el render.
 - **No reintroducir Lenis ni GSAP.** Se quitaron a propósito. El mundo ya suaviza
   el scroll con su propio `current += (target - current) * 0.12`, y montar Lenis
   encima hace que dos suavizados se peleen. GSAP son timelines, y aquí el scroll

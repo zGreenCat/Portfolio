@@ -4,6 +4,7 @@ Producción de assets del portfolio. Todo lo de aquí se hace fuera del código:
 mientras no exista, el desarrollo avanza con marcadores de posición.
 
 Cómo funciona el sitio: **[README.md](./README.md)**.
+La arquitectura por dentro: **[CLAUDE.md](./CLAUDE.md)**.
 
 ---
 
@@ -21,6 +22,7 @@ para escalar y colocar cada hoja.
 | `walk` | 25 | tira | 91 KB | 399 | 526 | 242 |
 | `idle` | 16 | tira | 45 KB | 404 | 548 | 232 |
 | `throw` | 19 | tira | 86 KB | 400 | 523 | 190 |
+| `sit` | 31 | tira | 207 KB | 411 | 556 | 232 |
 
 - `charHeight` — alto del personaje dentro de la celda de 600
 - `footY` — fila del pie de apoyo, **mediana del ciclo**, no el frame más bajo
@@ -34,26 +36,77 @@ desaparece el reescalado y ganan nitidez.
 `throw` suelta la perla en el **frame 15**, con la mano en (362, 240) de la
 celda. Eso está en `THROW_RELEASE` y de ahí sale el punto de salida de la perla.
 
+**El frame 1 de `sit` es el personaje DE PIE**, y es lo que permite alinear la
+hoja: su `centerX` sale 232, idéntico al de `idle`. Sin ese frame habría que
+estimar cuánto se desplaza el cuerpo al sentarse, que es justo lo que cambia.
+Repetir el truco en cualquier hoja futura ahorra varias vueltas.
+
 ### Capas de mundo
 
-| Bioma | | ground | near | mid | far | superficie |
-|---|---|---|---|---|---|---|
-| b1 | bosque | ✅ | ✅ | ✅ | ✅ | y=1278 |
-| b2 | taiga | ✅ | ✅ | ✅ | ✅ | y=1267 |
-| b3 | desierto | ✅ | ✅ | ✅ | ✅ | y=1278 |
-| b4 | cerezos | ✅ | ✅ | ✅ | ⚠️ relleno | y=1278 |
-| b5 | acantilado | ✅ | — | — | ✅ | y=1241 |
+Se renderizan **todas al mismo lienzo, 3840×3000**, y el código las recorta. Ver
+*Tubería de importación* más abajo.
 
-Todas 3840×1440, PNG con alfa, sin cielo. **5,5 MB en total** ya en WebP.
+| Bioma | | capas | superficie | alto tras recortar | MB descomp. |
+|---|---|---|---|---|---|
+| b1 | bosque | far mid near ground | 2791 | 2091 · 1562 · 1066 · 1014 | 88 |
+| b2 | taiga | far mid near ground | 2811 | 2020 · 2002 · 1598 · 945 | 101 |
+| b3 | desierto | far mid near ground | 2842 | 1729 · 1037 · 666 · 548 | 61 |
+| b4 | cerezos | far mid near ground | 2842 | 1719 · 1570 · 1690 · 1587 | 101 |
+| b5 | acantilado | far ground | 2837 | 1100 · 1587 | 41 |
 
-`surfaceY` es la fila donde está el suelo que se pisa, y **no tiene que ser la
-misma en todos**: la taiga lleva nieve encima de la hierba y el acantilado está
-más alto. El personaje sube y baja con el terreno durante el fundido.
+18 capas más sus 18 variantes a media resolución: **10 MB en WebP**. La columna
+de MB es lo que ocupan descomprimidas, que es el límite real en móvil — no el
+peso del archivo.
 
-`b5` es un caso aparte: no se tesela —repetir un acantilado daría un cantil
-detrás de otro— y no lleva capas intermedias porque ahí ya no hay recorrido.
-El `far` de `b3` tampoco se tesela: es un templo, y los edificios no se repiten
-cada 300 metros.
+`b5` no se tesela: repetir un acantilado daría un cantil detrás de otro. Va
+anclado con `CLIFF_EDGE = 2371/3840`, la última columna con suelo. El `far` de
+`b3` tampoco: es un templo, y los edificios no se repiten cada 300 metros.
+
+**`b5_far` está desfasado.** Se renderizó antes de que bajaras el terreno de
+`b5`, así que su escena tiene el suelo 79 px más arriba. La importación lo
+compensa recortándolo por su propia línea en vez de por la del bioma, con un
+`QUITAR EN CUANTO SE RE-RENDERICE` marcado en el script.
+
+### Tubería de importación
+
+`scripts/import-layers.py` recorta, codifica y genera el manifiesto. Se ejecuta
+cada vez que llegan renders nuevos:
+
+```bash
+python3 scripts/import-layers.py
+```
+
+Qué hace, y por qué:
+
+- **Recorta el vacío por arriba**, hasta donde empieza el contenido. Una capa
+  sin árboles no arrastra el cielo que había sobre ellos: `b3_ground` pasó de
+  3000 px a 548.
+- **Recorta por abajo a 151 px bajo la superficie del bioma**, la misma
+  distancia en todos. Por eso el personaje queda siempre a la misma altura y
+  cruzar de bioma no da un escalón, aunque cada escena se construyera a una
+  altura distinta.
+- **Mide la superficie** buscando la fila donde la cobertura opaca salta al 98%.
+  No vale buscar el primer píxel opaco por columna: la hierba alta crece pegada
+  al suelo y el barrido se para en la punta de la brizna, no en la tierra. Ese
+  error me hizo creer dos veces que `b5` no era plano.
+- **Escribe `src/content/layers.ts`** con el alto de cada capa y las constantes.
+  Ese archivo se genera: no editarlo a mano.
+
+```
+BLOCK_PX_SOURCE  133    px por bloque, medido por autocorrelación del suelo
+GROUND_BELOW     151    px conservados bajo la superficie
+WORLD_UNIT      1339    px de render que ocupa la caja del mundo en pantalla
+```
+
+`WORLD_UNIT` sale de conservar el encuadre original: la caja medía 1440 px de un
+render a 143 px/bloque, o sea 10,07 bloques. A 133 px/bloque son 1339. Sin eso,
+mapear los 3000 px del render a la misma caja dejaría el mundo a menos de la
+mitad de tamaño.
+
+**Cómo verificar una escala:** autocorrelación horizontal de una banda bajo la
+superficie. Una serie limpia de armónicos (133·265·398·531) es la rejilla; un
+pico suelto suele ser un patrón decorativo. Así se detectó que `b4` venía a 195
+px/bloque, un 47% más grande que el resto.
 
 ### Otros
 
@@ -65,104 +118,91 @@ cada 300 metros.
 
 ## Pendientes
 
-### 1 · `sit.png` — cierra el recorrido
+### 1 · `sit` — el gesto hay que rehacerlo
 
-Sentado en el borde del acantilado, mirando al horizonte. **Un solo frame fijo
-basta para empezar**: a ese tamaño y con el cielo nocturno detrás, un balanceo
-mínimo en CSS lo sostiene. Solo animarlo si se echa de menos.
+La hoja está montada y alineada, pero **el cuerpo rota como un bloque**: cabeza,
+torso y piernas giran a la vez alrededor de un punto, y acaba a 45° con las
+piernas hacia arriba. Lee como caerse de espaldas, no como sentarse.
 
-Sin esto el final es el personaje de pie, que no cierra nada.
+Sentarse es casi lo contrario — casi nada rota en bloque:
 
-### 2 · El cierre de ciclo de `run`
+| Parte | Qué hace |
+|---|---|
+| Pelvis | Baja **en vertical** hasta el asiento y se para. No rota |
+| Muslos | Rotan ~90° en la cadera, hacia delante |
+| Rodillas | Se doblan; las espinillas cuelgan |
+| Torso | Casi vertical, como mucho 10-15° atrás |
+| Cabeza | Nivelada, mirando al horizonte |
 
-`run2` está puesto temporalmente en el sitio de `run`. Tiene mejor pose, pero
-**el empalme salta un 60% más que sus vecinos** (36,4 contra una media de 28,6),
-así que da un enganchón por ciclo.
+Dos cosas más: **en los frames 6-16 se le ven los dos ojos** —se gira a cámara,
+y eso rompe el perfil puro—, y **los últimos frames no frenan**, así que la pose
+final se corta a media inercia en vez de asentarse.
 
-No es que repita un frame: es que se salta un trozo. Probar a exportar 17 y
-quedarse con los 16 primeros, que es distinto a que el 17 repita al 1.
+Lo que sí hay que conservar: el **frame 1 de pie**, que es lo que alinea la hoja.
 
-El `run` anterior de 14 frames cerraba bien y está en el historial.
-
-### 3 · `b4_far` — el fondo de los cerezos
-
-Ahora mismo es la `far` de `b1` teñida. Se sostiene de lejos pero conserva la
-silueta de las montañas del bosque.
-
-### 4 · Calidad de `peek_wave`
-
-Dos problemas que los ajustes no tapan: la celda mide 600 px y **se muestra a
-842 en una pantalla de 1080**, o sea que se amplía un 40%; y a 18 fps un gesto
-en primer plano sigue viéndose algo escalonado.
-
-Más frames y celda más grande a la vez se va a 25-30 megapíxeles, que son 100+
-MB de memoria descomprimida. **Para este plano lo correcto es un vídeo, no una
-hoja**: se reproduce una sola vez y no se rebobina con scroll, que era la única
-razón para usar sprites.
-
-Si se rehace: frames a 30 fps, celda ~650×900, y la codificación la hace el
-código (WebM con alfa para Chrome y Firefox, HEVC para Safari).
-
-### 5 · Separar `mid` de `near` — la niebla
-
-Medido: la saturación media de cada capa tal como están hoy.
+### 2 · `peek_wave` — decisión pendiente
 
 ```
-        far    mid    near   ground
-b1     0.07   0.50   0.49   0.54
-b2     0.17   0.39   0.29   0.28
-b3     0.27   0.34   0.34   0.37
-b4     0.13   0.40   0.39   0.35
+viewport 1080  →  celda de 600 px mostrada a  842  = 1.40×
+viewport 1440  →                        a 1123  = 1.87×
 ```
 
-**Las `far` sí traen niebla**, en los cuatro biomas — una versión anterior de
-este documento decía lo contrario y era falso. Lo que falta es separación entre
-`mid` y `near`: salen prácticamente idénticas, así que las dos capas centrales
-se leen a la misma distancia y el parallax no cuenta profundidad.
+Es lo primero que se ve y se amplía casi al doble en pantallas grandes. Pero
+re-renderizarla al doble son 6960×4800 = 134 MB descomprimidos, y está en la
+precarga que bloquea la pantalla de carga.
 
-Se resuelve con **niebla por distancia en la escena**, no tintando capas a mano:
-con el truco de las pasadas, cada una recibe sola la que le toca por profundidad.
-Color `#b3d5ec`, que es el horizonte del cielo CSS a mediodía.
+Tres salidas: bajar `PEEK_CELL_VH` y mostrarla a 1:1 —el saludo se ve más
+pequeño—, renderizar a 1,5× y comer 75 MB, o pasarla a vídeo con alfa.
 
-Mientras tanto el CSS lo finge con un filtro por capa (`saturate(0.35)` en `far`,
-`0.62` en `mid`…). **Ese parche hay que bajarlo cuando los renders traigan niebla
-real**, o se suman y las capas centrales quedan lavadas.
+### 3 · `b5_far` — desfasado
+
+Ver *Capas de mundo*. Va compensado en la importación; el parche se quita
+cuando se re-renderice.
+
+### 4 · Captura de Postea
+
+Único proyecto sin imagen en el carrusel. Su diapositiva muestra «producto
+interno · sin demo pública», que es cierto —es un SaaS de Shinsekai— así que no
+corre prisa.
+
+### 5 · La niebla nunca salió
+
+Saturación relativa al suelo, medida sobre los renders actuales:
+
+```
+        far    mid   near      objetivo ~0.25 / 0.50 / 0.75
+b1     0.73   0.97   0.80
+b2     0.97   1.08   0.83
+b3     0.78   0.78   0.91
+b4     1.00   1.14   0.99
+```
+
+`mid` sale igual o más saturada que el suelo en tres de los cuatro, lo cual es
+imposible con profundidad real. **Importa menos de lo que parece**: la niebla la
+pone el CSS y solo en nieve y desierto, por decisión tomada. Solo volvería a
+importar si algún día se quiere recuperar la sensación de fondo lejano que daba
+el render original.
+
+En proyección ortográfica una colina lejana se dibuja **del mismo tamaño** que
+una cercana. Lo único que las separa es la niebla. Por eso una `far` sin niebla
+no se lee como fondo: se lee como un muro.
 
 ### 6 · `layer_front` — opcional
 
-Dos o tres árboles del plano más cercano, dibujados **encima** del personaje.
-Ahora `ground` lleva los árboles incrustados, así que el personaje solo puede ir
-delante de todo o detrás de todo: nunca pasa por detrás de un tronco.
+Una capa por delante del personaje, para que pase por detrás de un tronco.
+Nunca ha hecho falta.
 
----
+### Cerrados
 
-### 7 · `b5` — la franja de paso no es plana
-
-Medido sobre `b5_ground.webp`, el suelo bajo los pies a lo largo del tramo:
-
-```
-worldAt   0.86   0.89   0.92   0.95   0.98   0.99   1.00
-suelo     1176   1193   1107   1231   1245   1295   1301
-                                              ↑ el acantilado
-```
-
-194 px de diferencia entre el punto más alto y el más bajo. `surfaceY` es **un
-solo número por bioma**, así que con el 1241 declarado el personaje flota al
-llegar al acantilado y se hunde en los baches del tramo de aproximación.
-
-Al re-renderizar: **la banda por la que camina tiene que quedar a una sola
-altura** de punta a punta, como en `b1` y `b3` (ahí la moda cubre 180 y 628
-columnas respectivamente, o sea que son planos de verdad). El relieve puede
-seguir existiendo a los lados y al fondo; lo que no puede es estar bajo los pies.
-
-Cuando esté plano, `surfaceY` pasa a ser la fila de esa banda y el problema
-desaparece sin tocar código.
-
-### 8 · `b5` — posible agujero en el suelo
-
-Hacia `worldAt` 0.85 y 0.90, la capa de suelo **no tiene ningún píxel opaco en
-la fila inferior**. O es el vacío bajo el acantilado entrando en cuadro antes de
-tiempo, o es un hueco en el render. Conviene mirarlo con la escena abierta.
+- **`b4_far` ya es propio.** Era la `far` de `b1` teñida; ahora difieren en 47
+  de media.
+- **La banda de paso de `b5` es plana.** La cobertura salta al 99% en una sola
+  fila. Lo medí mal dos veces por culpa de la hierba alta.
+- **`b5` no tiene agujeros.** Cero columnas sin suelo dentro del terreno.
+- **El empalme de `run` está bien.** Salta 9,46 contra una media de 7,39, y
+  **no es el mayor salto de su propio ciclo** —el paso 3→4 salta 10,89—. Quitar
+  cualquier frame lo empeora. El documento decía «60% más» y era falso.
+- **Árboles cortados.** Ninguna capa toca la fila 0.
 
 ## Reglas de producción
 
@@ -214,7 +254,19 @@ proyección    ortográfica  (Mine-imator: FOV 7 + cámara muy alejada)
 giro          lateral 90°
 rotación X    0            ← perfil puro, sin inclinar
 cámara Y      13
+lienzo        3840 × 3000  ← igual para TODOS los biomas
+1 bloque      133 px
 ```
+
+**El lienzo es el mismo para los cinco.** Al cambiar su alto se mueven los px
+por bloque, así que si cada bioma fuera a una altura distinta habría que
+recalibrar la cámara en cada uno. Que sobre aire no cuesta nada: la importación
+recorta lo que no se usa.
+
+Los 3000 px salen del árbol más alto del mundo, una pícea de `b2` de 15,3
+bloques, más margen. Si alguna vez entra algo más alto, hay que subirlo — y
+entonces **recalibrar la cámara una vez** hasta que un bloque vuelva a medir
+133 px.
 
 **El ángulo tiene que coincidir en todo. El zoom no.** Con proyección
 ortográfica acercarse no deforma, solo escala: las hojas de personaje se
@@ -239,11 +291,23 @@ costó varias vueltas.
 
 ### Encuadre
 
-12-13 bloques de alto. Chequeo: **el personaje ocupa ~1/7 del alto del cuadro**.
+El lienzo captura ~22 bloques de alto; en pantalla se ven **10,07**, que es el
+encuadre original y lo que fija `WORLD_UNIT`. El resto sobresale por arriba: ahí
+es donde caben las copas, y por eso en vertical ya no se cortan.
 
-El suelo por donde camina, **plano**, y a la misma altura de mundo en todos los
-biomas salvo que haya un motivo (nieve, acantilado), en cuyo caso se apunta su
-`surfaceY` y el código lo compensa.
+El suelo por donde camina, **plano**. Ya no hace falta que esté a la misma
+altura entre biomas —la importación lo normaliza recortando a una distancia fija
+bajo cada superficie— pero sí tiene que ser plano **dentro** de cada uno:
+`surfaceY` es un solo número por bioma.
+
+### Verificación antes de renderizar los 18
+
+Incluye la pasada `ref` —solo el personaje, donde va a estar—. **Mido su altura
+y la comparo con las hojas**: si coincide, la cámara está calibrada y todo casa.
+La última vez dio 271 px, y de ahí salen `CHAR_HEIGHT_VH` y `FEET_BELOW_SURFACE`.
+
+Y renderiza **un bioma completo primero**. Descubrir que el sol estaba girado, o
+que el zoom se movió, después de catorce capas es repetirlo todo.
 
 ---
 
