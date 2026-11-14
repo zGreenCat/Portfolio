@@ -233,6 +233,24 @@ No se pregunta al navegador si la GPU está activa —no hay forma fiable— y s
 cuentan los frames en los que el mundo se mueve: parado, un frame lento no
 significa nada. La noche no se pierde: pasa a un velo del tamaño de la pantalla.
 
+### Sprites por script (`scripts/render/`)
+
+`sit` no sale de Mine-imator: `gen_sit.py` escribe las poses y `rig.py` las
+renderiza con Blender sin ventana. El comando completo está en `ASSETS.md`,
+en *Herramientas*.
+
+- **Positivo es siempre hacia delante**: un brazo avanza, el torso se inclina,
+  la cabeza mira abajo. Las extremidades cuelgan de su pivote y el torso y la
+  cabeza se apoyan en el suyo, así que la misma inclinación es la rotación
+  contraria; `rig.py` lo resuelve en un solo sitio. Estuvo invertido y el
+  personaje acababa mirando al suelo.
+- **El asiento va adelantado**. El mundo se congela en `SIT_AT = 0.998`, no en
+  1, así que el borde del cantil queda unas 5 unidades de skin por delante del
+  personaje. Sentado sobre su propio eje, las espinillas colgaban sobre la
+  tierra en vez de fuera.
+- **El frame 1 sigue de pie y de perfil**, que es lo que alinea la hoja contra
+  `idle`. La cabeza gira hacia la pantalla a mitad del gesto; el cuerpo no.
+
 ## Contenido
 
 `src/content/portfolio.ts`: `ABOUT_PAGES`, `PROJECTS`, `CONTACT`, `RECIPES`
@@ -262,6 +280,46 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 - **Los paneles se navegan con ratón y teclado, nunca con scroll.** El scroll
   pertenece al mundo.
 - Todo lo visible en `public/` se sirve abierto, CV incluido.
+
+## Abierto: ideas sin decidir
+
+Nada de esto está empezado. Queda escrito para que no se pierda entre sesiones.
+
+### Easter egg: blackjack en el templo
+
+Los templos del desierto del juego tienen una cámara secreta con un cofre. El
+`far` de `b3` ya lleva el templo anclado, así que hay dónde colgarlo: clic en el
+templo → cámara oculta → el personaje de dealer reparte.
+
+La lógica de blackjack son ~150 líneas. El trabajo real son las cartas —en CSS,
+no 52 imágenes— y el reparto. Haría falta un render del personaje con skin de
+crupier.
+
+**El contraargumento, que vale la pena recordar:** un blackjack demuestra menos
+que el mundo que ya existe. Lo que sí aporta es que se note que alguien se lo
+pasó bien construyendo esto.
+
+### Dominio propio
+
+El sitio está en Vercel y se redespliega solo con cada push a `main`. **Nunca se
+configuró un dominio.** Se habló de NIC Chile y del GitHub Student Pack, sin
+decidir nada.
+
+### Entrada partida
+
+Construida y revertida. Ver *Trampas reales*. Vuelve con un `git revert` en
+cuanto existan la foto y el render de cuerpo entero.
+
+### Lo que bloquea de verdad
+
+Por orden de lo que más se nota:
+
+1. **`peek_wave`** — es lo primero que se ve y se amplía casi al doble
+2. **`b5_far`** — compensado en la importación, con el parche marcado
+
+Los dos están detallados en `ASSETS.md`. `sit` ya no bloquea: se rehízo con
+`scripts/render/` (Blender por script), y esa tubería sirve para las demás
+hojas.
 
 ## Documentación
 

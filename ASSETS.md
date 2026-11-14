@@ -22,7 +22,7 @@ para escalar y colocar cada hoja.
 | `walk` | 25 | tira | 91 KB | 399 | 526 | 242 |
 | `idle` | 16 | tira | 45 KB | 404 | 548 | 232 |
 | `throw` | 19 | tira | 86 KB | 400 | 523 | 190 |
-| `sit` | 31 | tira | 207 KB | 411 | 556 | 232 |
+| `sit` | 31 | tira | 217 KB | 408 | 540 | 232 |
 
 - `charHeight` — alto del personaje dentro de la celda de 600
 - `footY` — fila del pie de apoyo, **mediana del ciclo**, no el frame más bajo
@@ -118,29 +118,7 @@ px/bloque, un 47% más grande que el resto.
 
 ## Pendientes
 
-### 1 · `sit` — el gesto hay que rehacerlo
-
-La hoja está montada y alineada, pero **el cuerpo rota como un bloque**: cabeza,
-torso y piernas giran a la vez alrededor de un punto, y acaba a 45° con las
-piernas hacia arriba. Lee como caerse de espaldas, no como sentarse.
-
-Sentarse es casi lo contrario — casi nada rota en bloque:
-
-| Parte | Qué hace |
-|---|---|
-| Pelvis | Baja **en vertical** hasta el asiento y se para. No rota |
-| Muslos | Rotan ~90° en la cadera, hacia delante |
-| Rodillas | Se doblan; las espinillas cuelgan |
-| Torso | Casi vertical, como mucho 10-15° atrás |
-| Cabeza | Nivelada, mirando al horizonte |
-
-Dos cosas más: **en los frames 6-16 se le ven los dos ojos** —se gira a cámara,
-y eso rompe el perfil puro—, y **los últimos frames no frenan**, así que la pose
-final se corta a media inercia en vez de asentarse.
-
-Lo que sí hay que conservar: el **frame 1 de pie**, que es lo que alinea la hoja.
-
-### 2 · `peek_wave` — decisión pendiente
+### 1 · `peek_wave` — decisión pendiente
 
 ```
 viewport 1080  →  celda de 600 px mostrada a  842  = 1.40×
@@ -154,18 +132,18 @@ precarga que bloquea la pantalla de carga.
 Tres salidas: bajar `PEEK_CELL_VH` y mostrarla a 1:1 —el saludo se ve más
 pequeño—, renderizar a 1,5× y comer 75 MB, o pasarla a vídeo con alfa.
 
-### 3 · `b5_far` — desfasado
+### 2 · `b5_far` — desfasado
 
 Ver *Capas de mundo*. Va compensado en la importación; el parche se quita
 cuando se re-renderice.
 
-### 4 · Captura de Postea
+### 3 · Captura de Postea
 
 Único proyecto sin imagen en el carrusel. Su diapositiva muestra «producto
 interno · sin demo pública», que es cierto —es un SaaS de Shinsekai— así que no
 corre prisa.
 
-### 5 · La niebla nunca salió
+### 4 · La niebla nunca salió
 
 Saturación relativa al suelo, medida sobre los renders actuales:
 
@@ -187,13 +165,19 @@ En proyección ortográfica una colina lejana se dibuja **del mismo tamaño** qu
 una cercana. Lo único que las separa es la niebla. Por eso una `far` sin niebla
 no se lee como fondo: se lee como un muro.
 
-### 6 · `layer_front` — opcional
+### 5 · `layer_front` — opcional
 
 Una capa por delante del personaje, para que pase por detrás de un tronco.
 Nunca ha hecho falta.
 
 ### Cerrados
 
+- **`sit` se rehízo, con Blender por script.** La hoja de Mine-imator rotaba el
+  cuerpo en bloque y leía como caerse de espaldas. La nueva baja la pelvis en
+  vertical, lleva los muslos a 90° y deja las espinillas colgando con un
+  balanceo que se amortigua; los últimos pasos cambian 0,6° por frame, así que
+  la pose se asienta. Mira al sitio al bajar, a la pantalla al caer y termina
+  con la cabeza levantada hacia el cielo. Ver *Herramientas*.
 - **`b4_far` ya es propio.** Era la `far` de `b1` teñida; ahora difieren en 47
   de media.
 - **La banda de paso de `b5` es plana.** La cobertura salta al 99% en una sola
@@ -383,6 +367,10 @@ progresiva y que el mismo terreno sirva para cualquier hora.
 Se planteó para arreglar la silueta de `idle`, que de perfil puro se lee
 estrecha. Descartado: desalinearía todas las hojas entre sí.
 
+**La cabeza sí puede girar.** En `sit` gira 38° hacia la pantalla al caer y
+vuelve al perfil. El cuerpo no se mueve del perfil, y el frame 1 tampoco, así
+que la hoja sigue alineando contra `idle`.
+
 ---
 
 ## Clima
@@ -407,6 +395,21 @@ se suman a los del canvas y se ve cargado.
 ## Herramientas
 
 - **Mine-imator** — rápido, alfa nativo. La opción por defecto.
+- **`scripts/render/`** — Blender sin ventana. `rig.py` monta la skin como
+  cajas con sus articulaciones, una cámara ortográfica de verdad y renderiza
+  una lista de poses; `gen_sit.py` escribe esa lista. De aquí sale `sit`. Las
+  poses son números, así que un ajuste es cambiar una cifra y volver a lanzar:
+
+  ```bash
+  python3 scripts/render/gen_sit.py /tmp/sit.json
+  blender -b -P scripts/render/rig.py -- public/skin.png /tmp/sit.json /tmp/out 540
+  magick /tmp/out/f*.png +append -quality 90 public/sprites/sit.webp
+  ```
+
+  El `540` es el `footY` de la hoja. En los ángulos, positivo es siempre hacia
+  delante: un brazo avanza, el torso se inclina, la cabeza mira abajo.
+  **El blanco sale 229 y en las hojas de Mine-imator 241**: se iguala cuando se
+  re-rendericen todas con este rig.
 - **Blockbench + Blender** — mejor acabado, más trabajo.
 - **Amulet / MCEdit** — para exportar una región del mundo propio e importarla,
   en vez de construir el terreno a mano.

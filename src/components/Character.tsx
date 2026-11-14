@@ -26,7 +26,9 @@ const SHEETS = {
   // La geometría sale del frame 1, que es el personaje DE PIE: así la hoja se
   // ancla contra `idle` en vez de estimar dónde queda el cuerpo al sentarse,
   // que es lo que cambia de sitio. `centerX` coincide con el de `idle`.
-  sit: { src: '/sprites/sit.webp', frames: 31, charHeight: 411, footY: 556, centerX: 232 },
+  // `footY` es el suelo, no el punto más bajo: sentado, los pies cuelgan por
+  // debajo, delante del cantil. La cámara la fija `scripts/render/rig.py`.
+  sit: { src: '/sprites/sit.webp', frames: 31, charHeight: 408, footY: 540, centerX: 232 },
 } as const
 
 /** Frame en el que la mano suelta la perla, y dónde está esa mano dentro de la
