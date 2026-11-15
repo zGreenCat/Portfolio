@@ -250,6 +250,10 @@ en *Herramientas*.
   tierra en vez de fuera.
 - **El frame 1 sigue de pie y de perfil**, que es lo que alinea la hoja contra
   `idle`. La cabeza gira hacia la pantalla a mitad del gesto; el cuerpo no.
+- **Antes de animar, leer `ASSETS.md` › *Cómo se mueve el personaje*.** Un
+  gesto se hace calcando primero una hoja hecha a mano (`fit_pose.py` →
+  `poses/*.json`) y retocando lo que le falte. Escrito por fórmula desde cero
+  salió cerrado y rígido, y hubo que tirarlo.
 
 ## Contenido
 
@@ -309,6 +313,31 @@ decidir nada.
 
 Construida y revertida. Ver *Trampas reales*. Vuelve con un `git revert` en
 cuanto existan la foto y el render de cuerpo entero.
+
+### Lanzamiento y perla
+
+**El gesto de lanzar nunca se ha visto animado.** En el bucle de `page.tsx`, la
+rama `else if (active !== 'idle') writeFrame(Math.floor(sheetFrame))` también
+corre en `throw` y pisa el frame que escribe el efecto del lanzamiento. Parado,
+la zancada no avanza, así que el sprite se queda en el frame 1 los 700 ms.
+Arreglo probado en una copia, sin aplicar: excluir `throw` de esa rama. Con él
+corren los 19 frames. Queda un parpadeo de un frame al arrancar.
+
+Mejoras de la perla, por lo que más se nota. Todas en `EnderPearl.tsx`:
+
+1. **Que salga de la mano.** Viene gratis con el arreglo de arriba y un
+   `THROW_RELEASE` medido sobre la hoja que se integre; el rig lo da con su
+   sonda `probe`.
+2. **Tamaño atado al personaje.** Hoy son 32 px fijos y en pantallas grandes
+   se queda pequeña.
+3. **Partículas de portal** siguiéndola, en vez de solo copias del sprite.
+4. **Arco con gravedad.** Ahora sale recta a velocidad fija.
+
+**No renderizarla en 3D.** En el juego la perla lanzada es el sprite plano de
+16×16 de cara a la cámara, que es lo que ya hace el sitio; en 3D sería menos
+fiel. Dura medio segundo a 32 px: el volumen no se percibiría. La única
+excepción con sentido sería la perla **en la mano** mientras carga el
+lanzamiento, que hoy va vacía.
 
 ### Lo que bloquea de verdad
 

@@ -229,6 +229,69 @@ texturas de bloque, que sí se amplían.
 
 ---
 
+## Cómo se mueve el personaje
+
+Leer antes de animar nada con `scripts/render/`. Sale de calcar con
+`fit_pose.py` las hojas hechas a mano en Mine-imator, que son la referencia de
+estilo. Las primeras animaciones escritas por fórmula, sin mirar esto, salieron
+raras: cerradas sobre sí mismas, «como pose fetal».
+
+**Tres cosas que hace la animación a mano y la fórmula no hacía:**
+
+- **Gira el tronco entero**, no solo el pecho. En la corrida son ±40° entre
+  cadera y pecho sumados. Con ese giro los hombros se separan en pantalla y los
+  brazos se abren sin tocarlos.
+- **Los brazos salen hacia fuera** del cuerpo, además de ir adelante y atrás.
+  Sin ese eje se quedan pegados al tronco por mucho que se balanceen.
+- **La cabeza contragira** lo mismo que gira el tronco, para seguir de perfil.
+
+**Rangos medidos en `run`** (`poses/run.json`, grados):
+
+| Articulación | Rango |
+|---|---|
+| Tronco, inclinación adelante | 25, fija |
+| Tronco, giro (cadera + pecho) | −38 a 40 |
+| Cabeza, contragiro | −46 a 38 |
+| Brazo, adelante y atrás | −63 a 49 |
+| Brazo, hacia fuera | hasta 58 el cercano, 72 el lejano |
+| Codo | 8 a 80: casi recto atrás, doblado delante |
+| Muslo | −64 a 58 |
+| Rodilla | hasta 137 en la pierna que recoge |
+| Cadera, sube y baja | 2,7 píxeles de skin |
+
+**`throw` es lo contrario: casi no usa el tronco** (`poses/throw.json`). Se
+inclina entre −6 y 2 y gira 12 como mucho; todo el gesto lo lleva el brazo, que
+recorre 282° por encima de la cabeza. Dos cosas más que explican que se sienta
+rígido: el brazo tarda seis frames en moverse 58° y luego salta 100° en uno, y
+tras soltar vuelve de −282 a 0 en un solo frame, sin acompañar. Lo que le falta
+es justo lo que `run` hace bien: cargar con el tronco y dejar que el giro abra
+los hombros.
+
+**Eso es lo que hace `poses/throw_v2.json`**, y es el patrón para cualquier
+gesto nuevo: se calca la hoja hecha a mano, se mide contra `run` qué le falta
+y se cambia solo eso. El tronco se arquea 15° atrás al cargar y se dobla 21°
+al soltar, los hombros giran de −32° a 22°, el brazo alarga cada paso hasta la
+suelta y acompaña tres frames después. Mano al soltar: (394, 278), índice 15.
+
+**El tronco es una sola pieza.** Va cortado en doce rebanadas y cada una toma
+una parte creciente del giro del pecho. Con dos cajas rígidas unidas por una
+bisagra se veía un escalón entre cadera y pecho en cuanto giraba.
+
+**Las hojas no están a la misma escala.** `run` está renderizada un 4,9% más
+grande de lo que el sitio supone al escalarla; `throw`, un 0,4% más pequeña. El
+ajuste lo mide en el primer frame y lo guarda como `zoom`.
+
+**Calcar no es animar.** El ajuste copia poses que existen. Un gesto nuevo
+parte de estas como vocabulario, pero el ritmo y los arcos hay que decidirlos y
+mirarlos en movimiento.
+
+**Límite conocido del ajuste:** busca cerca de la pose anterior. Un brazo que da
+media vuelta entre dos frames, como al lanzar, se pierde y acaba escondido
+contra el cuerpo, que cuesta poco porque los dos son oscuros. Por eso barre los
+brazos en redondo al empezar cada frame.
+
+---
+
 ## Cámara
 
 **Una sola para todo el mundo.** Móntala una vez y no la toques.
@@ -408,8 +471,21 @@ se suman a los del canvas y se ve cargado.
 
   El `540` es el `footY` de la hoja. En los ángulos, positivo es siempre hacia
   delante: un brazo avanza, el torso se inclina, la cabeza mira abajo.
-  **El blanco sale 229 y en las hojas de Mine-imator 241**: se iguala cuando se
-  re-rendericen todas con este rig.
+
+  `fit_pose.py` hace el camino inverso: recibe los frames de una hoja que ya
+  existe y mueve las articulaciones hasta que el render coincide. Lo que saca
+  va a `scripts/render/poses/<hoja>.json`, que `rig.py` renderiza tal cual. Son
+  unos tres minutos de gráfica por frame. Ver *Cómo se mueve el personaje*.
+
+  `gen_throw.py` es el primer gesto hecho así: lee el calco del lanzamiento
+  (`poses/throw.json`), conserva pies, paso y ritmo, y reescribe tronco y
+  brazo. Su salida es `poses/throw_v2.json`. `gen_peek.py` es el saludo
+  escrito por fórmula, anterior a este método: está pendiente de rehacer.
+
+  **El tono ya está igualado.** Mine-imator ilumina la skin algo más clara y
+  azulada, y el rig lo reproduce con `TINT`: blanco 240/241/247 frente a
+  241/242/248 de `idle`, `walk` y `throw`. `run` va aparte desde siempre
+  (244/248/251). **`sit.webp` se renderizó antes de ese ajuste y sigue en 229.**
 - **Blockbench + Blender** — mejor acabado, más trabajo.
 - **Amulet / MCEdit** — para exportar una región del mundo propio e importarla,
   en vez de construir el terreno a mano.
