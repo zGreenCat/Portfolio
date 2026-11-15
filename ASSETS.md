@@ -273,6 +273,15 @@ y se cambia solo eso. El tronco se arquea 15° atrás al cargar y se dobla 21°
 al soltar, los hombros giran de −32° a 22°, el brazo alarga cada paso hasta la
 suelta y acompaña tres frames después. Mano al soltar: (394, 278), índice 15.
 
+**`walk` e `idle` también están calcadas** (`poses/walk.json`, `poses/idle.json`).
+En `walk` las piernas y la altura salen del ajuste, pero hombros, brazos y
+cabeza no: el ajuste dejó los hombros girados siempre hacia el mismo lado y
+ladeó la cabeza 52° hacia la cámara. Esos tres salen de los keyframes del
+proyecto original de Mine-imator: hombros 15° a cada lado, brazos 35° opuestos
+a su pierna, codo de 18 a 22. **Los `.miproject` originales no están en el
+repo**, que es público; viven fuera, y traen el ángulo exacto de cada pieza en
+cada keyframe. Son la primera fuente cuando un calco no convence.
+
 **El tronco es una sola pieza.** Va cortado en doce rebanadas y cada una toma
 una parte creciente del giro del pecho. Con dos cajas rígidas unidas por una
 bisagra se veía un escalón entre cadera y pecho en cuanto giraba.
