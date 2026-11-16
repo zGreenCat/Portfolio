@@ -47,6 +47,13 @@ interface StripProps {
    * la nada. Con esto las extra se solapan para encadenar solo su terreno.
    */
   solid?: number
+  /**
+   * Corre la tira esta distancia, en px, sin cambiar qué tramo cubre. Sirve
+   * para que la frontera del bioma caiga en un claro de la tesela y no a
+   * mitad de un árbol. Solo tiene sentido en el suelo: las demás capas van a
+   * otro ritmo y su recorte se desliza sobre ellas al andar.
+   */
+  phase?: number
 }
 
 /**
@@ -79,6 +86,7 @@ export default function Strip({
   half,
   extend = 0,
   solid,
+  phase = 0,
 }: StripProps) {
   const file = half ? src.replace('.webp', '@half.webp') : src
   const anchored = anchor !== undefined
@@ -86,6 +94,7 @@ export default function Strip({
 
   let left: number
   let tiles: number
+  let firstIndex = 0
 
   /** Dónde empieza cada tesela respecto a la primera, cuando no van seguidas. */
   let offsets: number[] | null = null
@@ -110,17 +119,19 @@ export default function Strip({
   } else {
     // Una coordenada de mundo X se ve mientras la cámara esté entre X-viewport
     // y X, y ahí cae en la tira sobre cámara*speed … cámara*speed+viewport.
-    const min = Math.max(0, (spanFrom - viewport) * speed)
-    const max = Math.min(reach, (spanTo + viewport) * speed + viewport)
-    const first = Math.max(0, Math.floor(min / tileWidth))
+    const min = Math.max(0, (spanFrom - viewport) * speed) - phase
+    const max = Math.min(reach, (spanTo + viewport) * speed + viewport) - phase
+    // Con la tira corrida, la primera tesela puede quedar antes del origen.
+    const first = Math.max(phase > 0 ? -2 : 0, Math.floor(min / tileWidth))
     const last = Math.min(Math.ceil(reach / tileWidth), Math.ceil(max / tileWidth))
-    left = first * tileWidth
+    left = first * tileWidth + phase
     tiles = Math.max(2, last - first)
+    firstIndex = first
   }
 
   // El volteo va por índice absoluto de tesela: si la tira empieza más allá del
   // origen, la paridad tiene que seguir siendo la misma o aparece la costura.
-  const parity = anchored ? extend % 2 : (left / tileWidth) % 2
+  const parity = anchored ? extend % 2 : ((firstIndex % 2) + 2) % 2
 
   const width = offsets ? offsets[offsets.length - 1] + tileWidth : tiles * tileWidth
   const clip = `inset(0 ${Math.max(0, width - (spanTo - shift - left))}px 0 ${Math.max(0, spanFrom - shift - left)}px)`

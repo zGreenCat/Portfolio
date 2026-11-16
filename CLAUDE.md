@@ -17,7 +17,7 @@ No hay linter propio. `npm run build` sí pasa ESLint.
 **Los tests van en `tests/*.test.mjs` y no llevan framework**: `node --test`
 importa los `.ts` tal cual. Por eso solo alcanzan a módulos sin React, sin
 navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`,
-`characterSheets.ts`, `smoothing.ts`, `teleport.ts`): la lógica
+`characterSheets.ts`, `smoothing.ts`, `teleport.ts`, `walkSpeed.ts`): la lógica
 que merezca test se saca a un módulo así. El aviso de `MODULE_TYPELESS` al
 correrlos es inofensivo; no añadir `"type": "module"` al `package.json`.
 
@@ -109,6 +109,23 @@ El recorte lleva un término `-worldX * (1 - speed)` para que la frontera caiga
 en la **misma x de pantalla en todas las capas** pese a que cada una corre a su
 ritmo. Sin él, el fondo cortaba el bioma mucho antes que el suelo. Ese cálculo
 vive en **un solo sitio**, `placeWorld`, y ya dio problemas por estar duplicado.
+
+**La frontera con el acantilado cae en un claro, no a mitad de camino.** El
+recorte duro partía árboles en dos, y ahí se notaba: son los cerezos más
+grandes y en primer plano. Tres piezas, las tres en función del tamaño de la
+tesela, que cambia con la pantalla:
+
+- `makeBounds` pone esa frontera en un claro del suelo del acantilado (donde
+  se juntan dos de sus copias por el extremo sin árbol), el más cercano a la
+  mitad entre las dos secciones.
+- El suelo de los cerezos se corre (`phase` en `Strip`, `clearingPhase`) para
+  que su propio claro caiga en esa misma frontera.
+- Su capa `near` también, pero su recorte se desliza sobre ella al andar —va
+  a otro ritmo que el suelo—, así que el claro se centra en mitad de ese
+  deslizamiento y cabe entero.
+
+Las capas del fondo siguen cortándose, pero van con niebla y no se nota. **Las
+demás fronteras no están tratadas**: si alguna parte un árbol, es esto mismo.
 
 `Strip` (en `ParallaxLayer.tsx`) repite la imagen **alternando volteada**: los
 renders no son teselables, y así el borde derecho de una copia toca siempre el
@@ -336,6 +353,21 @@ partículas donde está y se rehace en destino. Responde como el juego:
 - **`Chat.tsx` está partido en barra de entrada y registro** a propósito. Hoy
   la barra se escribe sola; el día que escriba el visitante se cambia por un
   campo de texto y lo demás vale.
+
+### En pantallas táctiles se anda con botones (`WalkPad.tsx`)
+
+Donde el puntero es un dedo (`pointer: coarse`) el scroll no se suelta nunca
+(`overflow: hidden` en el `body`) y abajo a la derecha hay dos botones, ◀ y ▶.
+Mantener pulsado anda y, pasado medio segundo, corre (`walkSpeed`).
+
+El recorrido sigue siendo el scroll del documento: los botones lo mueven por
+código con `scrollBy`, así que secciones, paneles, sentarse y el podio no se
+enteran. Se cambió porque deslizar con el dedo se sentía raro: el navegador
+mueve primero su propia página —esconde la barra de direcciones, arrastra con
+inercia— y solo después avanzaba el personaje. Con ratón no cambia nada.
+
+La velocidad va en anchos de pantalla por segundo, no en bloques: en un móvil
+el mundo es pequeño y a ritmo de bloques cruzarlo llevaba un minuto.
 
 ### Al volver a entrar
 

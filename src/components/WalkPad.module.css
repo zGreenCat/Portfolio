@@ -1,0 +1,56 @@
+/* Solo donde se toca con el dedo: con ratón está la rueda, y ahí estos
+   botones sobrarían. Abajo a la derecha, al alcance del pulgar y lejos del
+   personaje, que anda por la izquierda. Por encima del mundo y por debajo de
+   los paneles, el visor y el chat. */
+.pad {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .pad {
+    position: fixed;
+    right: max(14px, env(safe-area-inset-right, 0px));
+    bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+  }
+}
+
+/* El botón de piedra de la barra, en grande. */
+.key {
+  width: 60px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  color: #e8e5dc;
+  text-shadow: 2px 2px 0 rgb(0 0 0 / 0.6);
+  background: #6f6f6f;
+  border: 3px solid #1d1f23;
+  box-shadow:
+    inset 3px 3px 0 rgb(255 255 255 / 0.28),
+    inset -3px -3px 0 rgb(0 0 0 / 0.35);
+  /* Mantener pulsado no tiene que seleccionar texto, abrir un menú ni
+     desplazar nada. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+.key:active {
+  background: #8a8f7e;
+  box-shadow:
+    inset -3px -3px 0 rgb(255 255 255 / 0.2),
+    inset 3px 3px 0 rgb(0 0 0 / 0.4);
+}
+
+.key:focus-visible {
+  outline: 3px solid #ffdc4a;
+  outline-offset: 2px;
+}

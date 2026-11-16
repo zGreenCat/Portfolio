@@ -26,6 +26,7 @@ import CraftingTable from '@/components/CraftingTable'
 import Inventory from '@/components/Inventory'
 import PerfMeter from '@/components/PerfMeter'
 import Podium, { PodiumMedal } from '@/components/Podium'
+import WalkPad from '@/components/WalkPad'
 import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
 import type { WeatherState } from '@/components/Weather'
@@ -62,6 +63,12 @@ const PEEK = { cellWidth: 960, cellHeight: 570, columns: 8, rows: 4, frames: 32,
  *  bloquea la pantalla, así que en pantallas pequeñas se sirve a la mitad. La
  *  celda se declara igual en los dos casos: el fondo se escala al tamaño pedido. */
 const peekSrc = (half: boolean) => `/sprites/peek_wave${half ? '@half' : ''}.webp`
+
+/** Con los botones de andar: anchos de pantalla por segundo, andando y
+ *  corriendo. En pantalla y no en bloques: en un móvil el mundo es pequeño y
+ *  a velocidad de bloques cruzarlo llevaba un minuto. */
+const WALK_SCREENS = 0.4
+const RUN_SCREENS = 1.25
 
 /** Lo que el mundo se acerca al scroll en un frame a 60 Hz. */
 const WORLD_EASE = 0.12
@@ -373,6 +380,21 @@ function podiumPose(at: number, leavingAhead: boolean): { frame: number; spot: S
   }
 }
 
+/**
+ * Cuánto hay que correr el suelo de los cerezos para que `frontier` caiga en
+ * el centro de un claro.
+ *
+ * Su tesela lleva un árbol en la primera mitad y el resto despejado. Repetida
+ * alternando volteada, los claros se juntan de dos en dos alrededor de cada
+ * unión impar: en T, 3T, 5T… Así que se corre hasta que la frontera caiga en
+ * una de esas. Vale igual para la capa `near`, que tiene el árbol en el centro
+ * de la tesela y el claro más ancho en las mismas uniones.
+ */
+function clearingPhase(frontier: number, tile: number): number {
+  const period = 2 * tile
+  return (((frontier - tile) % period) + period) % period
+}
+
 /** Fracción de la tesela donde se acaba el suelo del acantilado. */
 const CLIFF_EDGE = 2371 / 3840
 /** En el acantilado el personaje se desplaza hacia el centro. El árbol queda
@@ -473,7 +495,7 @@ const SPLASHES = [
  * Una frontera dura tampoco es una concesión: en Minecraft los biomas cambian
  * de golpe.
  */
-function makeBounds(viewport: number) {
+function makeBounds(viewport: number, tile: number) {
   const bounds = SECTIONS.map((section, i) => {
     const prev = SECTIONS[i - 1]
     const next = SECTIONS[i + 1]
@@ -491,10 +513,31 @@ function makeBounds(viewport: number) {
     bounds[0].to = clear
     bounds[1].from = clear
   }
+
+  // La frontera con el acantilado no va a mitad de camino sino en un claro. Su
+  // suelo es una tesela con un cerezo en la primera mitad y el tramo final
+  // despejado, repetida hacia atrás de espaldas a sí misma: los claros caen
+  // donde se juntan dos finales, cada dos copias. A mitad de camino el recorte
+  // partía un árbol en dos. Se elige el claro más cercano a esa mitad, y como
+  // la tesela mide según la pantalla, la frontera también.
+  const last = bounds.length - 1
+  const ground = CLIFF_EDGE * tile
+  const anchor = WORLD_LENGTH + viewport * (CLIFF_X / 100) - ground
+  const midway = bounds[last].from * WORLD_LENGTH
+  const clearings = [1, 3, 5]
+    .map((copies) => (anchor - copies * ground) / WORLD_LENGTH)
+    .filter((at) => at > SECTIONS[last - 1].at + 0.03 && at < SECTIONS[last].at - 0.03)
+  if (clearings.length > 0) {
+    const frontier = clearings.reduce((best, at) =>
+      Math.abs(at * WORLD_LENGTH - midway) < Math.abs(best * WORLD_LENGTH - midway) ? at : best,
+    )
+    bounds[last - 1].to = frontier
+    bounds[last].from = frontier
+  }
   return bounds
 }
 
-let BOUNDS = makeBounds(1920)
+let BOUNDS = makeBounds(1920, 1080 * LAYER_ASPECT)
 
 /** Índice del bioma que pisas, y cuánto has entrado en el siguiente. */
 function biomeAt(world: number): { index: number; blend: number; next: number } {
@@ -861,7 +904,11 @@ export default function RecorridoPage() {
   }, [armResume])
 
   useEffect(() => {
-    document.body.style.overflow = phase === 'ready' ? '' : 'hidden'
+    // En pantallas táctiles el scroll no se suelta nunca: se anda con los
+    // botones, que lo mueven por código. Con el dedo, el navegador desplazaba
+    // primero su propia página y luego avanzaba el personaje.
+    const touch = window.matchMedia('(pointer: coarse)').matches
+    document.body.style.overflow = phase === 'ready' && !touch ? '' : 'hidden'
     return () => {
       document.body.style.overflow = ''
     }
@@ -875,7 +922,7 @@ export default function RecorridoPage() {
       setViewW(window.innerWidth)
       setHalf(wantsHalfLayers())
       setSpriteHalf(wantsHalfSprites())
-      BOUNDS = makeBounds(window.innerWidth)
+      BOUNDS = makeBounds(window.innerWidth, world * LAYER_ASPECT)
       setCompact(window.innerWidth <= 760)
       setCharHeight(world * CHAR_HEIGHT_VH)
       setPeekScale(
@@ -1764,6 +1811,19 @@ export default function RecorridoPage() {
                 {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED[kind])}
                 half={half || lite}
                 extend={s.biome === 'b5' ? 2 : 0}
+                // La capa de árboles de los cerezos también se corre. Su
+                // recorte no cae siempre en el mismo punto de la tira —va a
+                // otro ritmo que el suelo y se desliza al andar—, así que se
+                // centra el claro en mitad de ese deslizamiento: cabe entero.
+                phase={
+                  s.biome === 'b4' && kind === 'near'
+                    ? clearingPhase(
+                        BOUNDS[SECTIONS.indexOf(s)].to * WORLD_LENGTH * LAYER_SPEED[kind] +
+                          (viewW * (1 - LAYER_SPEED[kind])) / 2,
+                        tileWidth,
+                      )
+                    : 0
+                }
                 anchor={
                   s.biome === 'b5'
                     ? cliffAnchor * LAYER_SPEED[kind]
@@ -1827,6 +1887,13 @@ export default function RecorridoPage() {
               extend={s.biome === 'b5' ? 4 : 0}
               solid={s.biome === 'b5' ? CLIFF_EDGE : undefined}
               anchor={s.biome === 'b5' ? cliffAnchor : undefined}
+              // Los cerezos, que acaban contra el acantilado: se corren para
+              // que esa frontera caiga en su claro y no parta un árbol.
+              phase={
+                s.biome === 'b4'
+                  ? clearingPhase(BOUNDS[SECTIONS.indexOf(s)].to * WORLD_LENGTH, tileWidth)
+                  : 0
+              }
             />
           ))}
         </div>
@@ -2042,6 +2109,12 @@ export default function RecorridoPage() {
 
       <EnderPearl shot={shot} />
       <Chat request={chat} onSend={sendChat} onDone={closeChat} />
+      {phase === 'ready' ? (
+        <WalkPad
+          walk={viewW * WALK_SCREENS * (SCROLL_LENGTH / WORLD_LENGTH)}
+          run={viewW * RUN_SCREENS * (SCROLL_LENGTH / WORLD_LENGTH)}
+        />
+      ) : null}
     </main>
   )
 }
