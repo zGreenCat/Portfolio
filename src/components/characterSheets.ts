@@ -3,7 +3,15 @@
  * React ni del navegador, para poder probarlo contra los archivos.
  */
 
-export type CharacterState = 'run' | 'walk' | 'idle' | 'throw' | 'sit' | 'climb' | 'cheer'
+export type CharacterState =
+  | 'run'
+  | 'walk'
+  | 'idle'
+  | 'throw'
+  | 'sit'
+  | 'climb'
+  | 'cheer'
+  | 'type'
 
 export const CELL_WIDTH = 460
 export const CELL_HEIGHT = 600
@@ -34,6 +42,8 @@ export const SHEETS = {
   // Subir al podio va dibujado en el sitio: los saltos los desplaza la página.
   climb: { src: '/sprites/climb.webp', frames: 32, charHeight: 408, footY: 540, centerX: 232 },
   cheer: { src: '/sprites/cheer.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
+  // Tecleando en el chat: el reposo con la cabeza baja y las manos delante.
+  type: { src: '/sprites/type.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
 } as const
 
 export const STATES = Object.keys(SHEETS) as CharacterState[]
@@ -50,7 +60,16 @@ export const FRAME_COUNT: Record<CharacterState, number> = {
   sit: SHEETS.sit.frames,
   climb: SHEETS.climb.frames,
   cheer: SHEETS.cheer.frames,
+  type: SHEETS.type.frames,
 }
+
+/**
+ * Las hojas que son un bucle por tiempo y las lleva el CSS: el bucle de la
+ * página no les escribe el frame, y al entrar en ellas hay que borrar el que
+ * hubiera dejado.
+ */
+export const loopsByItself = (state: CharacterState) =>
+  state === 'idle' || state === 'cheer' || state === 'type'
 
 /**
  * La celda entera (600 px) solo hace falta si en pantalla mide, en píxeles

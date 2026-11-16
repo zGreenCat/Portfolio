@@ -26,6 +26,7 @@ para escalar y colocar cada hoja.
 | `throw` | 19 | tira | 137 KB | 408 | 540 | 232 |
 | `climb` | 32 | tira | 191 KB | 408 | 540 | 232 |
 | `cheer` | 16 | tira | 147 KB | 408 | 540 | 232 |
+| `type` | 16 | tira | 101 KB | 408 | 540 | 232 |
 | `sit` | 31 | tira | 223 KB | 408 | 540 | 232 |
 
 Cada hoja de perfil tiene además su `@half` (celda de 230×300), que es la que
@@ -508,6 +509,9 @@ se suman a los del canvas y se ve cargado.
   magick /tmp/watch.png -quality 90 public/sprites/peek_watch.webp
   ```
 
+  `gen_type.py` escribe `type`, el personaje tecleando en el chat: toma los
+  dieciséis frames de `poses/idle.json` y les cambia brazos y cabeza, así que
+  pies y balanceo son los del reposo y pasar de una a otra no lo mueve.
   `gen_podium.py` escribe `climb` y `cheer`, y la medalla es una pieza del
   rig que una pose enseña con `"medal": 1`.
 

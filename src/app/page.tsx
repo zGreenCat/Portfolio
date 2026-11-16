@@ -10,7 +10,15 @@ import Character, {
   THROW_RELEASE,
   type CharacterState,
 } from '@/components/Character'
-import { CELL_HEIGHT, STATES, sheetSrc, wantsHalfSheet } from '@/components/characterSheets'
+import {
+  CELL_HEIGHT,
+  STATES,
+  loopsByItself,
+  sheetSrc,
+  wantsHalfSheet,
+} from '@/components/characterSheets'
+import Chat, { type ChatRequest } from '@/components/Chat'
+import { pickTeleport, tpCommand, tpReply, type Teleport } from '@/components/teleport'
 import { easeFor } from '@/components/smoothing'
 import EnderPearl, { type PearlThrow } from '@/components/EnderPearl'
 import Book from '@/components/Book'
@@ -81,6 +89,7 @@ const STRIDE: Record<CharacterState, number> = {
   sit: 1,
   climb: 1,
   cheer: 1,
+  type: 1,
 }
 /** Umbrales de marcha, en bloques por segundo. `walk` cubre 1,25 bloques en
  *  25 frames: por encima de ~2 b/s su ciclo se dispara, así que ahí ya corre. */
@@ -593,6 +602,14 @@ export default function RecorridoPage() {
   const [lite, setLite] = useState(false)
   /** `?lite=0`: el modo ligero no se enciende solo. Para comparar. */
   const liteLockRef = useRef(false)
+  /** `?tp=1` o `?tp=0`: siempre el comando, o siempre la perla. Para probar. */
+  const tpForceRef = useRef<Teleport | null>(null)
+  /** El chat, mientras se escribe un `/tp` y hasta que se va su respuesta. */
+  const [chat, setChat] = useState<ChatRequest | null>(null)
+  /** Destino de un teletransporte en curso, para ir decodificando su bioma. */
+  const warmAtRef = useRef<number | null>(null)
+  /** Adónde lleva el `/tp` que se está escribiendo. */
+  const chatTargetRef = useRef<{ at: number; id: string } | null>(null)
   /** `?fps`: enseña el medidor. */
   const [meter, setMeter] = useState(false)
 
@@ -603,6 +620,8 @@ export default function RecorridoPage() {
     if (query.has('fps')) setMeter(true)
     if (query.get('lite') === '1') setLite(true)
     if (query.get('lite') === '0') liteLockRef.current = true
+    if (query.get('tp') === '1') tpForceRef.current = 'chat'
+    if (query.get('tp') === '0') tpForceRef.current = 'pearl'
   }, [])
   /**
    * Sección a la que volver al recargar, o null si es una visita limpia.
@@ -674,7 +693,7 @@ export default function RecorridoPage() {
    * valor que haya puesto: con el inline viejo, el ciclo arrancaba desalineado.
    */
   useEffect(() => {
-    if ((characterState === 'idle' || characterState === 'cheer') && spriteRef.current) {
+    if (loopsByItself(characterState) && spriteRef.current) {
       spriteRef.current.style.backgroundPositionX = ''
     }
   }, [characterState])
@@ -993,7 +1012,7 @@ export default function RecorridoPage() {
       // Cortar el bucle CSS ya, sin esperar al re-render: si no, durante ese
       // frame la animación de reposo sigue corriendo sobre el valor que acaba
       // de escribir el bucle y arrastra el sprite entre dos celdas.
-      if (next !== 'idle' && next !== 'cheer' && spriteRef.current) {
+      if (!loopsByItself(next) && spriteRef.current) {
         spriteRef.current.dataset.driven = 'true'
       }
       setCharacterState(next)
@@ -1237,7 +1256,7 @@ export default function RecorridoPage() {
         writeFrame(Math.min(FRAME_COUNT.sit - 1, Math.floor(sitAt * FRAME_COUNT.sit)))
       } else if (active === 'climb') {
         writeFrame(podiumNow.frame)
-      } else if (active !== 'idle' && active !== 'cheer' && active !== 'throw') {
+      } else if (!loopsByItself(active) && active !== 'throw') {
         // En reposo manda el bucle CSS: escribirle el frame lo dejaría clavado.
         // El lanzamiento lleva su propio reloj: escribirle aquí el frame de la
         // zancada, que parado no avanza, lo pisaba y el gesto no se movía.
@@ -1394,7 +1413,13 @@ export default function RecorridoPage() {
       // radio, con holgura, porque son decenas de MB cada una.
       const warm = warmRef.current
       SECTIONS.forEach((section) => {
-        const distance = Math.abs(section.at - current)
+        // El destino de un teletransporte cuenta como cercano desde que se
+        // pide: hay un segundo de gesto antes del salto, y sin esto se llegaba
+        // a un bioma sin decodificar, con el cielo pelado.
+        const distance = Math.min(
+          Math.abs(section.at - current),
+          warmAtRef.current === null ? Infinity : Math.abs(section.at - warmAtRef.current),
+        )
         section.kinds.forEach((kind) => {
           const src = layerSrc(section.biome, kind, half)
           if (distance < PREWARM_RADIUS) {
@@ -1478,6 +1503,8 @@ export default function RecorridoPage() {
       // Segundo clic durante el vuelo: al destino y punto. Nadie espera dos veces.
       if (teleportingRef.current) {
         setShot(null)
+        setChat(null)
+        chatTargetRef.current = null
         teleportingRef.current = false
         setHidden(false)
         jumpTo(at, id)
@@ -1491,6 +1518,7 @@ export default function RecorridoPage() {
       facingRef.current = 1
       if (spriteRef.current) spriteRef.current.style.transform = ''
       teleportingRef.current = true
+      warmAtRef.current = at
       stateRef.current = 'throw'
       setCharacterState('throw')
 
@@ -1538,6 +1566,7 @@ export default function RecorridoPage() {
         },
         onEnd: () => {
           teleportingRef.current = false
+          warmAtRef.current = null
           setShot(null)
         },
       })
@@ -1545,10 +1574,72 @@ export default function RecorridoPage() {
     [jumpTo, charHeight, worldPx],
   )
 
+  /**
+   * La otra forma de irse: abre el chat, escribe `/tp <sitio>` y aparece allí.
+   * Sin vuelo: el personaje se deshace en partículas donde está y se rehace
+   * en destino, y el salto del mundo ocurre entre una cosa y otra.
+   */
+  const chatTo = useCallback((at: number, section: (typeof SECTIONS)[number], settled: boolean) => {
+    play('button')
+    setMenuOpen(false)
+    teleportingRef.current = true
+    warmAtRef.current = at
+    chatTargetRef.current = { at, id: section.id }
+    // Sentado o en el podio se queda como está: no hay hoja de teclear para
+    // esas posturas, y levantarlo para escribir sería otro gesto.
+    if (!settled) {
+      stateRef.current = 'type'
+      setCharacterState('type')
+    }
+    setChat({ key: performance.now(), command: tpCommand(section.label), reply: tpReply(section.label) })
+  }, [])
+
+  const sendChat = useCallback(() => {
+    const target = chatTargetRef.current
+    if (!target) return
+    chatTargetRef.current = null
+    const cell = spriteRef.current?.getBoundingClientRect()
+    const sheet = SHEET_GEOMETRY.idle
+    const scale = cell ? cell.width / CELL_WIDTH : charHeight / sheet.charHeight
+    const middle = (sheet.footY - sheet.charHeight / 2) * scale
+    setShot({
+      blink: true,
+      fromX: cell ? cell.left + sheet.centerX * scale : window.innerWidth * (actorXRef.current / 100),
+      fromY: cell ? cell.top + middle : window.innerHeight - feetVhRef.current * worldPx - charHeight / 2,
+      toX: window.innerWidth * (ENTRY_TO / 100),
+      toY: window.innerHeight - feetVhRef.current * worldPx - charHeight / 2,
+      size: Math.max(16, Math.round(charHeight * PEARL_OF_CHARACTER)),
+      onCross: () => {
+        setHidden(true)
+        jumpTo(target.at, target.id)
+      },
+      onLand: () => {
+        play('teleport')
+        setHidden(false)
+        stateRef.current = 'idle'
+        setCharacterState('idle')
+      },
+      onEnd: () => {
+        teleportingRef.current = false
+        warmAtRef.current = null
+        setShot(null)
+      },
+    })
+  }, [jumpTo, charHeight, worldPx])
+
+  const closeChat = useCallback(() => setChat(null), [])
+
   const navigate = useCallback(
-    (section: (typeof SECTIONS)[number]) =>
-      pearlTo(landingFor(SECTIONS.indexOf(section)), section.id),
-    [pearlTo, landingFor],
+    (section: (typeof SECTIONS)[number]) => {
+      const at = landingFor(SECTIONS.indexOf(section))
+      const settled = sitRef.current > 0 || podiumRef.current > 0
+      const how = teleportingRef.current
+        ? 'pearl'
+        : pickTeleport({ settled, roll: Math.random(), force: tpForceRef.current })
+      if (how === 'chat') chatTo(at, section, settled)
+      else pearlTo(at, section.id)
+    },
+    [pearlTo, chatTo, landingFor],
   )
 
   /** Al podio se va andando: solo se puede pedir teniéndolo delante, y una
@@ -1712,7 +1803,7 @@ export default function RecorridoPage() {
             <Character
               state={characterState}
               charHeight={charHeight}
-              driven={characterState !== 'idle' && characterState !== 'cheer'}
+              driven={!loopsByItself(characterState)}
               half={spriteHalf}
               spriteRef={spriteRef}
             />
@@ -1945,6 +2036,7 @@ export default function RecorridoPage() {
       </div>
 
       <EnderPearl shot={shot} />
+      <Chat request={chat} onSend={sendChat} onDone={closeChat} />
     </main>
   )
 }

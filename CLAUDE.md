@@ -17,7 +17,7 @@ No hay linter propio. `npm run build` sí pasa ESLint.
 **Los tests van en `tests/*.test.mjs` y no llevan framework**: `node --test`
 importa los `.ts` tal cual. Por eso solo alcanzan a módulos sin React, sin
 navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`,
-`characterSheets.ts`, `smoothing.ts`): la lógica
+`characterSheets.ts`, `smoothing.ts`, `teleport.ts`): la lógica
 que merezca test se saca a un módulo así. El aviso de `MODULE_TYPELESS` al
 correrlos es inofensivo; no añadir `"type": "module"` al `package.json`.
 
@@ -314,6 +314,30 @@ centro del personaje: la geometría de la hoja dice dónde está esa mano.
 `landingFor(index)` decide dónde se aterriza: no es la sección exacta, porque
 caer justo encima deja la siguiente frontera dentro del cuadro.
 
+### La otra forma de irse: `/tp` por el chat
+
+A veces, en vez de lanzar la perla, se abre el chat del juego abajo a la
+izquierda, se escribe solo `/tp <sitio>`, y el personaje se deshace en
+partículas donde está y se rehace en destino. Responde como el juego:
+«Vicente fue teletransportado a Skills».
+
+- **Cuál toca lo decide `pickTeleport`** (`teleport.ts`, con tests). Sentado
+  en el acantilado o subido al podio, **siempre el comando**: la perla se
+  lanza de pie y de perfil, y desde ahí el gesto no casaba con nada. De pie,
+  la perla dos de cada tres veces. `?tp=1` y `?tp=0` fuerzan uno u otro.
+- **De pie teclea** (hoja `type`: el reposo con la cabeza baja y las manos
+  delante, hecha sobre `poses/idle.json`). Sentado o en el podio se queda
+  como está: no hay hoja de teclear para esas posturas.
+- **No hay vuelo que tape el corte.** Lo tapa que entre los dos estallidos no
+  hay personaje (`blink` en `EnderPearl`): desaparece a los 110 ms de enviar
+  y reaparece a los 320.
+- **El bioma de destino se decodifica desde que se pide** (`warmAtRef`), para
+  la perla también. Sin eso, con el comando se llegaba a un cielo pelado: el
+  vuelo de la perla daba medio segundo de margen y aquí no lo hay.
+- **`Chat.tsx` está partido en barra de entrada y registro** a propósito. Hoy
+  la barra se escribe sola; el día que escriba el visitante se cambia por un
+  campo de texto y lo demás vale.
+
 ### Al volver a entrar
 
 El navegador restaura el scroll por su cuenta y lo deja en el píxel exacto —si
@@ -426,6 +450,7 @@ navegador repinta ~43 Mpx filtrados en cada frame sobre la CPU.
   últimos 2 s, si el modo ligero está activo, ventana y escala, y qué gráfica
   usa el navegador. Con botón para copiarlo.
 - `?lite=1` fuerza el modo ligero; `?lite=0` impide que se encienda solo.
+- `?tp=1` teletransporta siempre por el chat; `?tp=0`, siempre con la perla.
 
 Medido por software (sin gráfica), parado en Inicio: 18 fps tal cual, 24 sin
 clima, **59 sin los `filter` de las capas**. El JavaScript del bucle son

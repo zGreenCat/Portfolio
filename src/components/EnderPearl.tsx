@@ -23,6 +23,12 @@ export interface PearlThrow {
   /** Lado de la perla en pantalla. Lo da el alto del personaje: con un tamaño
    *  fijo, en una pantalla grande era una mota y en un móvil media cabeza. */
   size: number
+  /**
+   * Sin vuelo: el `/tp` del chat. Un estallido donde está (`from`), el salto,
+   * y otro donde reaparece (`to`). Aquí no hay perla que salga de plano para
+   * tapar el corte; lo tapa que entre los dos estallidos no hay personaje.
+   */
+  blink?: boolean
 }
 
 const PEARL_SRC = '/textures/ender_pearl.png'
@@ -32,6 +38,9 @@ const GRAVITY = 2100 // px/s²
 const PARTICLES = 110
 /** Partículas de portal que suelta por segundo mientras vuela. */
 const WAKE_PER_SECOND = 220
+/** En un `/tp`: cuándo desaparece y cuándo reaparece, desde que se envía. */
+const BLINK_CROSS_MS = 110
+const BLINK_LAND_MS = 320
 
 interface Particle {
   x: number
@@ -104,6 +113,37 @@ export default function EnderPearl({ shot }: { shot: PearlThrow | null }) {
     let vx = vw * 0.85
     let vy = -vh * 1.15
 
+    const burst = (bx: number, by: number): Particle[] =>
+      Array.from({ length: PARTICLES }, () => {
+        const a = Math.random() * Math.PI * 2
+        const sp = 40 + Math.random() * 260
+        return {
+          x: bx,
+          y: by,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 90,
+          life: 1,
+          size: Math.max(2, Math.round(texel * (1 + Math.floor(Math.random() * 2)))),
+        }
+      })
+
+    const paint = (dt: number) => {
+      particles.forEach((p) => {
+        p.x += p.vx * dt
+        p.y += p.vy * dt
+        p.vy += 380 * dt
+        p.life -= dt * 1.5
+      })
+      particles = particles.filter((p) => p.life > 0)
+      particles.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life)
+        // Partícula de portal: violeta claro que se apaga a morado.
+        ctx.fillStyle = p.life > 0.55 ? '#e6b3ff' : '#8b3fc4'
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size)
+      })
+      ctx.globalAlpha = 1
+    }
+
     // La estela: partículas de portal que se quedan atrás y se apagan, como
     // las que deja en el juego. Antes eran copias del propio sprite.
     let wake: Particle[] = []
@@ -169,35 +209,10 @@ export default function EnderPearl({ shot }: { shot: PearlThrow | null }) {
           stage = 'burst'
           landed = true
           shot.onLand()
-          particles = Array.from({ length: PARTICLES }, () => {
-            const a = Math.random() * Math.PI * 2
-            const sp = 40 + Math.random() * 260
-            return {
-              x: shot.toX,
-              y: shot.toY,
-              vx: Math.cos(a) * sp,
-              vy: Math.sin(a) * sp - 90,
-              life: 1,
-              size: Math.max(2, Math.round(texel * (1 + Math.floor(Math.random() * 2)))),
-            }
-          })
+          particles = burst(shot.toX, shot.toY)
         }
       } else {
-        particles.forEach((p) => {
-          p.x += p.vx * dt
-          p.y += p.vy * dt
-          p.vy += 380 * dt
-          p.life -= dt * 1.5
-        })
-        particles = particles.filter((p) => p.life > 0)
-
-        particles.forEach((p) => {
-          ctx.globalAlpha = Math.max(0, p.life)
-          // Partícula de portal: violeta claro que se apaga a morado.
-          ctx.fillStyle = p.life > 0.55 ? '#e6b3ff' : '#8b3fc4'
-          ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size)
-        })
-        ctx.globalAlpha = 1
+paint(dt)
 
         if (particles.length === 0) {
           shot.onEnd()
@@ -208,6 +223,32 @@ export default function EnderPearl({ shot }: { shot: PearlThrow | null }) {
       raf = requestAnimationFrame(draw)
     }
 
+    let burstOut = false
+    const blink = (now: number) => {
+      if (!burstOut) {
+        burstOut = true
+        particles = burst(shot.fromX, shot.fromY)
+      }
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000))
+      last = now
+      ctx.clearRect(0, 0, vw, vh)
+      if (!crossed && now - start > BLINK_CROSS_MS) {
+        crossed = true
+        shot.onCross()
+      }
+      if (!landed && now - start > BLINK_LAND_MS) {
+        landed = true
+        particles.push(...burst(shot.toX, shot.toY))
+        shot.onLand()
+      }
+      paint(dt)
+      if (landed && particles.length === 0) {
+        shot.onEnd()
+        return
+      }
+      raf = requestAnimationFrame(blink)
+    }
+
     // Red de seguridad: si algo se atasca, la navegación sigue igual.
     const failsafe = window.setTimeout(() => {
       if (!crossed) shot.onCross()
@@ -216,7 +257,7 @@ export default function EnderPearl({ shot }: { shot: PearlThrow | null }) {
       cancelAnimationFrame(raf)
     }, 3000 + (shot.delayMs ?? 0))
 
-    raf = requestAnimationFrame(draw)
+    raf = requestAnimationFrame(shot.blink ? blink : draw)
     return () => {
       cancelAnimationFrame(raf)
       window.clearTimeout(failsafe)
