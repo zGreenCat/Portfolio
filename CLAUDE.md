@@ -299,6 +299,9 @@ navegación, no la metáfora.
 - Los bloques de alto variable llevan `min-height` reservado para el peor caso
   —descripción, etiquetas y el hueco del enlace—, porque **tres de los siete
   proyectos no tienen URL** y sin reservarlo el paginador saltaba una línea.
+- **En estrecho la hoja de proyectos no tiene alto de sobra.** La descripción
+  va cortada a cuatro líneas (entera aplastaba la captura a un tercio) y el
+  enlace al podio sube a la línea del antetítulo en vez de ocupar una propia.
 - `Book` pagina por **tandas de párrafos** (`perPage`), no uno por página: el
   contenido se queda en párrafos semánticos porque `/simple` los quiere sueltos.
 
