@@ -10,10 +10,12 @@ import Character, {
   THROW_RELEASE,
   type CharacterState,
 } from '@/components/Character'
+import { CELL_HEIGHT, STATES, sheetSrc, wantsHalfSheet } from '@/components/characterSheets'
 import EnderPearl, { type PearlThrow } from '@/components/EnderPearl'
 import Book from '@/components/Book'
 import CraftingTable from '@/components/CraftingTable'
 import Inventory from '@/components/Inventory'
+import PerfMeter from '@/components/PerfMeter'
 import Podium, { PodiumMedal } from '@/components/Podium'
 import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
@@ -136,8 +138,38 @@ const CHAR_HEIGHT_VH = 271 / WORLD_UNIT
  *  baja entra el triple de mundo y queda cielo arriba, que es donde vive el
  *  título. */
 const PORTRAIT_WORLD = 0.46
-/** Por debajo de este ancho se usan las capas a mitad de resolución. */
+/** Por debajo de este ancho el saludo va a mitad de resolución, y las capas
+ *  también, sin mirar nada más. */
 const HALF_RES_WIDTH = 900
+/** Ancho de una capa a media resolución, en sus propios píxeles. */
+const HALF_LAYER_PX = 1920
+/**
+ * Las capas enteras (3840 px) solo se usan si la tesela ocupa en pantalla, en
+ * píxeles físicos, más de esto veces la media. Por debajo se sirve la media.
+ *
+ * Antes mandaba solo el ancho de la ventana, y un portátil de 1080p al 125%
+ * —982 px de ancho, tesela de 2.600 px físicos— cargaba las de 3840 para
+ * encogerlas en cada frame: 36–45 fps en una gráfica integrada, con hasta
+ * quince a la vez en las fronteras. Con la media, 60. La media se amplía como
+ * mucho este factor, y el mundo son bloques: no se nota como en una foto.
+ */
+const FULL_RES_FROM = 1.7
+
+/** ¿Tocan las hojas del personaje a la mitad en esta ventana? */
+function wantsHalfSprites(): boolean {
+  const portrait = window.innerHeight > window.innerWidth
+  const world = window.innerHeight * (portrait ? PORTRAIT_WORLD : 1)
+  const cell = world * CHAR_HEIGHT_VH * (CELL_HEIGHT / SHEET_GEOMETRY.idle.charHeight)
+  return wantsHalfSheet(cell * window.devicePixelRatio)
+}
+
+/** ¿Tocan las capas a media resolución en esta ventana? */
+function wantsHalfLayers(): boolean {
+  if (window.innerWidth < HALF_RES_WIDTH) return true
+  const portrait = window.innerHeight > window.innerWidth
+  const world = window.innerHeight * (portrait ? PORTRAIT_WORLD : 1)
+  return world * LAYER_ASPECT * window.devicePixelRatio < HALF_LAYER_PX * FULL_RES_FROM
+}
 /** Sale por el borde de abajo y ocupa media pantalla de alto. En vertical eso
  *  lo haría más ancho que la pantalla y los brazos se cortarían por los lados,
  *  así que el ancho también pone tope. */
@@ -368,7 +400,9 @@ const CATCH_UP_BLOCKS = 14
  * frame lento no significa nada.
  */
 const LITE_SAMPLE = 120
-const LITE_MS = 33
+/** 40 fps de media. Estuvo en 33 ms —30 fps—, y un equipo a 35–45 iba a
+ *  tirones sin que saltara nunca. */
+const LITE_MS = 25
 
 /** Tramo de mundo, en unidades de progreso, en el que el personaje sube o baja
  *  entre las superficies de dos biomas. El terreno cambia de golpe —como en el
@@ -494,6 +528,9 @@ export default function RecorridoPage() {
   const [worldPx, setWorldPx] = useState(0)
   const [viewW, setViewW] = useState(1920)
   const [half, setHalf] = useState(false)
+  /** Lo mismo para las hojas del personaje, que se deciden aparte: dependen
+   *  de lo que mide él en pantalla, no la tesela. */
+  const [spriteHalf, setSpriteHalf] = useState(false)
   /** Biomas montados, por índice. Solo cambia al cruzar un radio, no por frame. */
   const [mounted, setMounted] = useState<number[]>([0])
   /** Avance del mundo en el último frame: arrastra las partículas. */
@@ -550,6 +587,19 @@ export default function RecorridoPage() {
   /** Frames lentos acumulados con el mundo en marcha. */
   const slowRef = useRef({ frames: 0, total: 0 })
   const [lite, setLite] = useState(false)
+  /** `?lite=0`: el modo ligero no se enciende solo. Para comparar. */
+  const liteLockRef = useRef(false)
+  /** `?fps`: enseña el medidor. */
+  const [meter, setMeter] = useState(false)
+
+  // Diagnóstico por URL. `?fps` enseña el medidor; `?lite=1` fuerza el modo
+  // ligero y `?lite=0` lo prohíbe, para ver en el equipo real cuánto pesa.
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search)
+    if (query.has('fps')) setMeter(true)
+    if (query.get('lite') === '1') setLite(true)
+    if (query.get('lite') === '0') liteLockRef.current = true
+  }, [])
   /**
    * Sección a la que volver al recargar, o null si es una visita limpia.
    *
@@ -753,9 +803,20 @@ export default function RecorridoPage() {
       )
     }
 
-    // El saludo se pide ya en el tamaño que se va a enseñar: aquí aún no hay
-    // estado `half`, así que se mira el ancho directamente.
-    const wanted = [peekSrc(window.innerWidth < HALF_RES_WIDTH), ...PRELOAD]
+    // Todo se pide ya en el tamaño que se va a enseñar: aquí aún no hay
+    // estado `half`, así que se mira la ventana directamente. Las capas del
+    // primer bioma se pedían siempre enteras, y quien iba a ver las medias
+    // bajaba las dos.
+    const halfLayers = wantsHalfLayers()
+    const halfSprites = wantsHalfSprites()
+    const wanted = [
+      peekSrc(window.innerWidth < HALF_RES_WIDTH),
+      ...PRELOAD.map((src) =>
+        (src.startsWith('/layers/') ? halfLayers : halfSprites)
+          ? src.replace('.webp', '@half.webp')
+          : src,
+      ),
+    ]
     wanted.forEach((src) => {
       void preload(src).then(() => {
         done += 1
@@ -789,7 +850,8 @@ export default function RecorridoPage() {
       const world = window.innerHeight * (portrait ? PORTRAIT_WORLD : 1)
       setWorldPx(world)
       setViewW(window.innerWidth)
-      setHalf(window.innerWidth < HALF_RES_WIDTH)
+      setHalf(wantsHalfLayers())
+      setSpriteHalf(wantsHalfSprites())
       BOUNDS = makeBounds(window.innerWidth)
       setCompact(window.innerWidth <= 760)
       setCharHeight(world * CHAR_HEIGHT_VH)
@@ -1033,7 +1095,7 @@ export default function RecorridoPage() {
         sample.frames += 1
         sample.total += dt * 1000
         if (sample.frames >= LITE_SAMPLE) {
-          if (sample.total / sample.frames > LITE_MS) setLite(true)
+          if (!liteLockRef.current && sample.total / sample.frames > LITE_MS) setLite(true)
           sample.frames = 0
           sample.total = 0
         }
@@ -1379,11 +1441,7 @@ export default function RecorridoPage() {
     // Las hojas que no bloquean la carga pero sí hacen falta luego: sin esto,
     // `sit` se descarga justo al llegar al acantilado y se nota.
     const rest = [
-      '/sprites/walk.webp',
-      '/sprites/throw.webp',
-      '/sprites/sit.webp',
-      '/sprites/climb.webp',
-      '/sprites/cheer.webp',
+      ...STATES.map((state) => sheetSrc(state, spriteHalf)),
       layerSrc('b2', 'stage', half),
       ...SECTIONS.flatMap((section) =>
         section.kinds.map((kind) => layerSrc(section.biome, kind, half)),
@@ -1400,8 +1458,7 @@ export default function RecorridoPage() {
     return () => {
       stop = true
     }
-  }, [phase, half])
-
+  }, [phase, half, spriteHalf])
 
   const jumpTo = useCallback((at: number, id: string) => {
     snapRef.current = true
@@ -1563,7 +1620,9 @@ export default function RecorridoPage() {
           '--world-h': `${worldPx}px`,
           // El terreno se apaga y se enfría con la noche. Así el mismo render
           // sirve para cualquier hora sin volver a pasarlo por Mine-imator.
-          '--world-grade': `brightness(${1.1 - night * 0.62}) contrast(${1.08 - night * 0.1}) saturate(${1.06 - night * 0.5}) hue-rotate(${night * 12}deg)`,
+          // De día no lleva `hue-rotate`: a 0° no hace nada y era un paso más
+          // en el filtro de cada capa, en cada frame.
+          '--world-grade': `brightness(${1.1 - night * 0.62}) contrast(${1.08 - night * 0.1}) saturate(${1.06 - night * 0.5})${night > 0 ? ` hue-rotate(${night * 12}deg)` : ''}`,
           // Los comparten el cielo y la niebla de las capas.
           '--sky-top': sky.top,
           '--sky-mid': sky.mid,
@@ -1649,6 +1708,7 @@ export default function RecorridoPage() {
               state={characterState}
               charHeight={charHeight}
               driven={characterState !== 'idle' && characterState !== 'cheer'}
+              half={spriteHalf}
               spriteRef={spriteRef}
             />
           </div>
@@ -1700,6 +1760,29 @@ export default function RecorridoPage() {
           onPodium={climbPodium}
         />
         <Podium openness={podiumOpen} />
+        {meter ? <PerfMeter /> : null}
+
+        {/* Todas las hojas del personaje, pintadas ya: un píxel de cada una, a
+            la escala a la que se van a usar. Una hoja se decodifica la primera
+            vez que se pinta, y eso era un tirón justo al echar a andar, al
+            lanzar o al subir al podio. `decode()` no vale para fondos CSS. */}
+        {phase === 'ready' ? (
+          <div className={styles.warm} aria-hidden="true">
+            {STATES.map((state) => {
+              const sheet = SHEET_GEOMETRY[state]
+              const scale = charHeight / sheet.charHeight
+              return (
+                <span
+                  key={state}
+                  style={{
+                    backgroundImage: `url(${sheetSrc(state, spriteHalf)})`,
+                    backgroundSize: `${CELL_WIDTH * scale * sheet.frames}px ${CELL_HEIGHT * scale}px`,
+                  }}
+                />
+              )
+            })}
+          </div>
+        ) : null}
         <Book
           title="Sobre mí"
           pages={ABOUT_PAGES}
@@ -1771,7 +1854,7 @@ export default function RecorridoPage() {
         {phase === 'greeting' ? (
           <div className={styles.greeter}>
             <SpriteGrid
-              src={peekSrc(half)}
+              src={peekSrc(viewW > 0 && viewW < HALF_RES_WIDTH)}
               {...PEEK}
               scale={peekScale}
               onFinish={handleGreetingEnd}

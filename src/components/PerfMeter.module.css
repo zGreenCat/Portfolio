@@ -1,0 +1,48 @@
+/* Herramienta de diagnóstico, no parte del sitio: encima de todo, visor
+   incluido, porque también hay que poder medir con él abierto. */
+.meter {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: min(92vw, 340px);
+  padding: 10px 12px;
+  border-radius: 3px;
+  background: rgb(6 9 12 / 0.88);
+  box-shadow: inset 0 0 0 1px rgb(238 242 240 / 0.2);
+  color: #eef2f0;
+}
+
+.out {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.copy {
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 3px;
+  background: rgb(238 242 240 / 0.12);
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.copy:hover,
+.copy:focus-visible {
+  background: rgb(238 242 240 / 0.24);
+}
+
+.copy:focus-visible {
+  outline: 2px solid #8fc4a0;
+  outline-offset: 2px;
+}

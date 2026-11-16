@@ -28,6 +28,12 @@ para escalar y colocar cada hoja.
 | `cheer` | 16 | tira | 147 KB | 408 | 540 | 232 |
 | `sit` | 31 | tira | 223 KB | 408 | 540 | 232 |
 
+Cada hoja de perfil tiene además su `@half` (celda de 230×300), que es la que
+se sirve salvo en pantallas grandes. Se genera de la entera:
+`magick public/sprites/<hoja>.webp -filter Lanczos -resize 50% -quality 90
+"public/sprites/<hoja>@half.webp"`. `npm test` falla si falta o no mide la
+mitad exacta.
+
 - `charHeight` — alto del personaje de pie dentro de la celda de 600
 - `footY` — fila del suelo. En `sit` los pies cuelgan por debajo
 - `centerX` — su eje horizontal dentro de la celda

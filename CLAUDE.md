@@ -74,8 +74,14 @@ del recorrido: bosque (Inicio), desierto con templo (Sobre mí), taiga
 (Experiencias), cerezos (Skills) y acantilado (Contacto). El desierto y la taiga
 se intercambiaron para que el podio fuera en la nieve. Se montan
 solo los biomas dentro de `MOUNT_RADIUS`: una capa ocupa decenas de MB
-descomprimida y cinco a la vez matan un móvil. Por debajo de `HALF_RES_WIDTH`
-(900 px) se usan las variantes `@half`.
+descomprimida y cinco a la vez matan un móvil.
+
+**Las capas enteras (3840 px) son solo para pantallas grandes.** Las `@half`
+se sirven por debajo de `HALF_RES_WIDTH` (900 px) y siempre que la tesela
+ocupe en píxeles físicos menos de `FULL_RES_FROM` veces la media
+(`wantsHalfLayers`). Mandaba solo el ancho, y un portátil de 1080p al 125%
+cargaba las de 3840 para encogerlas en cada frame: 36–45 fps en una Intel
+UHD, 60 con las medias.
 
 **Las capas no se copian a mano.** Se renderizan todas al mismo lienzo de
 3840×3000 y `scripts/import-layers.py` las recorta, codifica y genera
@@ -231,6 +237,32 @@ de los 16 píxeles de un bloque. Su sitio se calcula (`chestLeft`,
 Los eventos están en `EVENTS` (`src/content/portfolio.ts`). Tres tienen puesto
 y suben; el que no, va aparte como logro del juego.
 
+### Hojas del personaje: a la mitad y ya calientes
+
+Los datos de las hojas viven en `characterSheets.ts`, sin React, para poder
+probarlos contra los archivos (`npm test`).
+
+- **Cada hoja tiene su `@half`** (celda de 300 px) y es la que se sirve salvo
+  en pantallas grandes (`wantsHalfSheet`, `FULL_SHEET_FROM`). Las enteras se
+  usaban siempre: en un portátil de 1080p la celda son 270 px físicos, 2,2
+  veces menos de lo que traía la hoja, y cada una ocupaba 18–35 MB
+  decodificada. `climb` y `sit` enteras rozan además el tope de textura.
+  **Al renderizar una hoja nueva hay que generar también su `@half`**
+  (`magick x.webp -resize 50% x@half.webp`); el test lo exige.
+- **Se calientan al entrar** (`.warm`): un píxel de cada una, pintado a la
+  escala a la que se usa. Una hoja se decodifica la primera vez que se pinta,
+  y eso era un tirón de 100–250 ms justo al echar a andar, al lanzar o al
+  subir al podio. Medido en una Intel UHD: con el personaje, 4 de 4 pasadas
+  con el tirón; sin él, ninguna. `decode()` no sirve para fondos CSS, y
+  pintarla a 1×1 con el fondo encogido tampoco: decodifica otra escala.
+  Con las dos cosas, en ese equipo: de 39–50 fps a 56–60 con carga fresca, y
+  el tirón de echar a andar no aparece en 8 pasadas de 8.
+- **Queda un tirón menor al echar a correr por primera vez** (67–167 ms, en 4
+  pasadas de 8), que el calentado no evita. Sin diagnosticar: o Chrome suelta
+  la hoja decodificada antes de que haga falta —`run` se usa mucho después
+  que `walk`—, o el coste es del cambio de animación y no de la imagen. La
+  prueba pendiente es calentar `run` pintándola entera un frame.
+
 ### Precarga en dos tiempos
 
 La pantalla de carga solo espera `b1` y los sprites. Al terminar, los bytes de
@@ -347,13 +379,38 @@ para reutilizarse con las fotos de los hackatones.
 
 ### Modo ligero
 
-Se enciende solo: si el recorrido baja de 30 fps durante 120 frames **con el
+Se enciende solo: si el recorrido baja de 40 fps durante 120 frames **con el
 mundo en marcha**, `data-lite` entra en la raíz y apaga los `filter` de las
 capas, fuerza media resolución y quita el clima.
 
 El caso que lo motiva es la aceleración por hardware desactivada. Con GPU el
 filtro se aplica una vez sobre una textura y moverla sale gratis; sin ella el
 navegador repinta ~43 Mpx filtrados en cada frame sobre la CPU.
+
+**Diagnóstico por URL**, para medir en el equipo de quien lo sufre:
+
+- `?fps` monta `PerfMeter`: FPS, peor frame y porcentaje de tirones de los
+  últimos 2 s, si el modo ligero está activo, ventana y escala, y qué gráfica
+  usa el navegador. Con botón para copiarlo.
+- `?lite=1` fuerza el modo ligero; `?lite=0` impide que se encienda solo.
+
+Medido por software (sin gráfica), parado en Inicio: 18 fps tal cual, 24 sin
+clima, **59 sin los `filter` de las capas**. El JavaScript del bucle son
+0,5 ms por frame: el coste es casi todo de los filtros. Dos agujeros conocidos
+del disparo automático, sin arreglar: solo cuenta frames con el mundo en
+marcha —llegando con la perla y quedándose quieto no salta nunca— y solo
+saltaba por debajo de 30 fps, así que un equipo a 35–45 iba a tirones y no lo
+recibía (ya salta por debajo de 40: `LITE_MS = 25`).
+
+Medido en una Intel UHD real (982×727 al 125%, informe del 2026-11-16): 60
+parado, 36–45 andando, 59–60 en modo ligero, 57–58 solo sin los filtros, y
+picos de 100–230 ms. Con las capas a la mitad subió a 52–54 andando, y ahí
+quitar los filtros ya no cambia nada medible (49–52 sin ellos, 46–54 con
+ellos): **no merece la pena cocerlos en las imágenes**. Lo de 18 → 59 es de
+renderizar por software, donde los filtros van por CPU. Los picos eran las
+hojas del personaje decodificándose, no los biomas (ver *Hojas del
+personaje*). Queda uno menor, de 100–150 ms hacia el scroll 3.000–3.250, con
+y sin personaje, sin diagnosticar.
 
 No se pregunta al navegador si la GPU está activa —no hay forma fiable— y solo
 cuentan los frames en los que el mundo se mueve: parado, un frame lento no

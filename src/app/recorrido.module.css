@@ -397,6 +397,24 @@
   pointer-events: auto;
 }
 
+/* Calienta las hojas del personaje: siete píxeles en una esquina, uno por
+   hoja. Tienen que pintarse de verdad —nada de `display: none` ni de
+   `visibility`— para que el navegador las decodifique; lo que enseñan es la
+   esquina de cada hoja, que es transparente. */
+.warm {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.warm span {
+  width: 1px;
+  height: 1px;
+  background-repeat: no-repeat;
+}
+
 /* El escenario se pulsa entero. No pinta nada propio salvo un foco tenue al
    pasar por encima: el aviso lo da la medalla. */
 .podiumHit {

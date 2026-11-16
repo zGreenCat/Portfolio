@@ -113,6 +113,7 @@ export default function Strip({
           key={index}
           src={file}
           alt=""
+          decoding="async"
           className={styles.tile}
           style={index % 2 !== parity ? { transform: 'scaleX(-1)' } : undefined}
         />

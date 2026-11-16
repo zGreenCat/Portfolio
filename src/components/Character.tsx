@@ -1,56 +1,15 @@
 import type { CSSProperties, Ref } from 'react'
 
+import { CELL_HEIGHT, CELL_WIDTH, SHEETS, sheetSrc, type CharacterState } from './characterSheets'
 import styles from './Character.module.css'
 
-export type CharacterState = 'run' | 'walk' | 'idle' | 'throw' | 'sit' | 'climb' | 'cheer'
-
-export const CELL_WIDTH = 460
-const CELL_HEIGHT = 600
-
-/**
- * Geometría de cada hoja. Hoy es la misma en las cinco: salen todas del rig de
- * `scripts/render/`, con una sola cámara. Sigue yendo por hoja porque el
- * componente escala con ella: cuando cada una venía de una cámara distinta, en
- * `idle` el personaje medía un 90% de lo que medía en `run` y encogía al
- * pararse.
- *
- * - `charHeight`: alto del personaje dentro de la celda, en píxeles de origen
- * - `footY`: fila donde apoya el pie (mediana del ciclo, no el frame más bajo:
- *   con el mínimo, los demás frames quedaban flotando)
- * - `centerX`: centro horizontal del personaje dentro de la celda
- */
-const SHEETS = {
-  run: { src: '/sprites/run.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
-  walk: { src: '/sprites/walk.webp', frames: 25, charHeight: 408, footY: 540, centerX: 232 },
-  idle: { src: '/sprites/idle.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
-  throw: { src: '/sprites/throw.webp', frames: 19, charHeight: 408, footY: 540, centerX: 232 },
-  // La geometría sale del frame 1, que es el personaje DE PIE: así la hoja se
-  // ancla contra `idle` en vez de estimar dónde queda el cuerpo al sentarse,
-  // que es lo que cambia de sitio. `centerX` coincide con el de `idle`.
-  // `footY` es el suelo, no el punto más bajo: sentado, los pies cuelgan por
-  // debajo, delante del cantil. La cámara la fija `scripts/render/rig.py`.
-  sit: { src: '/sprites/sit.webp', frames: 31, charHeight: 408, footY: 540, centerX: 232 },
-  // Subir al podio va dibujado en el sitio: los saltos los desplaza la página.
-  climb: { src: '/sprites/climb.webp', frames: 32, charHeight: 408, footY: 540, centerX: 232 },
-  cheer: { src: '/sprites/cheer.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
-} as const
-
-/** Frame en el que la mano suelta la perla, y dónde está esa mano dentro de la
- *  celda. Lo da el rig con su sonda, sobre el brazo ya extendido y nivelado. */
-export const THROW_RELEASE = { frame: 15, handX: 394, handY: 278 } as const
-
-export const FRAME_COUNT: Record<CharacterState, number> = {
-  run: SHEETS.run.frames,
-  walk: SHEETS.walk.frames,
-  idle: SHEETS.idle.frames,
-  throw: SHEETS.throw.frames,
-  sit: SHEETS.sit.frames,
-  climb: SHEETS.climb.frames,
-  cheer: SHEETS.cheer.frames,
-}
-
-/** Geometría de cada hoja, para que la página pueda situar la mano. */
-export const SHEET_GEOMETRY = SHEETS
+export {
+  CELL_WIDTH,
+  FRAME_COUNT,
+  SHEETS as SHEET_GEOMETRY,
+  THROW_RELEASE,
+  type CharacterState,
+} from './characterSheets'
 
 interface CharacterProps {
   state: CharacterState
@@ -62,6 +21,9 @@ interface CharacterProps {
    * animarse por CSS y espera esa escritura.
    */
   driven?: boolean
+  /** Sirve la hoja a la mitad. El tamaño en pantalla no cambia: el fondo se
+   *  escala a la celda pedida. */
+  half?: boolean
   spriteRef?: Ref<HTMLDivElement>
 }
 
@@ -81,7 +43,7 @@ const labels: Record<CharacterState, string> = {
  * contenedor solo tiene que estar a la altura del suelo, y cambiar de hoja no
  * mueve nada.
  */
-export default function Character({ state, charHeight, driven, spriteRef }: CharacterProps) {
+export default function Character({ state, charHeight, driven, half = false, spriteRef }: CharacterProps) {
   const sheet = SHEETS[state]
   const scale = charHeight / sheet.charHeight
 
@@ -95,7 +57,7 @@ export default function Character({ state, charHeight, driven, spriteRef }: Char
     height,
     bottom: -footOffset,
     left: -centerOffset,
-    backgroundImage: `url(${sheet.src})`,
+    backgroundImage: `url(${sheetSrc(state, half)})`,
     backgroundSize: `${width * sheet.frames}px ${height}px`,
     '--sheet-span': `${width * sheet.frames}px`,
     // El volteo al andar hacia atrás pivota sobre el centro del personaje, no
