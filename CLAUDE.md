@@ -107,9 +107,10 @@ Reglas al tocar el bucle:
   día. Lo comparten el bucle y el reaterrizaje al volver.
 - **Frame del sprite** → `writeFrame(index)`. Lee la hoja del `data-state` del
   propio nodo, **nunca de `stateRef`**: el cambio de estado llega al DOM un
-  frame más tarde, y `run` (367 px, 16 celdas) y `walk` (399 px, 25) tienen
-  distinto ancho de celda, así que el desplazamiento caía entre dos celdas y se
-  veían dos poses a la vez.
+  frame más tarde. Cuando `run` y `walk` tenían distinto ancho de celda, el
+  desplazamiento caía entre dos celdas y se veían dos poses a la vez. Hoy las
+  cinco hojas comparten geometría, pero la regla sigue: una hoja nueva puede
+  no hacerlo.
 - **Lo que sí es estado** va cuantizado: `NIGHT_STEPS = 24`, `PANEL_STEPS = 20`.
   La noche mueve un `filter` CSS sobre superficies del ancho del mundo, y
   re-filtrar eso por frame era carísimo.
@@ -235,9 +236,14 @@ significa nada. La noche no se pierde: pasa a un velo del tamaño de la pantalla
 
 ### Sprites por script (`scripts/render/`)
 
-`sit` no sale de Mine-imator: `gen_sit.py` escribe las poses y `rig.py` las
-renderiza con Blender sin ventana. El comando completo está en `ASSETS.md`,
-en *Herramientas*.
+Las seis hojas del personaje salen de aquí, no de Mine-imator: un generador o
+un archivo de `poses/` da las poses y `rig.py` las renderiza con Blender sin
+ventana. El comando completo está en `ASSETS.md`, en *Herramientas*.
+
+El saludo (`peek_wave`) sube por el borde de abajo, así que `.greeter` va
+centrado y pegado al fondo, y su escala la limitan el alto **y el ancho**: en
+vertical, a media pantalla de alto los brazos se salían por los lados. Se sirve
+a 1,5×, y `@half` por debajo de `HALF_RES_WIDTH`.
 
 - **Positivo es siempre hacia delante**: un brazo avanza, el torso se inclina,
   la cabeza mira abajo. Las extremidades cuelgan de su pivote y el torso y la
@@ -316,22 +322,21 @@ cuanto existan la foto y el render de cuerpo entero.
 
 ### Lanzamiento y perla
 
-**El gesto de lanzar nunca se ha visto animado.** En el bucle de `page.tsx`, la
-rama `else if (active !== 'idle') writeFrame(Math.floor(sheetFrame))` también
-corre en `throw` y pisa el frame que escribe el efecto del lanzamiento. Parado,
-la zancada no avanza, así que el sprite se queda en el frame 1 los 700 ms.
-Arreglo probado en una copia, sin aplicar: excluir `throw` de esa rama. Con él
-corren los 19 frames. Queda un parpadeo de un frame al arrancar.
+**El gesto de lanzar no se animaba, y ya sí.** En el bucle de `page.tsx`, la
+rama que escribe el frame de la zancada corría también en `throw` y pisaba el
+que escribe el efecto del lanzamiento. Parado, la zancada no avanza, así que
+el sprite se quedaba en el frame 1 los 700 ms. Ahora esa rama excluye `throw`
+y corren los 19 frames. Queda un parpadeo de un frame al arrancar.
 
 Mejoras de la perla, por lo que más se nota. Todas en `EnderPearl.tsx`:
 
-1. **Que salga de la mano.** Viene gratis con el arreglo de arriba y un
-   `THROW_RELEASE` medido sobre la hoja que se integre; el rig lo da con su
-   sonda `probe`.
-2. **Tamaño atado al personaje.** Hoy son 32 px fijos y en pantallas grandes
+1. **Tamaño atado al personaje.** Hoy son 32 px fijos y en pantallas grandes
    se queda pequeña.
-3. **Partículas de portal** siguiéndola, en vez de solo copias del sprite.
-4. **Arco con gravedad.** Ahora sale recta a velocidad fija.
+2. **Partículas de portal** siguiéndola, en vez de solo copias del sprite.
+3. **Arco con gravedad.** Ahora sale recta a velocidad fija.
+
+Ya sale de la mano: `THROW_RELEASE` lo mide el rig con su sonda `probe`, y hay
+que volver a medirlo si cambia la hoja `throw`.
 
 **No renderizarla en 3D.** En el juego la perla lanzada es el sprite plano de
 16×16 de cara a la cámara, que es lo que ya hace el sitio; en 3D sería menos
@@ -343,12 +348,10 @@ lanzamiento, que hoy va vacía.
 
 Por orden de lo que más se nota:
 
-1. **`peek_wave`** — es lo primero que se ve y se amplía casi al doble
-2. **`b5_far`** — compensado en la importación, con el parche marcado
+1. **`b5_far`** — compensado en la importación, con el parche marcado
 
-Los dos están detallados en `ASSETS.md`. `sit` ya no bloquea: se rehízo con
-`scripts/render/` (Blender por script), y esa tubería sirve para las demás
-hojas.
+Está detallado en `ASSETS.md`. Las seis hojas del personaje ya salen de
+`scripts/render/` (Blender por script) y no bloquean.
 
 ## Documentación
 

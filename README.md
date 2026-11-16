@@ -70,7 +70,7 @@ src/components/             personaje, paneles, perla, cielo, clima
 src/content/portfolio.ts    proyectos, sobre mí, skills, contacto
 src/content/layers.ts       generado — alto de cada capa y escala
 scripts/import-layers.py    recorta y codifica los renders
-scripts/render/             rig de Blender por script: de aquí sale `sit`
+scripts/render/             rig de Blender por script: las hojas del personaje
 public/layers/              capas de mundo por bioma (b1…b5)
 public/sprites/             hojas de sprites del personaje
 public/projects/            capturas de los proyectos
@@ -83,9 +83,9 @@ proyecto sin abrir el código de la animación.
 ## Assets
 
 Los renders se producen en Mine-imator, todos al mismo lienzo de 3840×3000, y
-`scripts/import-layers.py` los recorta y codifica. La hoja `sit` es la
-excepción: la genera `scripts/render/` con Blender sin ventana, a partir de
-poses escritas como números. Las reglas de cámara,
+`scripts/import-layers.py` los recorta y codifica. Las hojas del personaje son
+la excepción: las genera `scripts/render/` con Blender sin ventana, a partir de
+poses escritas como números, calcadas de las animaciones hechas a mano. Las reglas de cámara,
 encuadre, montaje de hojas, la tubería de importación y los pendientes están en
 **[ASSETS.md](./ASSETS.md)**.
 

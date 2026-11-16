@@ -8,9 +8,11 @@ export const CELL_WIDTH = 460
 const CELL_HEIGHT = 600
 
 /**
- * Geometría medida de cada hoja. Las dos se renderizaron con cámaras distintas,
- * así que el personaje no ocupa lo mismo dentro de la celda: en `idle` mide un
- * 90% de lo que mide en `run`. Sin corregirlo, encoge al pararse.
+ * Geometría de cada hoja. Hoy es la misma en las cinco: salen todas del rig de
+ * `scripts/render/`, con una sola cámara. Sigue yendo por hoja porque el
+ * componente escala con ella: cuando cada una venía de una cámara distinta, en
+ * `idle` el personaje medía un 90% de lo que medía en `run` y encogía al
+ * pararse.
  *
  * - `charHeight`: alto del personaje dentro de la celda, en píxeles de origen
  * - `footY`: fila donde apoya el pie (mediana del ciclo, no el frame más bajo:
@@ -18,11 +20,10 @@ const CELL_HEIGHT = 600
  * - `centerX`: centro horizontal del personaje dentro de la celda
  */
 const SHEETS = {
-  // run2 puesto temporalmente en el sitio de run, para comparar.
-  run: { src: '/sprites/run.webp', frames: 16, charHeight: 367, footY: 512, centerX: 230 },
-  walk: { src: '/sprites/walk.webp', frames: 25, charHeight: 399, footY: 526, centerX: 242 },
-  idle: { src: '/sprites/idle.webp', frames: 16, charHeight: 404, footY: 548, centerX: 232 },
-  throw: { src: '/sprites/throw.webp', frames: 19, charHeight: 400, footY: 523, centerX: 190 },
+  run: { src: '/sprites/run.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
+  walk: { src: '/sprites/walk.webp', frames: 25, charHeight: 408, footY: 540, centerX: 232 },
+  idle: { src: '/sprites/idle.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
+  throw: { src: '/sprites/throw.webp', frames: 19, charHeight: 408, footY: 540, centerX: 232 },
   // La geometría sale del frame 1, que es el personaje DE PIE: así la hoja se
   // ancla contra `idle` en vez de estimar dónde queda el cuerpo al sentarse,
   // que es lo que cambia de sitio. `centerX` coincide con el de `idle`.
@@ -32,8 +33,8 @@ const SHEETS = {
 } as const
 
 /** Frame en el que la mano suelta la perla, y dónde está esa mano dentro de la
- *  celda. Medido sobre Throw_15, que es la máxima extensión del brazo. */
-export const THROW_RELEASE = { frame: 15, handX: 362, handY: 240 } as const
+ *  celda. Lo da el rig con su sonda, sobre el brazo ya extendido y nivelado. */
+export const THROW_RELEASE = { frame: 15, handX: 394, handY: 278 } as const
 
 export const FRAME_COUNT: Record<CharacterState, number> = {
   run: SHEETS.run.frames,

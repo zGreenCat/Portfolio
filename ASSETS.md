@@ -17,24 +17,33 @@ para escalar y colocar cada hoja.
 
 | Hoja | Frames | Montaje | Peso | charHeight | footY | centerX |
 |---|---|---|---|---|---|---|
-| `peek_wave` | 32 | rejilla 8×4 | 267 KB | — | — | — |
-| `run` | 16 | tira | 80 KB | 367 | 512 | 230 |
-| `walk` | 25 | tira | 91 KB | 399 | 526 | 242 |
-| `idle` | 16 | tira | 45 KB | 404 | 548 | 232 |
-| `throw` | 19 | tira | 86 KB | 400 | 523 | 190 |
-| `sit` | 31 | tira | 217 KB | 408 | 540 | 232 |
+| `peek_wave` | 32 | rejilla 8×4 | 504 KB | — | — | — |
+| `peek_wave@half` | 32 | rejilla 8×4 | 237 KB | — | — | — |
+| `run` | 16 | tira | 147 KB | 408 | 540 | 232 |
+| `walk` | 25 | tira | 166 KB | 408 | 540 | 232 |
+| `idle` | 16 | tira | 73 KB | 408 | 540 | 232 |
+| `throw` | 19 | tira | 137 KB | 408 | 540 | 232 |
+| `sit` | 31 | tira | 223 KB | 408 | 540 | 232 |
 
-- `charHeight` — alto del personaje dentro de la celda de 600
-- `footY` — fila del pie de apoyo, **mediana del ciclo**, no el frame más bajo
+- `charHeight` — alto del personaje de pie dentro de la celda de 600
+- `footY` — fila del suelo. En `sit` los pies cuelgan por debajo
 - `centerX` — su eje horizontal dentro de la celda
 
-**Las cinco se renderizaron con cámaras distintas**, de ahí que `charHeight`
-varíe entre 367 y 404. El componente lo compensa, pero eso significa ampliar
-unas respecto a otras. Si algún día se re-exportan todas con la misma cámara,
-desaparece el reescalado y ganan nitidez.
+**Las cinco de perfil salen del mismo rig, con una sola cámara**, así que
+comparten geometría, tono y escala. Antes venían cada una de un render de
+Mine-imator con su cámara: `charHeight` variaba entre 367 y 404 y el componente
+ampliaba unas respecto a otras. Las poses siguen siendo las de aquellas hojas,
+calcadas; ver *Cómo se mueve el personaje*.
 
-`throw` suelta la perla en el **frame 15**, con la mano en (362, 240) de la
-celda. Eso está en `THROW_RELEASE` y de ahí sale el punto de salida de la perla.
+`throw` suelta la perla en el **frame 15** contando desde cero, con la mano en
+(394, 278) de la celda. Eso está en `THROW_RELEASE` y de ahí sale el punto de
+salida de la perla. Lo mide el rig con su sonda `probe`.
+
+**`peek_wave` es otra cosa:** de frente y en perspectiva, celda de 960×570. El
+personaje sube por el borde de abajo, saluda con las dos manos y baja. Va a
+1,5× para no ampliarse en pantallas grandes —70 MB descomprimida— y por debajo
+de 900 px de ancho se sirve `@half`, que son 18 MB. El borde inferior de la
+celda es el de la pantalla: `.greeter` va centrado y pegado abajo.
 
 **El frame 1 de `sit` es el personaje DE PIE**, y es lo que permite alinear la
 hoja: su `centerX` sale 232, idéntico al de `idle`. Sin ese frame habría que
@@ -118,32 +127,18 @@ px/bloque, un 47% más grande que el resto.
 
 ## Pendientes
 
-### 1 · `peek_wave` — decisión pendiente
-
-```
-viewport 1080  →  celda de 600 px mostrada a  842  = 1.40×
-viewport 1440  →                        a 1123  = 1.87×
-```
-
-Es lo primero que se ve y se amplía casi al doble en pantallas grandes. Pero
-re-renderizarla al doble son 6960×4800 = 134 MB descomprimidos, y está en la
-precarga que bloquea la pantalla de carga.
-
-Tres salidas: bajar `PEEK_CELL_VH` y mostrarla a 1:1 —el saludo se ve más
-pequeño—, renderizar a 1,5× y comer 75 MB, o pasarla a vídeo con alfa.
-
-### 2 · `b5_far` — desfasado
+### 1 · `b5_far` — desfasado
 
 Ver *Capas de mundo*. Va compensado en la importación; el parche se quita
 cuando se re-renderice.
 
-### 3 · Captura de Postea
+### 2 · Captura de Postea
 
 Único proyecto sin imagen en el carrusel. Su diapositiva muestra «producto
 interno · sin demo pública», que es cierto —es un SaaS de Shinsekai— así que no
 corre prisa.
 
-### 4 · La niebla nunca salió
+### 3 · La niebla nunca salió
 
 Saturación relativa al suelo, medida sobre los renders actuales:
 
@@ -165,13 +160,19 @@ En proyección ortográfica una colina lejana se dibuja **del mismo tamaño** qu
 una cercana. Lo único que las separa es la niebla. Por eso una `far` sin niebla
 no se lee como fondo: se lee como un muro.
 
-### 5 · `layer_front` — opcional
+### 4 · `layer_front` — opcional
 
 Una capa por delante del personaje, para que pase por detrás de un tronco.
 Nunca ha hecho falta.
 
 ### Cerrados
 
+- **`peek_wave` ya no se amplía.** Se mostraba a 1,87× en una pantalla de 1440.
+  El saludo se rehízo de frente con el rig, a 1,5×, con una variante a la mitad
+  para pantallas pequeñas. La hoja a mano se asomaba por la izquierda con un
+  brazo; de ella se conserva el ritmo.
+- **Las cinco hojas de perfil comparten cámara.** Era el motivo del reescalado
+  entre hojas y de que el blanco no coincidiera.
 - **`sit` se rehízo, con Blender por script.** La hoja de Mine-imator rotaba el
   cuerpo en bloque y leía como caerse de espaldas. La nueva baja la pelvis en
   vertical, lleva los muslos a 90° y deja las espinillas colgando con un
@@ -488,13 +489,16 @@ se suman a los del canvas y se ve cargado.
 
   `gen_throw.py` es el primer gesto hecho así: lee el calco del lanzamiento
   (`poses/throw.json`), conserva pies, paso y ritmo, y reescribe tronco y
-  brazo. Su salida es `poses/throw_v2.json`. `gen_peek.py` es el saludo
-  escrito por fórmula, anterior a este método: está pendiente de rehacer.
+  brazo. Su salida es `poses/throw_v2.json`, que es la hoja `throw` del sitio.
+  `gen_peek.py` escribe el saludo; toma su ritmo del saludo hecho a mano.
+
+  Las hojas del sitio se renderizan todas con `zoom` 1, no con el que trae
+  cada calco: ese valor solo servía para casar con la hoja original.
 
   **El tono ya está igualado.** Mine-imator ilumina la skin algo más clara y
   azulada, y el rig lo reproduce con `TINT`: blanco 240/241/247 frente a
   241/242/248 de `idle`, `walk` y `throw`. `run` va aparte desde siempre
-  (244/248/251). **`sit.webp` se renderizó antes de ese ajuste y sigue en 229.**
+  (244/248/251).
 - **Blockbench + Blender** — mejor acabado, más trabajo.
 - **Amulet / MCEdit** — para exportar una región del mundo propio e importarla,
   en vez de construir el terreno a mano.

@@ -136,8 +136,9 @@
 
 .greeter {
   position: absolute;
-  left: 0;
-  bottom: 14vh;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
   z-index: 7;
 }
 

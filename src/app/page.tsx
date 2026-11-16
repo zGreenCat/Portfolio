@@ -30,7 +30,6 @@ import styles from './recorrido.module.css'
 type Phase = 'loading' | 'greeting' | 'entering' | 'ready'
 
 const PRELOAD = [
-  '/sprites/peek_wave.webp',
   '/sprites/run.webp',
   '/sprites/idle.webp',
   '/layers/b1_ground.webp',
@@ -46,7 +45,11 @@ const MAX_LOADING_MS = 1500
 /** Sin los 5 frames vacíos del original: cuatro al inicio y uno al final, que
  *  eran 0,4 s de nada. Y a 18 fps en vez de 12: los 12 venían de cuando el
  *  saludo iba gobernado por scroll, pero se reproduce solo y se veía a tirones. */
-const PEEK = { cellWidth: 435, cellHeight: 600, columns: 8, rows: 4, frames: 32, fps: 18 }
+const PEEK = { cellWidth: 960, cellHeight: 570, columns: 8, rows: 4, frames: 32, fps: 18 }
+/** El saludo pesa lo suyo descomprimido —70 MB entero— y va en la carga que
+ *  bloquea la pantalla, así que en pantallas pequeñas se sirve a la mitad. La
+ *  celda se declara igual en los dos casos: el fondo se escala al tamaño pedido. */
+const peekSrc = (half: boolean) => `/sprites/peek_wave${half ? '@half' : ''}.webp`
 
 /** Alto de página dedicado al recorrido. */
 const SCROLL_LENGTH = 7000
@@ -100,8 +103,11 @@ const CHAR_HEIGHT_VH = 271 / WORLD_UNIT
 const PORTRAIT_WORLD = 0.46
 /** Por debajo de este ancho se usan las capas a mitad de resolución. */
 const HALF_RES_WIDTH = 900
-const PEEK_CELL_VH = 0.78
-const PEEK_CELL_PX = 600
+/** Sale por el borde de abajo y ocupa media pantalla de alto. En vertical eso
+ *  lo haría más ancho que la pantalla y los brazos se cortarían por los lados,
+ *  así que el ancho también pone tope. */
+const PEEK_CELL_VH = 0.5
+const PEEK_CELL_VW = 0.96
 
 const ENTRY_FROM = -28
 /** Posición del personaje en pantalla, en %. Es también su centro visual:
@@ -559,11 +565,14 @@ export default function RecorridoPage() {
       )
     }
 
-    PRELOAD.forEach((src) => {
+    // El saludo se pide ya en el tamaño que se va a enseñar: aquí aún no hay
+    // estado `half`, así que se mira el ancho directamente.
+    const wanted = [peekSrc(window.innerWidth < HALF_RES_WIDTH), ...PRELOAD]
+    wanted.forEach((src) => {
       void preload(src).then(() => {
         done += 1
-        if (!cancelled) setProgress(done / PRELOAD.length)
-        if (done === PRELOAD.length) enter()
+        if (!cancelled) setProgress(done / wanted.length)
+        if (done === wanted.length) enter()
       })
     })
 
@@ -596,7 +605,12 @@ export default function RecorridoPage() {
       BOUNDS = makeBounds(window.innerWidth)
       setCompact(window.innerWidth <= 760)
       setCharHeight(world * CHAR_HEIGHT_VH)
-      setPeekScale((window.innerHeight * PEEK_CELL_VH) / PEEK_CELL_PX)
+      setPeekScale(
+        Math.min(
+          (window.innerHeight * PEEK_CELL_VH) / PEEK.cellHeight,
+          (window.innerWidth * PEEK_CELL_VW) / PEEK.cellWidth,
+        ),
+      )
       setPageHeight(SCROLL_LENGTH + window.innerHeight)
     }
     fit()
@@ -872,8 +886,10 @@ export default function RecorridoPage() {
         // El frame lo marca la posición, no la distancia recorrida: el gesto
         // tiene principio y final, no es un ciclo.
         writeFrame(Math.min(FRAME_COUNT.sit - 1, Math.floor(sitAt * FRAME_COUNT.sit)))
-      } else if (active !== 'idle') {
+      } else if (active !== 'idle' && active !== 'throw') {
         // En reposo manda el bucle CSS: escribirle el frame lo dejaría clavado.
+        // El lanzamiento lleva su propio reloj: escribirle aquí el frame de la
+        // zancada, que parado no avanza, lo pisaba y el gesto no se movía.
         writeFrame(Math.floor(sheetFrame))
       }
 
@@ -1315,7 +1331,7 @@ export default function RecorridoPage() {
         {phase === 'greeting' ? (
           <div className={styles.greeter}>
             <SpriteGrid
-              src="/sprites/peek_wave.webp"
+              src={peekSrc(half)}
               {...PEEK}
               scale={peekScale}
               onFinish={handleGreetingEnd}
