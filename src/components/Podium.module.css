@@ -101,6 +101,60 @@
   color: #eef2f0;
 }
 
+/* En móvil la hoja es media pantalla y no desliza: cada evento se queda en
+   puesto, nombre y foto. El resumen de qué se construyó sigue en ancho y en
+   /simple. */
+@media (max-width: 760px) {
+  .places,
+  .others {
+    gap: 9px;
+  }
+
+  .others {
+    margin-top: 2px;
+  }
+
+  .place {
+    align-items: center;
+    gap: 11px;
+  }
+
+  .medal {
+    width: 30px;
+    height: 30px;
+  }
+
+  .text {
+    gap: 1px;
+  }
+
+  .rank {
+    font-size: 0.68rem;
+  }
+
+  .name {
+    font-size: 0.95rem;
+  }
+
+  .summary,
+  .link {
+    display: none;
+  }
+
+  .photo {
+    width: 62px;
+  }
+
+  .advancement {
+    padding: 7px 11px;
+    gap: 1px;
+  }
+
+  .unlocked {
+    font-size: 0.7rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .photo img {
     transition: none;

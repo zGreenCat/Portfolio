@@ -398,17 +398,21 @@ navegación, no la metáfora.
 - **En estrecho la hoja va ARRIBA, sobre el cielo, y es media pantalla.** En
   vertical el mundo ocupa solo la franja de abajo y lo de arriba está vacío.
   Estuvo abajo, al 76% del alto: tapaba el mundo entero y se quedaba con el
-  dedo, así que con un panel abierto no se podía ni ver ni andar. Ahora no
-  retiene el desplazamiento (`overscroll-behavior: auto`): deslizar sobre la
-  hoja mueve el mundo si el contenido cabe. Se barajaron un aviso que se abre
-  al tocarlo, la ventana gris del juego y una hoja de dos alturas; quedó esta
-  por ser arreglo y no rediseño.
-- **Cada panel se aprieta para caber en esa media pantalla**, y en móviles
-  de menos de ~800 px de alto alguno aún desliza por dentro. Proyectos pone
-  la captura pequeña junto al texto (`.lead`), corta la descripción a cuatro
-  líneas y las etiquetas a una fila; Sobre mí va a un párrafo por página
-  (`perPage`); Skills va en dos columnas y sin la nota de proyectos. El texto
-  completo sigue en ancho y en `/simple`.
+  dedo, así que con un panel abierto no se podía ni ver ni andar. Se
+  barajaron un aviso que se abre al tocarlo, la ventana gris del juego y una
+  hoja de dos alturas; quedó esta por ser arreglo y no rediseño.
+- **En estrecho la hoja no desliza por dentro** (`overflow: hidden`). Estuvo
+  con `overflow-y: auto`, y donde el contenido no cabía el dedo movía primero
+  el panel y luego el mundo: dos scrolls encadenados, que se sienten como que
+  la página se atasca antes de que el personaje avance. Así que **todo tiene
+  que caber**, y un panel nuevo o más largo hay que medirlo en móvil.
+- **Cada panel se aprieta para caber**, y en pantallas bajas el contenido
+  entero se encoge (`zoom` en `.body`, por tramos de alto) en vez de cortarse.
+  Proyectos pone la captura pequeña junto al texto (`.lead`), corta la
+  descripción a cuatro líneas y las etiquetas a una fila; Sobre mí va a un
+  párrafo por página (`perPage`); Skills va en dos columnas y sin la nota de
+  proyectos; Hackatones deja cada evento en puesto, nombre y foto. El texto
+  completo sigue en ancho y en `/simple`. Comprobado hasta 360×640.
 - `Book` pagina por **tandas de párrafos** (`perPage`), no uno por página: el
   contenido se queda en párrafos semánticos porque `/simple` los quiere sueltos.
 
