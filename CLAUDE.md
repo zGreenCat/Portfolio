@@ -9,9 +9,16 @@ npm run dev       # dev server con Turbopack
 npm run build     # build de producción
 npm run start     # servir el build
 npx tsc --noEmit  # type-check (no hay script definido)
+npm test          # tests, con el ejecutor de Node
 ```
 
-No hay linter propio ni tests. `npm run build` sí pasa ESLint.
+No hay linter propio. `npm run build` sí pasa ESLint.
+
+**Los tests van en `tests/*.test.mjs` y no llevan framework**: `node --test`
+importa los `.ts` tal cual. Por eso solo alcanzan a módulos sin React, sin
+navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`): la lógica
+que merezca test se saca a un módulo así. El aviso de `MODULE_TYPELESS` al
+correrlos es inofensivo; no añadir `"type": "module"` al `package.json`.
 
 **No lances `npm run build` con `npm run dev` corriendo**: comparten `.next` y el
 resultado son 500 hasta que se borra el directorio.
@@ -310,6 +317,34 @@ Los proyectos son un carrusel con una captura por diapositiva
 (`public/projects/<id>.webp`, carga diferida). Si falta una, la diapositiva se
 queda en texto sin dejar un hueco roto.
 
+### El visor (`Lightbox.tsx`)
+
+La captura se pulsa y se abre en grande. Comparte índice con el carrusel: lo
+que se pasa en el visor es el proyecto en el que estás al cerrarlo. Está hecho
+para reutilizarse con las fotos de los hackatones.
+
+- **Va en un portal al `body`.** Los cajones llevan `translate` e `inert`, y un
+  `position: fixed` dentro de un ancestro transformado se coloca respecto a
+  él, no a la ventana.
+- **El scroll se retiene con oyentes, no con `overflow: hidden`.** Quitar la
+  barra ensancha la página y el mundo entero salta de lado. Y hay que
+  retenerlo: moverlo cerraría el cajón de debajo sin que se viera.
+- **Sus teclas van en captura**: las flechas también mueven el carrusel.
+- **El personaje la mira contigo** (`peek_watch`, de `gen_watch.py`): sube
+  por abajo en el borde izquierdo de la imagen y casi todo el tiempo solo la
+  mira. Cada pocos segundos hace algo, alternando: girarse hacia ti y
+  señalarla asintiendo, o quedarse pensando con la mano en la barbilla. Es
+  hermano del saludo: misma cámara.
+- **La hoja son cuatro tramos y el orden lo pone la página.** Entrada,
+  reposo y dos gestos; cada gesto empieza y acaba en la primera pose del
+  reposo, así que se encadenan como se quiera (`WATCH.loop` en
+  `watchSheet.ts`, `loop` en `SpriteGrid`). Hubo un bucle único con los gestos
+  seguidos: no paraba quieto y se leía como un tic. `SEGMENTS` está en el
+  generador y en `watchSheet.ts`, y **tienen que coincidir**: lo vigila
+  `npm test`, junto con que la hoja servida tenga la rejilla declarada.
+- **En estrecho ni se monta ni se descarga**: la imagen ya ocupa toda la
+  pantalla. No tiene salida propia: se va con el visor.
+
 ### Modo ligero
 
 Se enciende solo: si el recorrido baja de 30 fps durante 120 frames **con el
@@ -407,13 +442,7 @@ Nada de esto está empezado. Queda escrito para que no se pierda entre sesiones.
 
 Pedido por Vicente: que los hackatones lleven fotos suyas de cada evento, no
 solo texto. Sin decidir cómo. Lo natural sería en el cajón del podio, una por
-evento, y que se abran en el visor de abajo. Faltan las fotos.
-
-### Visor de imágenes en grande
-
-Las capturas de proyectos se ven al tamaño de la diapositiva y no se pueden
-ampliar. Un visor a pantalla completa, con teclado y sin scroll —el scroll es
-del mundo—, que sirva también para las fotos de los hackatones.
+evento, y que se abran en el visor (`Lightbox`, ya hecho). Faltan las fotos.
 
 ### Carteles de Contacto más Minecraft (arreglo, no función)
 

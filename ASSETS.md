@@ -19,6 +19,7 @@ para escalar y colocar cada hoja.
 |---|---|---|---|---|---|---|
 | `peek_wave` | 32 | rejilla 8×4 | 504 KB | — | — | — |
 | `peek_wave@half` | 32 | rejilla 8×4 | 237 KB | — | — | — |
+| `peek_watch` | 64 | rejilla 8×8 | 517 KB | — | — | — |
 | `run` | 16 | tira | 147 KB | 408 | 540 | 232 |
 | `walk` | 25 | tira | 166 KB | 408 | 540 | 232 |
 | `idle` | 16 | tira | 73 KB | 408 | 540 | 232 |
@@ -495,6 +496,18 @@ se suman a los del canvas y se ve cargado.
   (`poses/throw.json`), conserva pies, paso y ritmo, y reescribe tronco y
   brazo. Su salida es `poses/throw_v2.json`, que es la hoja `throw` del sitio.
   `gen_peek.py` escribe el saludo; toma su ritmo del saludo hecho a mano.
+  `gen_watch.py` escribe `peek_watch`, el que mira la imagen en el visor:
+  misma cámara que el saludo, a 0,8× (celda de 512×384; son 50 MB
+  descomprimida). Cuatro tramos seguidos —entrada, reposo, señalar, pensar—
+  que la página encadena. Se monta en rejilla:
+
+  ```bash
+  python3 scripts/render/gen_watch.py /tmp/watch.json 0.8
+  blender -b -P scripts/render/rig.py -- public/skin.png /tmp/watch.json /tmp/out
+  magick montage /tmp/out/f*.png -tile 8x8 -geometry 512x384+0+0 -background none /tmp/watch.png
+  magick /tmp/watch.png -quality 90 public/sprites/peek_watch.webp
+  ```
+
   `gen_podium.py` escribe `climb` y `cheer`, y la medalla es una pieza del
   rig que una pose enseña con `"medal": 1`.
 

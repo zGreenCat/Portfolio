@@ -13,6 +13,26 @@
   overflow: hidden;
 }
 
+/* La captura se pulsa para verla en grande. Como botón pierde lo que traía
+   de `span`, así que se le quita lo que el navegador le pone. */
+.shotButton {
+  padding: 0;
+  border: 0;
+  font: inherit;
+  cursor: zoom-in;
+  transition: box-shadow 0.14s ease;
+}
+
+.shotButton:hover,
+.shotButton:focus-visible {
+  box-shadow: inset 0 0 0 1px rgb(143 196 160 / 0.9);
+}
+
+.shotButton:focus-visible {
+  outline: 2px solid #8fc4a0;
+  outline-offset: 3px;
+}
+
 .shotImage {
   width: 100%;
   height: 100%;

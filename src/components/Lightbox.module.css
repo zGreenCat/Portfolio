@@ -1,0 +1,175 @@
+/* Por encima de todo, perla y barra incluidas: mientras está abierto no hay
+   otra cosa que hacer que mirar la imagen o cerrarla. */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: clamp(56px, 8vh, 84px) clamp(16px, 6vw, 96px) clamp(20px, 4vh, 40px);
+  background: rgb(6 9 12 / 0.86);
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  color: #eef2f0;
+  cursor: zoom-out;
+  animation: veilIn 0.18s ease-out;
+}
+
+.figure {
+  position: relative;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: min(100%, 1400px);
+  cursor: default;
+  animation: figureIn 0.22s ease-out;
+}
+
+/* El alto manda: la imagen no pasa de lo que deja la ventana, y el ancho sale
+   de su proporción. */
+.image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - clamp(150px, 22vh, 200px));
+  width: auto;
+  height: auto;
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgb(238 242 240 / 0.16),
+    0 24px 60px rgb(0 0 0 / 0.5);
+  background: rgb(255 255 255 / 0.04);
+}
+
+.caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.count {
+  flex: none;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: #93a89c;
+}
+
+.close,
+.arrow {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: rgb(238 242 240 / 0.08);
+  box-shadow: inset 0 0 0 1px rgb(238 242 240 / 0.2);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  color: #eef2f0;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.close:hover,
+.arrow:hover,
+.close:focus-visible,
+.arrow:focus-visible {
+  background: rgb(238 242 240 / 0.18);
+}
+
+.close:focus-visible,
+.arrow:focus-visible {
+  outline: 2px solid #8fc4a0;
+  outline-offset: 2px;
+}
+
+.close {
+  top: clamp(10px, 2vh, 20px);
+  right: clamp(10px, 2vw, 24px);
+  font-size: 17px;
+}
+
+.arrow {
+  top: 50%;
+  translate: 0 -50%;
+  font-size: 26px;
+}
+
+.previous {
+  left: clamp(8px, 1.6vw, 24px);
+}
+
+.next {
+  right: clamp(8px, 1.6vw, 24px);
+}
+
+/* Asoma por abajo, plantado en el borde izquierdo de la imagen. Va en la misma
+   celda que ella y se pega al fondo de la ventana, que es lo que lo corta: su
+   celda acaba a medio pecho. Lo que saca de la rejilla es justo el margen del
+   velo, y media celda a la izquierda para que su eje caiga en el borde. */
+.companion {
+  grid-area: 1 / 1;
+  align-self: end;
+  justify-self: start;
+  margin-bottom: calc(-1 * clamp(20px, 4vh, 40px));
+  translate: -50% 0;
+  pointer-events: none;
+  animation: figureIn 0.22s ease-out;
+}
+
+.figure {
+  grid-area: 1 / 1;
+}
+
+/* El pie se aparta de su cuerpo. */
+.accompanied .caption {
+  padding-left: 12vh;
+}
+
+@keyframes veilIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes figureIn {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+/* En estrecho las flechas bajan junto al pie: a los lados pisaban la imagen,
+   que ya ocupa todo el ancho. El acompañante aquí ni se monta. */
+@media (max-width: 760px) {
+  .veil {
+    padding: 64px 12px 84px;
+  }
+
+  .arrow {
+    top: auto;
+    bottom: 20px;
+    translate: none;
+  }
+
+  .previous {
+    left: calc(50% - 56px);
+  }
+
+  .next {
+    right: calc(50% - 56px);
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .veil,
+  .figure {
+    animation: none;
+  }
+}

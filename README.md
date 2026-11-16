@@ -8,6 +8,7 @@ scroll desplaza el mundo y las secciones son lugares dentro de él.
 npm run dev     # http://localhost:3000
 npm run build
 npx tsc --noEmit
+npm test
 ```
 
 ## Cómo funciona

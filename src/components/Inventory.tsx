@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+import Lightbox, { warmCompanion } from './Lightbox'
 import Panel from './Panel'
 import styles from './Inventory.module.css'
 
@@ -47,18 +48,30 @@ export default function Inventory({ title, projects, openness, onPodium }: Inven
    *  entonces la diapositiva se queda en texto en vez de enseñar un roto. */
   const [missing, setMissing] = useState<Record<string, true>>({})
   const slotsRef = useRef<HTMLDivElement>(null)
+  /** La captura en grande. Comparte índice con el carrusel: lo que se pasa en
+   *  el visor es el proyecto en el que estás al cerrarlo. */
+  const [viewing, setViewing] = useState(false)
 
   // Al alejarse, el panel se cierra y vuelve al primero.
   useEffect(() => {
-    if (openness < 0.15) setIndex(0)
+    if (openness < 0.15) {
+      setIndex(0)
+      setViewing(false)
+    }
   }, [openness])
+
+  // Con el cajón abierto, la hoja del acompañante del visor se va bajando.
+  const open = openness > 0.9
+  useEffect(() => {
+    if (open) warmCompanion()
+  }, [open])
 
   const total = projects.length
   const go = (delta: number) => setIndex((i) => (i + delta + total) % total)
 
   // Flechas para moverse entre proyectos, como en el libro.
   useEffect(() => {
-    if (openness <= 0.9) return
+    if (openness <= 0.9 || viewing) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'ArrowRight') go(1)
       else if (event.key === 'ArrowLeft') go(-1)
@@ -66,7 +79,10 @@ export default function Inventory({ title, projects, openness, onPodium }: Inven
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openness, total])
+  }, [openness, total, viewing])
+
+  // El visor solo pasa por los proyectos que tienen captura que enseñar.
+  const shown = projects.filter((item) => item.shot && !missing[item.id])
 
   const project = projects[index]
   if (!project) return null
@@ -79,7 +95,12 @@ export default function Inventory({ title, projects, openness, onPodium }: Inven
       openness={openness}
     >
       {project.shot && !missing[project.id] ? (
-        <span className={styles.shot}>
+        <button
+          type="button"
+          className={`${styles.shot} ${styles.shotButton}`}
+          aria-label={`Ver en grande la captura de ${project.name}`}
+          onClick={() => setViewing(true)}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={project.shot}
@@ -89,7 +110,7 @@ export default function Inventory({ title, projects, openness, onPodium }: Inven
             decoding="async"
             onError={() => setMissing((m) => ({ ...m, [project.id]: true }))}
           />
-        </span>
+        </button>
       ) : (
         /* Sin captura, el hueco se conserva y dice por qué. Una diapositiva más
            corta entre otras seis se lee como un fallo; esto se lee como un dato. */
@@ -147,6 +168,19 @@ export default function Inventory({ title, projects, openness, onPodium }: Inven
           {index + 1} / {total}
         </span>
       </div>
+
+      {viewing && shown.some((item) => item.id === project.id) ? (
+        <Lightbox
+          items={shown.map((item) => ({
+            src: item.shot ?? '',
+            alt: `Captura de ${item.name}`,
+            caption: item.name,
+          }))}
+          index={shown.findIndex((item) => item.id === project.id)}
+          onIndex={(next) => setIndex(projects.indexOf(shown[next]))}
+          onClose={() => setViewing(false)}
+        />
+      ) : null}
 
       {onPodium ? (
         <button type="button" className={styles.podium} onClick={onPodium}>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
+import { frameAt } from './spriteFrames'
 import styles from './SpriteGrid.module.css'
 
 interface SpriteGridProps {
@@ -16,11 +17,16 @@ interface SpriteGridProps {
   scale: number
   /** Se dispara al llegar al último frame. La reproducción se detiene ahí. */
   onFinish?: () => void
+  /** Con esto no se detiene: reproducidos los `frames`, sigue con esta lista
+   *  de frames una y otra vez. Es una lista y no un tramo porque una hoja
+   *  puede traer varios gestos y el orden y las pausas los pone quien la usa. */
+  loop?: readonly number[]
   label: string
 }
 
 /**
- * Reproduce una hoja en rejilla una sola vez. Las hojas largas no caben en
+ * Reproduce una hoja en rejilla, una sola vez o seguida de un bucle.
+ * Las hojas largas no caben en
  * tira horizontal — 37 celdas de 435 px serían 16 000 px de textura — así que
  * van en rejilla y hay que avanzar en dos ejes.
  */
@@ -34,6 +40,7 @@ export default function SpriteGrid({
   fps,
   scale,
   onFinish,
+  loop,
   label,
 }: SpriteGridProps) {
   const [frame, setFrame] = useState(0)
@@ -51,6 +58,11 @@ export default function SpriteGrid({
 
     const tick = (now: number) => {
       const index = Math.floor(((now - start) / 1000) * fps)
+      if (loop && loop.length > 0) {
+        setFrame(frameAt(index, frames, loop))
+        raf = requestAnimationFrame(tick)
+        return
+      }
       if (index >= frames - 1) {
         setFrame(frames - 1)
         if (!finishedRef.current) {
@@ -65,7 +77,7 @@ export default function SpriteGrid({
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [frames, fps, onFinish])
+  }, [frames, fps, onFinish, loop])
 
   // Redondeado a entero: con anchos fraccionarios el borde de cada celda cae
   // a medio píxel y se cuela una franja de la celda vecina. Esa era la raya.
