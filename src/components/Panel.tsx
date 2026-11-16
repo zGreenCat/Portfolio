@@ -16,6 +16,11 @@ interface PanelProps {
    * mitad baja, y una hoja inferior tapaba al personaje celebrando en el podio.
    */
   narrow?: 'bottom' | 'top'
+  /**
+   * Cajón más estrecho, para cuando lo que hay detrás también hay que verlo
+   * entero y el contenido es poco. Solo cambia en ancho; en estrecho no.
+   */
+  slim?: boolean
   children: ReactNode
 }
 
@@ -35,6 +40,7 @@ export default function Panel({
   role = 'region',
   openness,
   narrow = 'bottom',
+  slim = false,
   children,
 }: PanelProps) {
   if (openness <= 0.01) return null
@@ -48,7 +54,7 @@ export default function Panel({
 
   return (
     <div
-      className={`${styles.wrap} ${narrow === 'top' ? styles.narrowTop : ''}`}
+      className={`${styles.wrap} ${narrow === 'top' ? styles.narrowTop : ''} ${slim ? styles.slim : ''}`}
       style={{ opacity: openness }}
     >
       <div className={styles.scrim} aria-hidden="true" />

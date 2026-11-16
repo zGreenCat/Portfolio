@@ -214,7 +214,7 @@
   /* En la hoja no sobra ni una línea: el proyecto más largo ya aprieta la
      captura. El enlace sube a la línea del antetítulo, a la derecha, donde
      no le quita alto a nada. */
-  /* La descripción se corta a cuatro líneas: entera, el proyecto más largo
+  /* La descripción se corta a tres líneas: entera, el proyecto más largo
      aplastaba la captura a un tercio de su alto y pisaba las etiquetas. El
      texto completo sigue en escritorio y en /simple. */
   .description {
@@ -224,8 +224,8 @@
     line-height: 1.55;
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
-    line-clamp: 4;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     overflow: hidden;
   }
 

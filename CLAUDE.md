@@ -207,7 +207,8 @@ Lo que tiene de distinto, y por qué:
   posición, quien cruzaba andando lo veía frenar y acelerar.
 - **Su cajón lo abre el gesto, no la distancia**, y mientras está abierto
   cierra el del cofre. En estrecho va arriba (`narrow="top"` en `Panel`): la
-  hoja inferior tapaba justo al personaje celebrando.
+  hoja inferior tapaba justo al personaje celebrando. En ancho va más
+  estrecho (`slim`): a 42% tapaba media columna del tercer puesto.
 
 El escenario es una capa propia, `b2_stage`, **anclada y en una sola copia**.
 No va pintado en el suelo porque el suelo se repite volteado y saldría otro
@@ -300,7 +301,7 @@ navegación, no la metáfora.
   —descripción, etiquetas y el hueco del enlace—, porque **tres de los siete
   proyectos no tienen URL** y sin reservarlo el paginador saltaba una línea.
 - **En estrecho la hoja de proyectos no tiene alto de sobra.** La descripción
-  va cortada a cuatro líneas (entera aplastaba la captura a un tercio) y el
+  va cortada a tres líneas (entera aplastaba la captura a un tercio) y el
   enlace al podio sube a la línea del antetítulo en vez de ocupar una propia.
 - `Book` pagina por **tandas de párrafos** (`perPage`), no uno por página: el
   contenido se queda en párrafos semánticos porque `/simple` los quiere sueltos.
@@ -401,6 +402,24 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 ## Abierto: ideas sin decidir
 
 Nada de esto está empezado. Queda escrito para que no se pierda entre sesiones.
+
+### Fotos en los hackatones
+
+Pedido por Vicente: que los hackatones lleven fotos suyas de cada evento, no
+solo texto. Sin decidir cómo. Lo natural sería en el cajón del podio, una por
+evento, y que se abran en el visor de abajo. Faltan las fotos.
+
+### Visor de imágenes en grande
+
+Las capturas de proyectos se ven al tamaño de la diapositiva y no se pueden
+ampliar. Un visor a pantalla completa, con teclado y sin scroll —el scroll es
+del mundo—, que sirva también para las fotos de los hackatones.
+
+### Carteles de Contacto más Minecraft (arreglo, no función)
+
+Los carteles del acantilado (`Signs.tsx`) no se leen como carteles del juego.
+Es un arreglo de aspecto: tablón y poste con la textura real, como se hizo
+con el cofre (`scripts/render/chest.py`), y el texto como va en el juego.
 
 ### Easter egg: blackjack en el templo
 

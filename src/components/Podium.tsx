@@ -55,7 +55,7 @@ export default function Podium({ openness }: PodiumProps) {
   const others = EVENTS.filter((event) => event.place === null)
 
   return (
-    <Panel eyebrow="Podio" title="Hackatones" openness={openness} narrow="top">
+    <Panel eyebrow="Podio" title="Hackatones" openness={openness} narrow="top" slim>
       <ol className={styles.places}>
         {placed.map((event) => {
           const url = liveUrl(event.project)
