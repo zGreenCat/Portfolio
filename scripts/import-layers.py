@@ -14,7 +14,7 @@ from PIL import Image
 
 SRC = "/home/zgreencat/videos-portofolio/world"
 OUT = "public/layers"
-BIOMES = {"b1": ["far","mid","near","ground"], "b2": ["far","mid","near","ground"],
+BIOMES = {"b1": ["far","mid","near","ground"], "b2": ["far","mid","near","ground","stage"],
           "b3": ["far","mid","near","ground"], "b4": ["far","mid","near","ground"],
           "b5": ["far","ground"]}
 

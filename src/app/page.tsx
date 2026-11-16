@@ -14,6 +14,7 @@ import EnderPearl, { type PearlThrow } from '@/components/EnderPearl'
 import Book from '@/components/Book'
 import CraftingTable from '@/components/CraftingTable'
 import Inventory from '@/components/Inventory'
+import Podium, { PodiumMedal } from '@/components/Podium'
 import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
 import type { WeatherState } from '@/components/Weather'
@@ -66,11 +67,37 @@ const WORLD_LENGTH = 12000
 const LAYER_ASPECT = 3840 / WORLD_UNIT
 /** Bloques que avanza cada ciclo. Caminar cubre menos suelo por zancada, así
  *  que su ciclo tiene que ir más apretado o los pies patinan. */
-const STRIDE: Record<CharacterState, number> = { run: 2.1, walk: 1.25, idle: 1, throw: 1, sit: 1 }
+const STRIDE: Record<CharacterState, number> = {
+  run: 2.1,
+  walk: 1.25,
+  idle: 1,
+  throw: 1,
+  sit: 1,
+  climb: 1,
+  cheer: 1,
+}
 /** Umbrales de marcha, en bloques por segundo. `walk` cubre 1,25 bloques en
  *  25 frames: por encima de ~2 b/s su ciclo se dispara, así que ahí ya corre. */
 const SPEED_RUN = 2.2
 const SPEED_WALK = 0.45
+/** Para dejar de correr hay que bajar bastante más de lo que costó arrancar.
+ *  Con un solo umbral, frenando cerca de él la marcha cambiaba en cada frame:
+ *  correr, caminar, correr. */
+const SPEED_RUN_OFF = 1.4
+/** La marcha se elige con la velocidad suavizada, no con la del frame, y
+ *  suavizada despacio. Un golpe de rueda son más de 13 bloques por segundo
+ *  que se apagan en un cuarto de segundo: con la del frame, cada golpe era
+ *  correr, caminar y parar. Así varios golpes seguidos son correr, que es lo
+ *  que dice su media. */
+const PACE_SECONDS = 0.55
+/** Cadencia mínima de cada marcha, en zancadas por segundo. La zancada sale
+ *  de la distancia recorrida, y frenando esa distancia se acaba antes que la
+ *  marcha: se quedaba un cuarto de segundo clavado en una pose de correr. Con
+ *  un mínimo termina el paso en vez de congelarse. Queda por debajo de lo que
+ *  cada marcha da a su velocidad más baja, así que solo actúa al frenar. */
+const MIN_CADENCE: Partial<Record<CharacterState, number>> = { run: 1, walk: 0.5 }
+/** Lo que una marcha se mantiene antes de poder cambiar a la otra. */
+const GAIT_HOLD_SECONDS = 0.25
 /** Tope de fotogramas por segundo de las hojas del personaje.
  *
  *  El ciclo va atado a la distancia recorrida para que los pies no patinen,
@@ -82,9 +109,14 @@ const SPEED_WALK = 0.45
  *  de soltar. A cambio, en un golpe muy fuerte los pies patinan un instante —
  *  con todo pasando a esa velocidad, no se aprecia. */
 const MAX_SHEET_FPS = 34
-/** Frames seguidos por debajo del umbral antes de pasar a reposo. A 60 Hz son
- *  ~130 ms: evita que parpadee entre marchas sin que se note el retardo. */
-const IDLE_FRAMES = 8
+/** Tiempo seguido por debajo del umbral antes de pasar a reposo. Corto: en
+ *  esa espera la zancada no avanza, y con 0,3 s se quedaba clavado en la pose
+ *  de correr al frenar. No hace falta más para la rueda: un golpe tarda unos
+ *  300 ms en apagarse, así que golpes seguidos no llegan a esta espera.
+ *
+ *  En segundos, como todo lo de la marcha. Estuvo en frames, y en un monitor
+ *  de 120 Hz valía la mitad. */
+const IDLE_SECONDS = 0.1
 /** Duración del lanzamiento completo. */
 const THROW_MS = 700
 /** Dónde empieza a caer la tarde y dónde es noche cerrada, en progreso de
@@ -137,28 +169,31 @@ type Kind = (typeof ALL_KINDS)[number]
  *  quitarle la nieve— el personaje sube con el terreno. */
 const SECTIONS = [
   { id: 'inicio', label: 'Inicio', at: 0, biome: 'b1', surfaceY: 2716, kinds: ALL_KINDS },
+  // El templo del desierto no se tesela: es un edificio, y los edificios no
+  // se repiten cada 300 metros. Va anclado a la sección.
   {
     id: 'sobre-mi',
     label: 'Sobre mí',
     at: 0.24,
-    biome: 'b2',
-    surfaceY: 2705,
-    kinds: ALL_KINDS,
-    fog: true,
-    weather: 'snow' as WeatherKind,
-  },
-  // El templo del desierto no se tesela: es un edificio, y los edificios no
-  // se repiten cada 300 metros. Va anclado a la sección.
-  {
-    id: 'proyectos',
-    label: 'Proyectos',
-    at: 0.52,
     biome: 'b3',
     surfaceY: 2716,
     kinds: ALL_KINDS,
     anchored: ['far'] as readonly string[],
     fog: true,
     weather: 'sand' as WeatherKind,
+  },
+  // Proyectos y hackatones comparten lugar: el cofre y, un poco antes, el
+  // escenario del podio. El `id` sigue siendo `proyectos` para no romper los
+  // enlaces que ya circulan; lo que cambió es el rótulo.
+  {
+    id: 'proyectos',
+    label: 'Experiencias',
+    at: 0.52,
+    biome: 'b2',
+    surfaceY: 2705,
+    kinds: ALL_KINDS,
+    fog: true,
+    weather: 'snow' as WeatherKind,
   },
   {
     id: 'skills',
@@ -173,6 +208,122 @@ const SECTIONS = [
   // y sin capas intermedias porque ahí ya no hay recorrido que acompañar.
   { id: 'contacto', label: 'Contacto', at: 0.96, biome: 'b5', surfaceY: 2716, kinds: END_KINDS },
 ] as const
+
+/** Posición de una sección por su `id`. Los paneles la buscaban por su puesto
+ *  en la lista, y eso se rompe en cuanto se inserta o se reordena una. */
+const atOf = (id: (typeof SECTIONS)[number]['id']) =>
+  SECTIONS.find((section) => section.id === id)?.at ?? 0
+
+/*
+ * El podio. Va en la taiga, justo después del cofre, y es lo segundo del
+ * recorrido que NO es una posición: como sentarse, es un gesto que corre por
+ * tiempo y no escucha la rueda hasta que termina. A diferencia de sentarse, no
+ * se dispara solo: se pide con un botón.
+ */
+/** Dónde se planta para subir. El escenario mide dieciséis bloques y crece
+ *  con el alto de la pantalla, mientras que el bioma mide lo mismo en píxeles:
+ *  más adelante que esto, en un monitor de 1440 se salía por la frontera con
+ *  los cerezos. */
+const PODIUM_AT = 0.46
+/** Hueco entre el cofre y el peldaño del estrado, en px del render. Ahí se
+ *  planta el personaje: con el cofre a su espalda y el escenario delante. */
+const CHEST_GAP = 190
+/** Ancho del cofre en px del render: 14 de los 16 píxeles de un bloque, como
+ *  en el juego. Lo imprime `scripts/render/chest.py`. */
+const CHEST_PX = 124
+/** La medalla que flota a la entrada del escenario, en px del render. */
+const MEDAL = { width: 88, up: 240 } as const
+/** Holgura para dar por llegado al personaje después de pedirlo. Tiene que
+ *  ser de píxeles: el mundo se clava donde está al empezar a subir, y lo que
+ *  falte por andar es lo que flotaría fuera de la columna. */
+const PODIUM_ZONE = 0.0006
+/** Pedirlo desde más cerca que esto no es una caminata: no hay recorrido con
+ *  el que acompasar el encuadre. */
+const PODIUM_NEAR = 0.005
+/** Si la rueda se mueve esto mientras va de camino, es que ya no quiere ir. */
+const PODIUM_CANCEL = 0.002
+/** Y alejarse de verdad para que baje, igual que con `SIT_RELEASE`. */
+const PODIUM_RELEASE = 0.035
+/** Lo que dura subir: 32 frames de la hoja `climb`. */
+const PODIUM_SECONDS = 1.6
+/** En el podio el personaje se va a la izquierda. El escenario queda a su
+ *  derecha y el cajón ocupa el otro 42%: al 20% el primer puesto caía bajo el
+ *  velo del cajón. */
+const PODIUM_X = 7
+/**
+ * Puntos de apoyo del escenario, en píxeles del render. Los imprime
+ * `scripts/render/world.py` (ANCHOR) al renderizar `podium_stage`; si cambia
+ * la escena hay que volver a copiarlos. `x` cuenta desde donde se planta en el
+ * estrado, `up` desde la línea de los pies en el suelo.
+ */
+const STAGE = {
+  /** Columna del render donde se planta, sobre la alfombra. */
+  anchorX: 1287.1,
+  /** El estrado: de su peldaño izquierdo a su extremo derecho. */
+  from: -274.8,
+  to: 1688,
+  /** Lo que levanta el estrado: media losa, vista por la cámara. */
+  lift: 67.6,
+  second: { x: 314.1, up: 353.9 },
+  first: { x: 706.7, up: 484.8 },
+  /** La bajada hacia delante: el tercer puesto y la alfombra del otro lado. */
+  third: { x: 1099.3, up: 288.5 },
+  exit: { x: 1413.4, up: 67.6 },
+} as const
+/** Los dos saltos de `climb`: frames en el aire y altura del arco, en px del
+ *  render. Los frames salen de `HOPS` en `scripts/render/gen_podium.py`. */
+const PODIUM_HOPS = [
+  { from: 4, to: 10, arc: 92 },
+  { from: 13, to: 19, arc: 88 },
+] as const
+/** Frame de `climb` en el que ya ha caído y empieza a girarse (`LANDED`). */
+const PODIUM_LANDED = 20
+
+type Spot = { x: number; up: number }
+const PODIUM_WAY_UP: readonly Spot[] = [{ x: 0, up: STAGE.lift }, STAGE.second, STAGE.first]
+const PODIUM_WAY_DOWN: readonly Spot[] = [STAGE.first, STAGE.third, STAGE.exit]
+
+/** Dónde está respecto a su sitio en el estrado, en el frame `frame` de los
+ *  saltos, yendo de parada en parada. */
+function hopSpot(frame: number, stops: readonly Spot[]): Spot {
+  for (let i = 0; i < PODIUM_HOPS.length; i += 1) {
+    const hop = PODIUM_HOPS[i]
+    if (frame <= hop.from) return stops[i]
+    if (frame < hop.to) {
+      const u = (frame - hop.from) / (hop.to - hop.from)
+      return {
+        x: stops[i].x + (stops[i + 1].x - stops[i].x) * u,
+        up: stops[i].up + (stops[i + 1].up - stops[i].up) * u + hop.arc * 4 * u * (1 - u),
+      }
+    }
+  }
+  return stops[stops.length - 1]
+}
+
+/**
+ * Frame de `climb` y sitio en el estrado para un punto `at` del gesto (0→1).
+ *
+ * Subir y bajar de vuelta son la misma hoja en un sentido y en el otro. Bajar
+ * hacia delante no: se gira de nuevo de perfil —el final de la hoja al revés—
+ * y luego da los mismos dos saltos hacia delante, ahora al tercer puesto y al
+ * suelo. Rebobinar ahí lo devolvía al lado por el que vino justo cuando se iba
+ * por el otro.
+ */
+function podiumPose(at: number, leavingAhead: boolean): { frame: number; spot: Spot } {
+  const last = FRAME_COUNT.climb - 1
+  if (!leavingAhead) {
+    const frame = at * FRAME_COUNT.climb
+    return { frame: Math.min(last, Math.floor(frame)), spot: hopSpot(frame, PODIUM_WAY_UP) }
+  }
+  const elapsed = (1 - at) * FRAME_COUNT.climb
+  const turn = FRAME_COUNT.climb - PODIUM_LANDED
+  if (elapsed < turn) return { frame: last - Math.floor(elapsed), spot: STAGE.first }
+  const frame = elapsed - turn
+  return {
+    frame: Math.min(PODIUM_LANDED - 1, Math.floor(frame)),
+    spot: hopSpot(frame, PODIUM_WAY_DOWN),
+  }
+}
 
 /** Fracción de la tesela donde se acaba el suelo del acantilado. */
 const CLIFF_EDGE = 2371 / 3840
@@ -373,6 +524,26 @@ export default function RecorridoPage() {
   const sitLockRef = useRef<number | null>(null)
   /** Recuperando la distancia acumulada mientras el mundo estuvo congelado. */
   const catchUpRef = useRef(false)
+  /** Lo mismo que `sitRef`, `sitWantRef` y `sitDirRef`, para subir al podio. */
+  const podiumRef = useRef(0)
+  const podiumWantRef = useRef(false)
+  const podiumDirRef = useRef(-1)
+  /** Posición del mundo en la que el personaje queda junto al cofre. No es una
+   *  constante: el escenario crece con el alto de la pantalla y el cofre con
+   *  el ancho, así que su sitio depende de las dos cosas. */
+  const chestAtRef = useRef(PODIUM_AT - 0.045)
+  /** Se pidió subir y aún no ha llegado. Lo pone el botón, lo consume el bucle. */
+  const podiumAskRef = useRef(false)
+  /** Baja hacia delante, por el tercer puesto, en vez de por donde subió. */
+  const podiumAheadRef = useRef(false)
+  /** Tocó suelo al otro lado: la posición del mundo que le corresponde ahí,
+   *  mientras el mundo no haya llegado hasta ella. */
+  const podiumLandRef = useRef<number | null>(null)
+  /** Desde dónde echó a andar hacia el podio. */
+  const podiumFromRef = useRef(PODIUM_AT)
+  /** Cuánto se ha corrido a la izquierda para dejarle sitio al escenario. */
+  const podiumFocusRef = useRef(0)
+  const [podiumOpen, setPodiumOpen] = useState(0)
   /** Frames lentos acumulados con el mundo en marcha. */
   const slowRef = useRef({ frames: 0, total: 0 })
   const [lite, setLite] = useState(false)
@@ -406,6 +577,7 @@ export default function RecorridoPage() {
   const nearRef = useRef<HTMLDivElement>(null)
   const groundRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<HTMLDivElement>(null)
+  const propsRef = useRef<HTMLDivElement>(null)
   const actorRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef<CharacterState>('idle')
   const teleportingRef = useRef(false)
@@ -445,7 +617,7 @@ export default function RecorridoPage() {
    * valor que haya puesto: con el inline viejo, el ciclo arrancaba desalineado.
    */
   useEffect(() => {
-    if (characterState === 'idle' && spriteRef.current) {
+    if ((characterState === 'idle' || characterState === 'cheer') && spriteRef.current) {
       spriteRef.current.style.backgroundPositionX = ''
     }
   }, [characterState])
@@ -509,6 +681,9 @@ export default function RecorridoPage() {
    */
   const landingFor = useCallback((index: number) => {
     const section = SECTIONS[index]
+    // El cofre de Experiencias no está en el `at` de la sección: va delante del
+    // escenario, y ahí es donde se abre su cajón.
+    if (section.id === 'proyectos') return chestAtRef.current
     const edge = BOUNDS[index].to
     if (edge === Infinity) return section.at
     const clear = edge - window.innerWidth / WORLD_LENGTH
@@ -650,6 +825,7 @@ export default function RecorridoPage() {
         [midRef.current, LAYER_SPEED.mid],
         [nearRef.current, LAYER_SPEED.near],
         [groundRef.current, LAYER_SPEED.ground],
+        [propsRef.current, LAYER_SPEED.ground],
         [markersRef.current, LAYER_SPEED.ground],
       ]
       nodes.forEach(([node, speed]) => {
@@ -738,7 +914,9 @@ export default function RecorridoPage() {
       // Cortar el bucle CSS ya, sin esperar al re-render: si no, durante ese
       // frame la animación de reposo sigue corriendo sobre el valor que acaba
       // de escribir el bucle y arrastra el sprite entre dos celdas.
-      if (next !== 'idle' && spriteRef.current) spriteRef.current.dataset.driven = 'true'
+      if (next !== 'idle' && next !== 'cheer' && spriteRef.current) {
+        spriteRef.current.dataset.driven = 'true'
+      }
       setCharacterState(next)
     }
 
@@ -749,11 +927,29 @@ export default function RecorridoPage() {
     const block = BLOCK_PX_SOURCE * (worldPx / WORLD_UNIT)
     let previous = 0
     let last = performance.now()
-    let sheetFrame = 0
+    /** Por dónde va la zancada, en ciclos. En ciclos y no en frames porque
+     *  `run` y `walk` no tienen los mismos: el frame 12 es media zancada en
+     *  una hoja y tres cuartos en la otra, y al cambiar de marcha el paso
+     *  daba un salto. */
+    let cycle = 0
+    let pace = 0
+    let gaitHeld = GAIT_HOLD_SECONDS
 
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
+      if (podiumLandRef.current !== null) {
+        // Bajó por el otro lado del podio y el mundo sigue clavado donde subió.
+        // No se recoloca de golpe —sería un corte de cámara—: él se queda donde
+        // cayó y el mundo avanza hasta alcanzarlo. Mientras, la rueda no puede
+        // quedarse más atrás, o no lo alcanzaría nunca.
+        if (current >= podiumLandRef.current - 0.00003) {
+          podiumLandRef.current = null
+          podiumFocusRef.current = 0
+        } else if (target < podiumLandRef.current) {
+          target = podiumLandRef.current
+        }
+      }
       const before = current
 
       if (snapRef.current) {
@@ -767,6 +963,9 @@ export default function RecorridoPage() {
         sitLockRef.current = null
         sitDirRef.current = -1
         sitWantRef.current = false
+        podiumRef.current = 0
+        podiumDirRef.current = -1
+        podiumWantRef.current = false
         catchUpRef.current = false
       } else {
         // Suavizado, sin tope: el mundo sigue al scroll y se detiene cuando
@@ -784,7 +983,7 @@ export default function RecorridoPage() {
        * por delante de `placeWorld`, que es lo que rompió el intento previo; el
        * desfase de un frame no se ve en un gesto de segundo y medio.
        */
-      if (sitRef.current > 0) {
+      if (sitRef.current > 0 || podiumRef.current > 0) {
         if (sitLockRef.current === null) sitLockRef.current = current
         current = sitLockRef.current
       } else {
@@ -829,7 +1028,8 @@ export default function RecorridoPage() {
       worldDeltaRef.current = travelled
       const speed = dt > 0 ? Math.abs(travelled) / dt / block : 0
       previous = worldX
-      if (speed <= SPEED_WALK) stillFor += 1
+      pace += (speed - pace) * (1 - Math.exp(-dt / PACE_SECONDS))
+      if (speed <= SPEED_WALK) stillFor += dt
       else stillFor = 0
 
       /*
@@ -860,15 +1060,83 @@ export default function RecorridoPage() {
       )
       const sitAt = sitRef.current
 
+      // Subir al podio sigue la misma regla, con una diferencia: no se dispara
+      // por llegar, se pide. Hubo una versión que subía al detenerse delante, y
+      // la zona eran 84 px de scroll: con la perla se acertaba siempre y con
+      // la rueda casi nunca, así que una vez abajo no había forma de volver.
+      const fromPodium = Math.abs(target - PODIUM_AT)
+      if (fromPodium > PODIUM_RELEASE) podiumWantRef.current = false
+      if (fromPodium > PODIUM_CANCEL) podiumAskRef.current = false
+      else if (
+        podiumAskRef.current &&
+        Math.abs(current - PODIUM_AT) < PODIUM_ZONE &&
+        podiumFocusRef.current > 0.97
+      ) {
+        // Llegó andando. El mundo se clava en el sitio exacto, no donde lo
+        // dejó el suavizado: de eso depende que caiga sobre la columna.
+        podiumAskRef.current = false
+        podiumWantRef.current = true
+        sitLockRef.current = PODIUM_AT
+      }
+      if (podiumRef.current === 0 || podiumRef.current === 1) {
+        podiumDirRef.current = podiumWantRef.current ? 1 : -1
+        // Por dónde baja se decide arriba y no se cambia a medio salto.
+        podiumAheadRef.current = podiumRef.current === 1 && target > PODIUM_AT
+      }
+      const wasUp = podiumRef.current > 0
+      podiumRef.current = Math.min(
+        1,
+        Math.max(0, podiumRef.current + (podiumDirRef.current * dt) / PODIUM_SECONDS),
+      )
+      const podiumAt = podiumRef.current
+      const leavingAhead = podiumDirRef.current < 0 && podiumAheadRef.current
+      if (wasUp && podiumAt === 0 && leavingAhead) {
+        podiumLandRef.current =
+          PODIUM_AT +
+          ((STAGE.exit.x * worldPx) / WORLD_UNIT -
+            (window.innerWidth * (ENTRY_TO - PODIUM_X)) / 100) /
+            WORLD_LENGTH
+        if (target < podiumLandRef.current) {
+          window.scrollTo({ top: scrollFromWorld(podiumLandRef.current), behavior: 'auto' })
+        }
+      }
+      const landed = podiumLandRef.current !== null
+      const podiumNow = podiumPose(podiumAt, leavingAhead)
+      const gesturing = sitAt > 0 || podiumAt > 0
+
       if (!teleportingRef.current) {
         // El retardo se cuenta en frames, no con un temporizador: dentro del
         // bucle, un setTimeout se reiniciaba en cada vuelta y no llegaba a
         // cumplirse nunca, así que se quedaba caminando para siempre.
         if (sitAt > 0) applyState('sit')
-        else if (stillFor >= IDLE_FRAMES) applyState('idle')
-        else if (speed > SPEED_RUN) applyState('run')
-        else if (speed > SPEED_WALK) applyState('walk')
+        else if (podiumAt >= 1) applyState('cheer')
+        else if (podiumAt > 0) applyState('climb')
+        // Quieto mientras la cámara lo alcanza: el mundo corre, pero él no.
+        else if (landed) applyState('idle')
+        else if (stillFor >= IDLE_SECONDS) {
+          applyState('idle')
+          gaitHeld = GAIT_HOLD_SECONDS
+        } else if (speed > SPEED_WALK) {
+          // Desde parado se arranca en la marcha que toque. En marcha, solo
+          // se cambia pasado el margen y con la anterior ya asentada. Y para
+          // echar a correr tiene que seguir yendo rápido ahora mismo: tras un
+          // golpe suelto la media sigue alta cuando el mundo ya está frenando,
+          // y arrancaba a correr para pararse al instante.
+          const moving = stateRef.current === 'run' || stateRef.current === 'walk'
+          const running = stateRef.current === 'run'
+          const wantsRun = running
+            ? pace > SPEED_RUN_OFF
+            : pace > SPEED_RUN && speed > SPEED_RUN
+          if (!moving) {
+            applyState(pace > SPEED_RUN ? 'run' : 'walk')
+            gaitHeld = 0
+          } else if (wantsRun !== running && gaitHeld >= GAIT_HOLD_SECONDS) {
+            applyState(wantsRun ? 'run' : 'walk')
+            gaitHeld = 0
+          }
+        }
       }
+      gaitHeld += dt
 
       // La zancada sale del suelo recorrido, y cada marcha cubre lo suyo.
       // `stride` son los píxeles que avanza un ciclo completo, así que
@@ -881,23 +1149,35 @@ export default function RecorridoPage() {
       // retroceder lo reproducía al revés y el personaje caminaba de espaldas.
       const wanted = (Math.abs(travelled) / stride) * FRAME_COUNT[active]
       const cap = MAX_SHEET_FPS * dt
-      sheetFrame += Math.max(-cap, Math.min(cap, wanted))
+      const floor = (MIN_CADENCE[active] ?? 0) * dt
+      cycle = (cycle + Math.max(floor, Math.min(cap, wanted) / FRAME_COUNT[active])) % 1
       if (active === 'sit') {
         // El frame lo marca la posición, no la distancia recorrida: el gesto
         // tiene principio y final, no es un ciclo.
         writeFrame(Math.min(FRAME_COUNT.sit - 1, Math.floor(sitAt * FRAME_COUNT.sit)))
-      } else if (active !== 'idle' && active !== 'throw') {
+      } else if (active === 'climb') {
+        writeFrame(podiumNow.frame)
+      } else if (active !== 'idle' && active !== 'cheer' && active !== 'throw') {
         // En reposo manda el bucle CSS: escribirle el frame lo dejaría clavado.
         // El lanzamiento lleva su propio reloj: escribirle aquí el frame de la
         // zancada, que parado no avanza, lo pisaba y el gesto no se movía.
-        writeFrame(Math.floor(sheetFrame))
+        // El frame se cuenta sobre la hoja que el nodo enseña, que durante un
+        // frame aún es la de la marcha anterior.
+        const shown = spriteRef.current?.dataset.state
+        const sheet = shown === 'run' || shown === 'walk' ? shown : active
+        writeFrame(Math.floor(cycle * FRAME_COUNT[sheet]))
       }
 
       // Retroceder es darse la vuelta, no rebobinar. La banda muerta evita que
       // un temblor de rueda lo haga girar sobre sí mismo. Sentado no se gira:
       // la hoja está dibujada mirando al vacío y voltearla lo pondría de
       // espaldas al horizonte mientras se levanta.
-      if (!teleportingRef.current && sitAt === 0 && Math.abs(travelled) > 0.6) {
+      if (podiumAt > 0 && facingRef.current < 0) {
+        // Al podio se sube de frente al escenario, aunque se llegara de vuelta.
+        facingRef.current = 1
+        if (spriteRef.current) spriteRef.current.style.transform = ''
+      }
+      if (!teleportingRef.current && !gesturing && Math.abs(travelled) > 0.6) {
         const facing = travelled < 0 ? -1 : 1
         if (facing !== facingRef.current) {
           facingRef.current = facing
@@ -910,9 +1190,46 @@ export default function RecorridoPage() {
 
       // Se abre el encuadre al acercarse al acantilado.
       const toCliff = Math.min(1, Math.max(0, (current - CLIFF_FROM) / (1 - CLIFF_FROM)))
-      const wantX = ENTRY_TO + (CLIFF_X - ENTRY_TO) * toCliff
+      // Y se cierra a la izquierda mientras está en el podio, para dejarle sitio
+      // al escenario. Solo entonces: atado a la posición, quien cruzaba andando
+      // veía al personaje frenar y acelerar en mitad del bioma. De camino se
+      // corre al paso de lo que anda, y los dos acaban a la vez: por su cuenta
+      // patinaba de lado con el mundo ya quieto. Al bajar vuelve poco a poco.
+      const focused = podiumAskRef.current || podiumAt > 0 || podiumLandRef.current !== null
+      const walkIn = Math.abs(podiumFromRef.current - PODIUM_AT)
+      if (podiumAskRef.current && walkIn > PODIUM_NEAR) {
+        podiumFocusRef.current = Math.max(
+          podiumFocusRef.current,
+          1 - Math.min(1, Math.abs(current - PODIUM_AT) / walkIn),
+        )
+      } else {
+        podiumFocusRef.current += ((focused ? 1 : 0) - podiumFocusRef.current) * 0.1
+        if (Math.abs(podiumFocusRef.current - (focused ? 1 : 0)) < 0.002) {
+          podiumFocusRef.current = focused ? 1 : 0
+        }
+      }
+      const wantX =
+        ENTRY_TO + (CLIFF_X - ENTRY_TO) * toCliff + (PODIUM_X - ENTRY_TO) * podiumFocusRef.current
       actorXRef.current = wantX
-      if (actorRef.current) actorRef.current.style.left = `${wantX}%`
+      if (actorRef.current) {
+        actorRef.current.style.left = `${wantX}%`
+        // Lo que lo separa de la línea del suelo: el estrado bajo sus pies al
+        // cruzarlo andando, y los saltos mientras sube.
+        const scale = worldPx / WORLD_UNIT
+        const onStage =
+          ((window.innerWidth * (wantX - PODIUM_X)) / 100 + worldX - PODIUM_AT * WORLD_LENGTH) / scale
+        const edge = Math.min(onStage - STAGE.from, STAGE.to - onStage)
+        const walking = { x: 0, up: STAGE.lift * Math.min(1, Math.max(0, edge / 24)) }
+        // Tras bajar por el otro lado sigue donde cayó, y lo que avanza el
+        // mundo se le descuenta hasta que lo alcanza.
+        const spot =
+          podiumAt > 0
+            ? podiumNow.spot
+            : landed
+              ? { x: STAGE.exit.x - (worldX - PODIUM_AT * WORLD_LENGTH) / scale, up: STAGE.exit.up }
+              : walking
+        actorRef.current.style.transform = `translate3d(${spot.x * scale}px,${-spot.up * scale}px,0)`
+      }
 
       // El clima se desvanece cerca de la frontera en vez de cortarse: nieve
       // que para en una línea vertical se lee como un fallo.
@@ -964,10 +1281,16 @@ export default function RecorridoPage() {
 
       // Apertura por distancia: es una función de la posición, no un
       // disparador. Así no hay estado que sincronizar ni re-disparos al volver.
-      setChestOpen(quantize(panelOpenness(SECTIONS[2].at, current), PANEL_STEPS))
-      setBookOpen(quantize(panelOpenness(SECTIONS[1].at, current), PANEL_STEPS))
-      setSignsOpen(quantize(panelOpenness(SECTIONS[4].at, current), PANEL_STEPS))
-      setBenchOpen(quantize(panelOpenness(SECTIONS[3].at, current), PANEL_STEPS))
+      // El cajón del podio es la excepción: lo abre el gesto, no la distancia,
+      // y mientras está abierto cierra el del cofre, que queda a un paso.
+      const onPodium = quantize(podiumAt, PANEL_STEPS)
+      setPodiumOpen(onPodium)
+      setChestOpen(
+        quantize(panelOpenness(chestAtRef.current, current) * (1 - podiumAt), PANEL_STEPS),
+      )
+      setBookOpen(quantize(panelOpenness(atOf('sobre-mi'), current), PANEL_STEPS))
+      setSignsOpen(quantize(panelOpenness(atOf('contacto'), current), PANEL_STEPS))
+      setBenchOpen(quantize(panelOpenness(atOf('skills'), current), PANEL_STEPS))
       setActive(
         SECTIONS.reduce((best, s) =>
           Math.abs(s.at - current) < Math.abs(best.at - current) ? s : best,
@@ -1046,6 +1369,9 @@ export default function RecorridoPage() {
       '/sprites/walk.webp',
       '/sprites/throw.webp',
       '/sprites/sit.webp',
+      '/sprites/climb.webp',
+      '/sprites/cheer.webp',
+      layerSrc('b2', 'stage', half),
       ...SECTIONS.flatMap((section) =>
         section.kinds.map((kind) => layerSrc(section.biome, kind, half)),
       ),
@@ -1071,14 +1397,15 @@ export default function RecorridoPage() {
     setActive(id)
   }, [])
 
-  const navigate = useCallback(
-    (section: (typeof SECTIONS)[number]) => {
+  /** Lanza una perla y reaparece en `at`. */
+  const pearlTo = useCallback(
+    (at: number, id: string) => {
       // Segundo clic durante el vuelo: al destino y punto. Nadie espera dos veces.
       if (teleportingRef.current) {
         setShot(null)
         teleportingRef.current = false
         setHidden(false)
-        jumpTo(landingFor(SECTIONS.indexOf(section)), section.id)
+        jumpTo(at, id)
         return
       }
       play('button')
@@ -1112,7 +1439,7 @@ export default function RecorridoPage() {
           // Se desvanece al salir la perla de plano, no al lanzarla: si no,
           // se queda un hueco vacío en la pantalla de origen.
           setHidden(true)
-          jumpTo(landingFor(SECTIONS.indexOf(section)), section.id)
+          jumpTo(at, id)
         },
         // La perla espera a que la mano llegue al frame de suelta.
         delayMs: (THROW_RELEASE.frame / FRAME_COUNT.throw) * THROW_MS,
@@ -1129,8 +1456,25 @@ export default function RecorridoPage() {
         },
       })
     },
-    [jumpTo, landingFor, charHeight, worldPx],
+    [jumpTo, charHeight, worldPx],
   )
+
+  const navigate = useCallback(
+    (section: (typeof SECTIONS)[number]) =>
+      pearlTo(landingFor(SECTIONS.indexOf(section)), section.id),
+    [pearlTo, landingFor],
+  )
+
+  /** Al podio se va andando: solo se puede pedir teniéndolo delante, y una
+   *  perla para cruzar cuatro bloques no tenía sentido. El scroll se mueve al
+   *  sitio y el suavizado del mundo hace la caminata. */
+  const climbPodium = useCallback(() => {
+    if (teleportingRef.current || podiumRef.current > 0) return
+    play('button')
+    podiumFromRef.current = worldFromScroll(window.scrollY)
+    podiumAskRef.current = true
+    window.scrollTo({ top: scrollFromWorld(PODIUM_AT), behavior: 'auto' })
+  }, [])
 
   const handleGreetingEnd = useCallback(() => setPhase('entering'), [])
 
@@ -1162,6 +1506,20 @@ export default function RecorridoPage() {
     at * WORLD_LENGTH * speed +
     (typeof window === 'undefined' ? 0 : window.innerWidth / 2) -
     width / 2
+
+  /** Coloca el escenario para que su sitio en el estrado caiga bajo el
+   *  personaje cuando el mundo está en `PODIUM_AT`. Con `viewW` y no con
+   *  `window`: de aquí sale también la posición del cofre, que sí se pinta en
+   *  el servidor, y leer la ventana daba un valor distinto al hidratar. */
+  const stageAnchor =
+    PODIUM_AT * WORLD_LENGTH + viewW * (PODIUM_X / 100) - STAGE.anchorX * ((worldPx || 1080) / WORLD_UNIT)
+
+  // El cofre va pegado al estrado por la izquierda, dejando el hueco justo
+  // para el personaje. En el `at` de la sección caía encima del primer puesto.
+  const stageScale = (worldPx || 1080) / WORLD_UNIT
+  const chestLeft = stageAnchor + (STAGE.anchorX + STAGE.from - CHEST_GAP - CHEST_PX) * stageScale
+  chestAtRef.current =
+    (chestLeft + (CHEST_PX + CHEST_GAP / 2) * stageScale - viewW * (ENTRY_TO / 100)) / WORLD_LENGTH
 
   /** Coloca la tesela del acantilado para que el borde del vacío caiga justo
    *  donde se planta el personaje cuando el mundo llega a su fin. */
@@ -1266,7 +1624,7 @@ export default function RecorridoPage() {
             <Character
               state={characterState}
               charHeight={charHeight}
-              driven={characterState !== 'idle'}
+              driven={characterState !== 'idle' && characterState !== 'cheer'}
               spriteRef={spriteRef}
             />
           </div>
@@ -1290,7 +1648,34 @@ export default function RecorridoPage() {
           ))}
         </div>
 
-        <Inventory title="Proyectos" projects={PROJECTS} openness={chestOpen} />
+        {/* El escenario del podio: una sola copia, plantada en la taiga. */}
+        <div ref={propsRef} className={`${layerStyles.box} ${styles.props}`}>
+          {mounted
+            .map((i) => SECTIONS[i])
+            .filter((s) => s.id === 'proyectos')
+            .map((s) => (
+              <Strip
+                key="stage"
+                src="/layers/b2_stage.webp"
+                travel={WORLD_LENGTH}
+                tileWidth={tileWidth}
+                tileHeight={heightOf('b2_stage')}
+                speed={LAYER_SPEED.ground}
+                viewport={viewW}
+                {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
+                half={half || lite}
+                anchor={stageAnchor}
+              />
+            ))}
+        </div>
+
+        <Inventory
+          title="Proyectos"
+          projects={PROJECTS}
+          openness={chestOpen}
+          onPodium={climbPodium}
+        />
+        <Podium openness={podiumOpen} />
         <Book
           title="Sobre mí"
           pages={ABOUT_PAGES}
@@ -1303,22 +1688,53 @@ export default function RecorridoPage() {
             Solo las que tienen algo físico en el mundo: el libro, la mesa y el
             inventario son paneles y se dibujan aparte. */}
         <div ref={markersRef} className={styles.markers}>
+          {/* El escenario entero se pulsa. Lo que avisa de ello es una medalla
+              flotando a la entrada, como un objeto soltado en el juego: sobre
+              el primer puesto caía bajo el cajón de proyectos y no se veía. */}
+          {mounted.some((i) => SECTIONS[i].id === 'proyectos') && podiumOpen === 0 ? (
+            <button
+              type="button"
+              className={styles.podiumHit}
+              aria-label="Subir al podio"
+              style={{
+                left: stageAnchor + (STAGE.anchorX + STAGE.from) * stageScale,
+                width: (STAGE.to - STAGE.from) * stageScale,
+                height: (STAGE.first.up + 560) * stageScale,
+              }}
+              onClick={climbPodium}
+            >
+              <span
+                className={styles.medal}
+                style={{
+                  left: -STAGE.from * stageScale,
+                  bottom: (STAGE.lift + MEDAL.up) * stageScale,
+                  width: MEDAL.width * stageScale,
+                }}
+              >
+                <PodiumMedal />
+                <span className={styles.medalHint}>Subir al podio</span>
+              </span>
+            </button>
+          ) : null}
           {SECTIONS.filter((section) => section.id === 'proyectos' || section.id === 'contacto').map(
             (section) => (
               <section
                 key={section.id}
                 id={section.id}
                 className={styles.marker}
-                style={{ left: section.at * WORLD_LENGTH }}
+                style={{
+                  left: section.id === 'proyectos' ? chestLeft : section.at * WORLD_LENGTH,
+                }}
               >
                 {section.id === 'contacto' ? (
                   <Signs openness={signsOpen} />
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={chestOpen > 0.4 ? '/textures/chest_open.png' : '/textures/chest_closed.png'}
+                    src={chestOpen > 0.4 ? '/textures/chest_open.webp' : '/textures/chest_closed.webp'}
                     alt=""
                     className={styles.chest}
+                    style={{ width: CHEST_PX * stageScale }}
                   />
                 )}
               </section>

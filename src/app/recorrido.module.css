@@ -19,7 +19,11 @@
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow: hidden;
+  /* `clip` y no `hidden`: con `hidden` la caja sigue siendo desplazable, y
+     al abrir un enlace con `#contacto` o `#proyectos` el navegador la corría
+     de lado para "enseñar" el marcador de esa sección. El mundo entero quedaba
+     una pantalla a la izquierda, personaje incluido. */
+  overflow: clip;
 }
 
 /* Niebla en CSS: el render vino sin perspectiva atmosférica (`near` y `mid`
@@ -42,6 +46,14 @@
 }
 
 .ground {
+  z-index: 4;
+  filter: var(--world-grade);
+}
+
+/* Lo que está plantado en el suelo y no se repite: el escenario del podio.
+   Mismo plano que el suelo y después en el DOM, así que va por delante de él
+   y por detrás del personaje, que tiene que poder subirse encima. */
+.props {
   z-index: 4;
   filter: var(--world-grade);
 }
@@ -385,6 +397,119 @@
   pointer-events: auto;
 }
 
+/* El escenario se pulsa entero. No pinta nada propio salvo un foco tenue al
+   pasar por encima: el aviso lo da la medalla. */
+.podiumHit {
+  position: absolute;
+  bottom: var(--char-feet);
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.podiumHit::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 72%, rgb(255 226 150 / 0.2), rgb(255 226 150 / 0) 68%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.podiumHit:hover::before,
+.podiumHit:focus-visible::before {
+  opacity: 1;
+}
+
+.podiumHit:focus-visible {
+  outline: 2px solid #ffcc2e;
+  outline-offset: -8px;
+}
+
+/* Flota y gira como un objeto soltado: en el juego son sprites planos que dan
+   vueltas, y de canto casi desaparecen. */
+.medal {
+  position: absolute;
+  translate: -50% 0;
+  animation: medalBob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 7px rgb(255 204 46 / 0.6));
+}
+
+.medal svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: medalSpin 3.2s linear infinite;
+}
+
+.podiumHit:hover .medal,
+.podiumHit:focus-visible .medal {
+  filter: drop-shadow(0 0 12px rgb(255 226 150 / 0.95));
+}
+
+.medalHint {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  translate: -50% 0;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #fff3c4;
+  text-shadow: 2px 2px 0 rgb(0 0 0 / 0.7);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.podiumHit:hover .medalHint,
+.podiumHit:focus-visible .medalHint {
+  opacity: 1;
+}
+
+@keyframes medalBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14%);
+  }
+}
+
+@keyframes medalSpin {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  12.5%,
+  87.5% {
+    transform: scaleX(0.92);
+  }
+  25%,
+  75% {
+    transform: scaleX(0.71);
+  }
+  37.5%,
+  62.5% {
+    transform: scaleX(0.38);
+  }
+  50% {
+    transform: scaleX(0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .medal,
+  .medal svg {
+    animation: none;
+  }
+}
+
 /* Solo posiciona: lo que se ve lo aporta el contenido (cofre, carteles).
    Antes pintaba un panel de fondo, y las secciones cuyo contenido pasó a un
    panel aparte dejaban aquí un rectángulo oscuro vacío. */
@@ -544,12 +669,15 @@
 }
 
 
-/* El cofre se apoya en el suelo del bioma. */
+/* El cofre se apoya en el suelo del bioma.
+   `max-width: none` porque el reset le pone `max-width: 100%`, y su caja mide
+   cero: los marcadores van en absoluto dentro de un contenedor sin ancho. Con
+   eso el cofre medía 0×0 y no se veía, aunque estuviera montado. */
 .chest {
+  flex: none;
   margin-bottom: var(--char-feet);
-  width: clamp(90px, 9vw, 140px);
+  max-width: none;
   height: auto;
-  image-rendering: pixelated;
 }
 
 
@@ -616,7 +744,8 @@
 [data-lite='true'] .far,
 [data-lite='true'] .mid,
 [data-lite='true'] .near,
-[data-lite='true'] .ground {
+[data-lite='true'] .ground,
+[data-lite='true'] .props {
   filter: none;
 }
 

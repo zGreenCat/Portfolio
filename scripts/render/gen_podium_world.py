@@ -7,10 +7,18 @@ Usage: python3 gen_podium_world.py <out_dir>
 The podium follows the ones people build in the game: three separate columns of
 different heights, each with a cap that overhangs, a band of its metal and a
 coloured panel with its number. First place is gold, second iron, third copper.
-Behind it a blue cloth hangs between two pillars, under a beam with a gold cup.
+Behind it a blue cloth hangs between two pillars, with a gold cup on it at
+each side.
 
 Layers: `podium_ground` (flat, stage and podium), `podium_mid` (spruces and
-pennants), `podium_far` (two snowy ridges).
+pennants), `podium_far` (two snowy ridges). Those three are a place of their
+own, a mountain flat, and the site does not use them.
+
+What the site uses is `podium_stage`: the stage alone, no ground under it, with
+snow settled on it, rendered against the surface of the taiga (`b2`). It goes
+over the taiga as a layer of its own, anchored, one copy. It cannot be painted
+into the ground: ground layers repeat, every other copy mirrored, and the
+podium would show up again further on with its numbers backwards.
 """
 import json, math, random, sys
 OUT = sys.argv[1]
@@ -20,8 +28,8 @@ DEPTH = 7
 def pick(x, d, options):
     return options[(x * 31 + d * 17) % len(options)]
 
-def save(name, blocks, plants, parts, depth, anchors=None):
-    json.dump({"surface_row": 2791, "ground_depth": depth, "blocks": blocks, "plants": plants, "parts": parts,
+def save(name, blocks, plants, parts, depth, anchors=None, surface_row=2791):
+    json.dump({"surface_row": surface_row, "ground_depth": depth, "blocks": blocks, "plants": plants, "parts": parts,
                "anchors": anchors or {}}, open(f"{OUT}/{name}.json", "w"))
     print(name, len(blocks), "bloques", len(parts), "piezas", len(plants), "plantas")
 
@@ -90,7 +98,7 @@ def column(x, tall, metal, cloth, place):
     return top + 0.25
 column(11, 2, "iron_block", "light_gray_wool", 2)
 TOP = column(14, 3, "gold_block", "yellow_wool", 1)
-column(17, 1.5, "copper_block", "orange_wool", 3)
+THIRD = column(17, 1.5, "copper_block", "orange_wool", 3)
 print("alto del primer puesto sobre el suelo:", TOP)
 
 # telon de fondo: dos columnas, viga, un pano azul con ribete y la copa
@@ -104,11 +112,15 @@ for x in range(10, 20):
     for unit in range(6):
         box(parts, x, 5, 2 + unit, "blue_wool", y0=0.45, y1=0.55, z0=0.25, z1=1.25)
     box(parts, x, 5, 2, "yellow_wool", y0=0.43, y1=0.57, z0=0.0, z1=0.25)
-cup = ["  ###  ", "# ### #", "#######", " ##### ", "  ###  ", "   #   ", "  ###  "]
-for row, line in enumerate(cup):
-    for col, ch in enumerate(line):
-        if ch == "#":
-            box(parts, 14, 5, 9, "gold_block", x0=-0.75 + col * 0.5, y0=0.25, z0=(len(cup) - 1 - row) * 0.5, x1=-0.25 + col * 0.5, y1=0.75, z1=(len(cup) - row) * 0.5)
+# Dos copas de oro bordadas en el pano, a los lados del primer puesto. Una
+# sola encima de la viga quedaba por encima de lo que la pantalla ensena.
+CUP = ["# ### #", "#######", " ##### ", "  ###  ", "   #   ", "  ###  "]
+for at in (11.25, 17.25):
+    for row, line in enumerate(CUP):
+        for col, ch in enumerate(line):
+            if ch == "#":
+                box(parts, 0, 5, 6, "gold_block", x0=at + col * 0.25, y0=0.38, z0=0.2 + (len(CUP) - 1 - row) * 0.25,
+                    x1=at + (col + 1) * 0.25, y1=0.45, z1=0.2 + (len(CUP) - row) * 0.25)
 # postes con cuerda a los lados
 for x in (8, 10, 19, 21):
     box(parts, x, 1, 1, "dark_oak_planks", x0=0.4, y0=0.4, z0=0.5, x1=0.6, y1=0.6, z1=1.5)
@@ -120,7 +132,28 @@ for x in (7, 22):
     b.append([x, 5, 1, "polished_andesite"])
     b.append([x, 5, 2, "glowstone"])
 # Where he stands: on the carpet to the left, then on second place, then on first.
-save("podium_ground", b, p, parts, DEPTH, {"stage": [9.6, 3, 0.5625], "second": [12, 3, 2.75], "first": [15, 3, TOP]})
+# And the way down when he leaves forward: third place, then the carpet on the right.
+ANCHORS = {"stage": [9.6, 3, 0.5625], "second": [12, 3, 2.75], "first": [15, 3, TOP],
+           "third": [18, 3, THIRD], "exit": [20.4, 3, 0.5625]}
+save("podium_ground", b, p, parts, DEPTH, ANCHORS)
+
+# ---------- el escenario solo, para ponerlo sobre la taiga ----------
+TAIGA_SURFACE = 2811
+stage_blocks = [block for block in b if block[2] >= 1]
+stage_parts = list(parts)
+# Nieve posada donde se posaria: la viga, los faroles y los extremos del estrado.
+for x in range(9, 21):
+    box(stage_parts, x, 5, 8, "snow", y0=0.2, y1=0.8, z0=0.75, z1=0.9)
+for x in (9, 20):
+    box(stage_parts, x, 5, 9, "snow", z1=0.14)
+for x in (7, 22):
+    box(stage_parts, x, 5, 3, "snow", z1=0.14)
+for x in (8, 9, 20, 21):
+    box(stage_parts, x, 4, 1, "snow", z0=0.5, z1=0.62)
+    box(stage_parts, x, 1, 1, "snow", y1=0.6, z0=0.5, z1=0.6)
+# Tambien donde pisa antes de subir al estrado, y el borde que lo levanta.
+save("podium_stage", stage_blocks, [], stage_parts, DEPTH,
+     {**ANCHORS, "ground": [6.4, 3, 0], "step": [7.5, 3, 0]}, TAIGA_SURFACE)
 
 # ---------- medio: abetos y banderines ----------
 b, p, parts = [], [], []

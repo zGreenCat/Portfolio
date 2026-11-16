@@ -20,6 +20,11 @@
   animation: sheetCycle 2s steps(16) infinite;
 }
 
+/* Celebrar es otro bucle por tiempo, como el reposo. */
+.character[data-state='cheer'] {
+  animation: sheetCycle 0.8s steps(16) infinite;
+}
+
 /* --sheet-span lo pone el componente: ancho de celda × número de frames.
    En píxeles, no en porcentaje: el porcentaje en background-position se
    calcula contra la diferencia entre elemento e imagen, no contra la imagen. */

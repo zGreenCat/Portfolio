@@ -1,0 +1,114 @@
+/* El marco lo pone `Panel`. Tres puestos, y debajo lo que no subió. */
+.places,
+.others {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2.2vh, 22px);
+}
+
+.place {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+/* El bloque del escalón: el mismo metal que lleva su columna en el mundo. */
+.medal {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1b1f1d;
+  border-radius: 2px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.22);
+}
+
+.gold {
+  background: #f1c232;
+}
+
+.iron {
+  background: #d4d7da;
+}
+
+.copper {
+  background: #c9744c;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rank {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #8fc4a0;
+}
+
+.name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #eef2ef;
+}
+
+.year {
+  font-weight: 400;
+  color: #9fb0a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #d3dbd6;
+}
+
+.link {
+  align-self: flex-start;
+  font-size: 0.84rem;
+  color: #8fc4a0;
+  text-underline-offset: 3px;
+}
+
+.link:focus-visible {
+  outline: 2px solid #8fc4a0;
+  outline-offset: 3px;
+}
+
+/* El aviso de logro del juego: caja oscura, rótulo amarillo. */
+.others {
+  margin-top: clamp(18px, 3vh, 28px);
+}
+
+.advancement {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #1a1d1c;
+  border: 2px solid #4a524e;
+  border-radius: 3px;
+}
+
+.unlocked {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f4e27a;
+}

@@ -22,6 +22,12 @@ interface InventoryProps {
   projects: Project[]
   /** 0 = cerrado, 1 = abierto del todo. Lo gobierna la distancia al cofre. */
   openness: number
+  /**
+   * Lleva al podio, que está al lado. Va aquí además de en el mundo porque en
+   * estrecho este cajón es una hoja que tapa el escenario: sin esto, en móvil
+   * no habría forma de pedirlo.
+   */
+  onPodium?: () => void
 }
 
 /**
@@ -34,7 +40,7 @@ interface InventoryProps {
  * Se navega con botones y teclado, **nunca con scroll**: el scroll pertenece al
  * mundo y disputárselo rompería el recorrido.
  */
-export default function Inventory({ title, projects, openness }: InventoryProps) {
+export default function Inventory({ title, projects, openness, onPodium }: InventoryProps) {
   const [index, setIndex] = useState(0)
   /** Capturas que no existen todavía. Las rutas van cableadas desde el
    *  contenido, así que basta con soltar el archivo para que aparezca; hasta
@@ -141,6 +147,12 @@ export default function Inventory({ title, projects, openness }: InventoryProps)
           {index + 1} / {total}
         </span>
       </div>
+
+      {onPodium ? (
+        <button type="button" className={styles.podium} onClick={onPodium}>
+          Ver los hackatones en el podio →
+        </button>
+      ) : null}
     </Panel>
   )
 }

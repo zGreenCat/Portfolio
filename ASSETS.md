@@ -23,6 +23,8 @@ para escalar y colocar cada hoja.
 | `walk` | 25 | tira | 166 KB | 408 | 540 | 232 |
 | `idle` | 16 | tira | 73 KB | 408 | 540 | 232 |
 | `throw` | 19 | tira | 137 KB | 408 | 540 | 232 |
+| `climb` | 32 | tira | 191 KB | 408 | 540 | 232 |
+| `cheer` | 16 | tira | 147 KB | 408 | 540 | 232 |
 | `sit` | 31 | tira | 223 KB | 408 | 540 | 232 |
 
 - `charHeight` — alto del personaje de pie dentro de la celda de 600
@@ -66,6 +68,11 @@ Se renderizan **todas al mismo lienzo, 3840×3000**, y el código las recorta. V
 18 capas más sus 18 variantes a media resolución: **10 MB en WebP**. La columna
 de MB es lo que ocupan descomprimidas, que es el límite real en móvil — no el
 peso del archivo.
+
+**`b2` tiene una quinta capa, `b2_stage`:** el escenario del podio, solo, sin
+suelo debajo. No sale de Mine-imator sino de `scripts/render/world.py`, con la
+misma cámara, y va anclada en una sola copia. Su PNG está con los demás en la
+carpeta de renders para que la importación lo recorte igual que al resto.
 
 `b5` no se tesela: repetir un acantilado daría un cantil detrás de otro. Va
 anclado con `CLIFF_EDGE = 2371/3840`, la última columna con suelo. El `far` de
@@ -491,6 +498,18 @@ se suman a los del canvas y se ve cargado.
   (`poses/throw.json`), conserva pies, paso y ritmo, y reescribe tronco y
   brazo. Su salida es `poses/throw_v2.json`, que es la hoja `throw` del sitio.
   `gen_peek.py` escribe el saludo; toma su ritmo del saludo hecho a mano.
+  `gen_podium.py` escribe `climb` y `cheer`, y la medalla es una pieza del
+  rig que una pose enseña con `"medal": 1`.
+
+  **`world.py` renderiza capas de mundo** desde una lista de bloques, con las
+  texturas del juego y la cámara de arriba: 133 px por bloque y la superficie
+  en la fila que se le pida. `gen_podium_world.py` escribe la escena del
+  escenario. Las texturas no están en el repo.
+
+  **`chest.py` renderiza el cofre**, cerrado y abierto, a
+  `public/textures/chest_{closed,open}.webp`. Va aparte porque un cofre no es
+  un bloque: es un modelo de 14×14×14 con tapa y pestillo sobre una hoja de
+  64×64 (`entity/chest/normal.png`). Comparte cámara y luz con `world.py`.
 
   Las hojas del sitio se renderizan todas con `zoom` 1, no con el que trae
   cada calco: ese valor solo servía para casar con la hoja original.

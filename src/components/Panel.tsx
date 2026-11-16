@@ -10,6 +10,12 @@ interface PanelProps {
   role?: 'region' | 'dialog'
   /** 0 = cerrado, 1 = abierto del todo. Lo gobierna la distancia al lugar. */
   openness: number
+  /**
+   * Dónde va la hoja en pantallas estrechas. Abajo por defecto. `top` es para
+   * cuando lo que hay que ver está en el suelo: en vertical el mundo ocupa la
+   * mitad baja, y una hoja inferior tapaba al personaje celebrando en el podio.
+   */
+  narrow?: 'bottom' | 'top'
   children: ReactNode
 }
 
@@ -23,7 +29,14 @@ interface PanelProps {
  * que va DENTRO —la rejilla de crafteo, las ranuras de inventario—, no la caja
  * de piedra biselada que lo envolvía.
  */
-export default function Panel({ eyebrow, title, role = 'region', openness, children }: PanelProps) {
+export default function Panel({
+  eyebrow,
+  title,
+  role = 'region',
+  openness,
+  narrow = 'bottom',
+  children,
+}: PanelProps) {
   if (openness <= 0.01) return null
 
   const style: CSSProperties = {
@@ -34,7 +47,10 @@ export default function Panel({ eyebrow, title, role = 'region', openness, child
   }
 
   return (
-    <div className={styles.wrap} style={{ opacity: openness }}>
+    <div
+      className={`${styles.wrap} ${narrow === 'top' ? styles.narrowTop : ''}`}
+      style={{ opacity: openness }}
+    >
       <div className={styles.scrim} aria-hidden="true" />
       {/*
        * `inert` hasta que está abierto del todo: con `pointerEvents: none` el

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-import { ABOUT_PAGES, CONTACT, PROJECTS, RECIPES } from '@/content/portfolio'
+import { ABOUT_PAGES, CONTACT, EVENTS, PLACE_LABEL, PROJECTS, RECIPES } from '@/content/portfolio'
 
 import styles from './simple.module.css'
 
@@ -105,6 +105,27 @@ export default function SimplePage() {
                       </li>
                     ))}
                   </ul>
+                </article>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className={styles.section} aria-labelledby="hackatones">
+          <h2 id="hackatones" className={styles.sectionTitle}>
+            Hackatones
+          </h2>
+          <ol className={styles.projects}>
+            {EVENTS.map((event) => (
+              <li key={event.id}>
+                <article className={styles.project}>
+                  <h3 className={styles.projectName}>
+                    {event.name} {event.year}
+                  </h3>
+                  <p className={styles.projectSummary}>
+                    {event.place ? PLACE_LABEL[event.place] : 'Participación'}
+                  </p>
+                  <p className={styles.projectText}>{event.summary}</p>
                 </article>
               </li>
             ))}

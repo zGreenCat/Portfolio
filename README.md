@@ -34,6 +34,12 @@ oscurecido detrás: centrados tapaban al personaje justo al llegar a la sección
 Se navegan **con ratón y teclado, nunca con scroll** — el scroll pertenece al
 mundo.
 
+**En la taiga hay un podio.** Junto al cofre de proyectos, un escenario con
+los hackatones. Se pulsa —lo avisa una medalla flotando a la entrada— y el
+personaje camina hasta él, sube de dos saltos, se gira con la medalla puesta y
+celebra. Al seguir camino baja saltando por el tercer puesto. Como sentarse,
+va por tiempo y no por scroll.
+
 **El recorrido acaba sentado en el acantilado.** Es lo único que no es una
 posición: el gesto va por tiempo y el mundo se congela mientras dura, así que
 al retroceder el personaje se levanta antes de empezar a desplazarse.
@@ -70,7 +76,7 @@ src/components/             personaje, paneles, perla, cielo, clima
 src/content/portfolio.ts    proyectos, sobre mí, skills, contacto
 src/content/layers.ts       generado — alto de cada capa y escala
 scripts/import-layers.py    recorta y codifica los renders
-scripts/render/             rig de Blender por script: las hojas del personaje
+scripts/render/             Blender por script: personaje, escenario y cofre
 public/layers/              capas de mundo por bioma (b1…b5)
 public/sprites/             hojas de sprites del personaje
 public/projects/            capturas de los proyectos

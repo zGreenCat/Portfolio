@@ -2,7 +2,7 @@ import type { CSSProperties, Ref } from 'react'
 
 import styles from './Character.module.css'
 
-export type CharacterState = 'run' | 'walk' | 'idle' | 'throw' | 'sit'
+export type CharacterState = 'run' | 'walk' | 'idle' | 'throw' | 'sit' | 'climb' | 'cheer'
 
 export const CELL_WIDTH = 460
 const CELL_HEIGHT = 600
@@ -30,6 +30,9 @@ const SHEETS = {
   // `footY` es el suelo, no el punto más bajo: sentado, los pies cuelgan por
   // debajo, delante del cantil. La cámara la fija `scripts/render/rig.py`.
   sit: { src: '/sprites/sit.webp', frames: 31, charHeight: 408, footY: 540, centerX: 232 },
+  // Subir al podio va dibujado en el sitio: los saltos los desplaza la página.
+  climb: { src: '/sprites/climb.webp', frames: 32, charHeight: 408, footY: 540, centerX: 232 },
+  cheer: { src: '/sprites/cheer.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
 } as const
 
 /** Frame en el que la mano suelta la perla, y dónde está esa mano dentro de la
@@ -42,6 +45,8 @@ export const FRAME_COUNT: Record<CharacterState, number> = {
   idle: SHEETS.idle.frames,
   throw: SHEETS.throw.frames,
   sit: SHEETS.sit.frames,
+  climb: SHEETS.climb.frames,
+  cheer: SHEETS.cheer.frames,
 }
 
 /** Geometría de cada hoja, para que la página pueda situar la mano. */
@@ -66,6 +71,8 @@ const labels: Record<CharacterState, string> = {
   idle: 'Personaje en reposo',
   throw: 'Personaje lanzando una perla',
   sit: 'Personaje sentado en el borde del acantilado',
+  climb: 'Personaje subiendo al podio',
+  cheer: 'Personaje celebrando en el podio con su medalla',
 }
 
 /**

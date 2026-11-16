@@ -62,7 +62,10 @@ LAYER_SPEED   = { far: 0.15, mid: 0.3, near: 0.55, ground: 1 }
 
 ### Capas y biomas
 
-Cada bioma (`b1`…`b5`) tiene hasta cuatro capas en `public/layers/`. Se montan
+Cada bioma (`b1`…`b5`) tiene hasta cuatro capas en `public/layers/`. Por orden
+del recorrido: bosque (Inicio), desierto con templo (Sobre mí), taiga
+(Experiencias), cerezos (Skills) y acantilado (Contacto). El desierto y la taiga
+se intercambiaron para que el podio fuera en la nieve. Se montan
 solo los biomas dentro de `MOUNT_RADIUS`: una capa ocupa decenas de MB
 descomprimida y cinco a la vez matan un móvil. Por debajo de `HALF_RES_WIDTH`
 (900 px) se usan las variantes `@half`.
@@ -115,6 +118,22 @@ Reglas al tocar el bucle:
   La noche mueve un `filter` CSS sobre superficies del ancho del mundo, y
   re-filtrar eso por frame era carísimo.
 
+- **La marcha se elige con margen, y en segundos.** Correr, caminar o parado
+  salían de la velocidad de cada frame contra un umbral fijo, y un golpe de
+  rueda —un pico que se apaga en un cuarto de segundo— era correr, caminar y
+  parar: con la rueda lenta, 26 cambios en 4 s. Ahora manda una velocidad
+  suavizada (`PACE_SECONDS`), dejar de correr pide bajar más de lo que costó
+  arrancar (`SPEED_RUN_OFF`), cada marcha dura un mínimo
+  (`GAIT_HOLD_SECONDS`) y el reposo espera `IDLE_SECONDS` —poco: en esa
+  espera la zancada no avanza y con 0,3 s se quedaba clavado al frenar—. Todo en segundos:
+  en frames, a 120 Hz valía la mitad.
+- **La zancada tiene cadencia mínima (`MIN_CADENCE`).** Sale de la distancia
+  recorrida, y al frenar la distancia se acaba antes que la marcha: se quedaba
+  un cuarto de segundo clavado en una pose de correr.
+- **La zancada se lleva en ciclos (`cycle`), no en frames.** `run` tiene 16 y
+  `walk` 25: el mismo índice es otra fase del paso en cada hoja, y al cambiar
+  de marcha el pie saltaba.
+
 En reposo el ciclo lo lleva el CSS (`data-driven` ausente → animación activa).
 El bucle **no** debe escribir el frame en `idle`.
 
@@ -136,6 +155,73 @@ Tres cosas que costaron y conviene no deshacer:
   mientras sigue sentado. Es además el freno del scroll en el borde.
 - **Al soltar, la recuperación va acotada** a `CATCH_UP_BLOCKS`. Sin tope, el
   primer frame cierra cientos de píxeles de golpe y el personaje sale disparado.
+
+### El podio: el otro gesto que no es una posición
+
+En la taiga, pasado el cofre, hay un escenario con un podio. **Al pulsarlo**
+el personaje camina hasta el estrado, sube —dos saltos, 2.º puesto y luego
+1.º—, se gira hacia la cámara con una medalla y celebra. Comparte mecanismo
+con sentarse: corre por tiempo (`PODIUM_SECONDS`), congela el mundo con
+`sitLockRef`, y **no escucha la rueda hasta terminar**; al alejarte baja con
+la animación al revés, entera.
+
+Lo que tiene de distinto, y por qué:
+
+- **Se pide, no se dispara al llegar.** Hubo una versión que subía al
+  detenerse delante. La zona eran 84 px de scroll: con la perla se acertaba
+  siempre y con la rueda casi nunca, así que una vez abajo no se podía volver
+  a subir. Y con el escenario ocupando medio bioma, proyectos y hackatones se
+  pisaban. Ahora quien camina solo ve el cofre; el podio es decorado hasta
+  que se pulsa.
+- **Se pulsa el escenario entero, y lo avisa una medalla** (`.podiumHit`,
+  `PodiumMedal`) que flota y gira a la entrada como un objeto soltado. Hubo un
+  botón de la barra plantado ahí y no gustó: era interfaz en mitad del mundo.
+  La medalla no va sobre el primer puesto porque ahí cae bajo el cajón de
+  proyectos. En estrecho ese cajón tapa el escenario entero, así que dentro
+  lleva además un enlace (`onPodium`): sin él en móvil no se podría pedir.
+- **Va andando, sin perla.** Solo se puede pedir teniéndolo delante.
+  `climbPodium` mueve el scroll a `PODIUM_AT` y el suavizado del mundo hace
+  la caminata. Dos cuidados: el gesto no arranca hasta estar a píxeles del
+  sitio (`PODIUM_ZONE`) y entonces el mundo se clava en `PODIUM_AT` exacto,
+  porque lo que falte por andar flotaría fuera de la columna; y el corrimiento
+  al 7% va acompasado con lo andado, o patinaba de lado con el mundo quieto.
+  Mover la rueda de camino lo cancela (`PODIUM_CANCEL`).
+- **Baja por donde te vas.** Hacia atrás, la hoja al revés: 2.º puesto y
+  suelo. Hacia delante, por el 3.º y la alfombra del otro lado
+  (`podiumPose`, `PODIUM_WAY_DOWN`): se gira de perfil con el final de la
+  hoja al revés y repite los dos saltos hacia delante. Se decide arriba
+  (`podiumAheadRef`) y no cambia a medio salto. Al tocar suelo queda a media
+  pantalla de su 20%, con el mundo aún clavado: **no se recoloca de golpe**
+  —era un corte de cámara de 765 px—, se queda donde cayó, quieto, y el
+  mundo avanza hasta alcanzarlo (`podiumLandRef`).
+- **Los saltos los mueve la página, no la hoja.** `climb` va dibujada en el
+  sitio; `hopSpot` da el desplazamiento de cada frame. Así la hoja no
+  depende de la altura de las columnas.
+- **Dónde pisa lo dice el render.** `STAGE` son píxeles que imprime
+  `scripts/render/world.py`. Un bloque más al fondo cae más abajo en pantalla
+  de lo que dice su altura; calculado a mano, flotaba sobre el podio.
+- **El estrado se sube andando.** Media losa, de golpe, como en el juego: es
+  función de la posición y vale también para quien cruza sin subir.
+- **En el podio el personaje se va al 7% del ancho** (`PODIUM_X`), y solo
+  entonces. Al 20% el primer puesto caía bajo el velo del cajón; atado a la
+  posición, quien cruzaba andando lo veía frenar y acelerar.
+- **Su cajón lo abre el gesto, no la distancia**, y mientras está abierto
+  cierra el del cofre. En estrecho va arriba (`narrow="top"` en `Panel`): la
+  hoja inferior tapaba justo al personaje celebrando.
+
+El escenario es una capa propia, `b2_stage`, **anclada y en una sola copia**.
+No va pintado en el suelo porque el suelo se repite volteado y saldría otro
+podio con los números al revés.
+
+**El cofre va pegado al escenario por la izquierda**, no en el `at` de la
+sección, donde caía encima del primer puesto. Es un render del modelo del
+juego con su textura (`scripts/render/chest.py`), a la escala del mundo: 14
+de los 16 píxeles de un bloque. Su sitio se calcula (`chestLeft`,
+`chestAtRef`) porque todo ello crece con el alto de la pantalla.
+«Experiencias» aterriza ahí, con el cofre a la espalda y el escenario delante.
+
+Los eventos están en `EVENTS` (`src/content/portfolio.ts`). Tres tienen puesto
+y suben; el que no, va aparte como logro del juego.
 
 ### Precarga en dos tiempos
 
@@ -269,9 +355,10 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 
 ## Trampas reales
 
-- **`src/content/layers.ts` está generado.** Lo escribe
-  `scripts/import-layers.py`; editarlo a mano se pierde en la siguiente
-  importación.
+- **`src/content/layers.ts` dice que se genera, y no del todo.**
+  `scripts/import-layers.py` escribe `layers.json` y nada lo convierte a
+  `.ts`: los altos se copian a mano desde ese JSON. La línea de `b2_stage` se
+  añadió así. Sigue sin tocarse por intuición: el número sale de la importación.
 - **El mapeo scroll↔mundo vive en `worldFromScroll` / `scrollFromWorld`.**
   Estuvo repetido en seis sitios y moverlo sin unificarlo dejó alguno atrás.
 - **La entrada partida se quitó, no se perdió.** Foto y skin a pantalla
@@ -289,6 +376,18 @@ propósito — se añade un proyecto sin abrir el código de la animación.
   en `/recorrido` antes de promocionarse a la raíz.
 - **Los paneles se navegan con ratón y teclado, nunca con scroll.** El scroll
   pertenece al mundo.
+- **El cofre lleva `max-width: none`.** El reset le pone `max-width: 100%` y
+  su caja mide cero —los marcadores van en absoluto dentro de un contenedor
+  sin ancho—, así que medía 0×0. Estuvo montado e invisible sin que nadie lo
+  notara.
+- **`.stage` lleva `overflow: clip`, no `hidden`.** Con `hidden` la caja sigue
+  siendo desplazable, y al abrir un enlace con `#contacto` el navegador la
+  corría de lado para enseñar el marcador: el mundo entero, una pantalla a la
+  izquierda.
+- **Las secciones se buscan por `id` (`atOf`), no por su puesto en `SECTIONS`.**
+  Los paneles usaban `SECTIONS[2]` y se descolocaban al tocar la lista.
+- **El `id` de Experiencias sigue siendo `proyectos`.** Cambió el rótulo; el
+  ancla se quedó para no romper enlaces ya compartidos.
 - Todo lo visible en `public/` se sirve abierto, CV incluido.
 
 ## Abierto: ideas sin decidir
@@ -308,72 +407,6 @@ crupier.
 **El contraargumento, que vale la pena recordar:** un blackjack demuestra menos
 que el mundo que ya existe. Lo que sí aporta es que se note que alguien se lo
 pasó bien construyendo esto.
-
-### Podio de hackatones
-
-El personaje se sube a un podio y enseña los eventos: dos HackaDisc, el NASA
-Space Apps Challenge y Hackamine. La idea original es podio con medalla.
-
-**Los resultados, que son los que hacen que el podio sea verdad:**
-
-| Evento | Año | Resultado | Escalón |
-|---|---|---|---|
-| HackaDisc | 2025 | 1.er lugar | oro, el alto |
-| HackaDisc | 2024 | 2.º lugar | hierro |
-| Hackamine | sin confirmar | 3.er lugar | cobre |
-| NASA Space Apps Challenge | 2025 | sin puesto | fuera del podio |
-
-Qué se hizo, en palabras del autor:
-
-- **HackaDisc 2024:** un dashboard con un modelo estadístico para Pignus. No
-  tiene proyecto en el inventario; el de 2025 sí (`hackadisc`).
-- **Hackamine:** tres casos de la industria, sobre industria 4.0: arquitectura
-  de alto nivel para modelos de machine learning, un ETL para un dashboard y
-  el entrenamiento de un modelo predictivo.
-- **Sin rol** en ninguno: no hubo roles definidos. Ojo: la ficha del proyecto
-  NASA en `portfolio.ts` dice «Como Team Lead coordiné…»; hay que aclarar cuál
-  de las dos cosas vale antes de publicar el evento.
-
-Tres puestos, tres escalones: el podio no exagera nada. **NASA no sube al
-podio.** Va al lado como logro del juego —«¡Logro desbloqueado!»—, que es la
-forma que tiene Minecraft de decir «hiciste esto» sin decir «ganaste». Ponerle
-medalla sería lo único falso de la sección.
-
-Idea de materiales, sin decidir: los escalones como bloques de oro, hierro y
-cobre, que son el oro, la plata y el bronce del propio juego.
-
-**Lo que queda por resolver:**
-
-- **No repetir el inventario.** NASA y HackaDisc ya son proyectos. Aquí va el
-  evento: fecha, equipo, rol, resultado. El qué se construyó se queda en su
-  proyecto, y de aquí se enlaza.
-- **Dónde va en el mundo.** Las secciones son lugares con su `at`. O es un
-  lugar nuevo —mueve los `at` de lo que venga después y hay que decidir bioma—,
-  o es un punto dentro de un bioma que ya existe, como el cofre.
-
-**Lo que ya existe**, todo en `scripts/render/`:
-
-- **El lugar.** `gen_podium_world.py` escribe las tres capas —explanada con el
-  escenario, abetos y banderines, dos cordilleras nevadas— y `world.py` las
-  renderiza con la cámara de `ASSETS.md`. El podio son tres columnas de cuarzo
-  de alturas distintas, con tapa que sobresale, banda de su metal y panel con
-  su número: así los construye la gente en el juego. Tres bloques de mineral
-  sueltos se descartaron por simples.
-- **Dónde pisa.** La escena declara `anchors` y el render imprime su píxel. Un
-  bloque más al fondo cae más abajo en pantalla de lo que dice su altura, por
-  la cámara: calculado a mano, el personaje flotaba sobre el podio.
-- **Las hojas.** `gen_podium.py` escribe `climb` —dos saltos, escenario →
-  2.º puesto → 1.º, giro hacia la cámara y brazos arriba— y `cheer`, la
-  celebración en bucle. Un solo salto largo hasta arriba se leía ingrávido.
-  El salto va dibujado en el sitio: los arcos los pone la página.
-- **La medalla.** En `rig.py`; una pose la enseña con `"medal": 1`.
-
-**Lo que falta:**
-
-- Importar las capas como bioma nuevo, la sección en la barra y mover Skills.
-- Los dos saltos por código en el bucle, reutilizando el mecanismo de `sit`.
-- `EVENTS` en `src/content/portfolio.ts`, su cajón, y su bloque en `/simple`.
-- Las hojas nuevas no deben entrar en la carga que bloquea la pantalla.
 
 ### Dominio propio
 

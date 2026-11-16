@@ -18,6 +18,7 @@ export const LAYER_HEIGHT: Record<string, number> = {
   'b2_ground': 945,
   'b2_mid': 2002,
   'b2_near': 1598,
+  'b2_stage': 1201,
   'b3_far': 1729,
   'b3_ground': 548,
   'b3_mid': 1037,

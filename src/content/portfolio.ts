@@ -33,7 +33,7 @@ export const PROJECTS: Project[] = [
     name: 'NASA Space Apps Challenge',
     summary: 'Exploración de literatura científica con RAG',
     description:
-      'Plataforma para explorar más de 600 publicaciones de BioScience usando RAG y modelos de lenguaje para resumir y consultar. Incluye búsqueda, filtrado, visualización de documentos y navegación mediante un grafo de conocimiento. Como Team Lead coordiné la integración entre frontend y backend, y el despliegue.',
+      'Plataforma para explorar más de 600 publicaciones de BioScience usando RAG y modelos de lenguaje para resumir y consultar. Incluye búsqueda, filtrado, visualización de documentos y navegación mediante un grafo de conocimiento. Coordiné la integración entre frontend y backend, y el despliegue.',
     tags: ['RAG', 'LLM', 'Knowledge Graphs', 'APIs', 'Vercel'],
     url: 'https://frontend-nasa.vercel.app/',
   },
@@ -85,6 +85,62 @@ export const PROJECTS: Project[] = [
     url: 'https://www.ekiproject.cl/',
   },
 ]
+
+export interface EventEntry {
+  id: string
+  name: string
+  year: number
+  /** Puesto en el podio; `null` si se participó sin puesto. */
+  place: 1 | 2 | 3 | null
+  summary: string
+  /** `id` del proyecto del inventario que salió de ahí, si lo hay. */
+  project?: string
+}
+
+/**
+ * Hackatones. El podio del recorrido tiene tres escalones porque aquí hay tres
+ * puestos: quien no lo tuvo no sube, va aparte. Sin rol en ninguno a
+ * propósito: los equipos no los tenían definidos.
+ */
+export const EVENTS: EventEntry[] = [
+  {
+    id: 'hackadisc-2025',
+    name: 'HackaDisc',
+    year: 2025,
+    place: 1,
+    summary: 'Dashboard predictivo de cobranza para Insecap.',
+    project: 'hackadisc',
+  },
+  {
+    id: 'hackadisc-2024',
+    name: 'HackaDisc',
+    year: 2024,
+    place: 2,
+    summary: 'Dashboard con un LM predictivo para Pignus.',
+  },
+  {
+    id: 'hackamine-2026',
+    name: 'Hackamine',
+    year: 2026,
+    place: 3,
+    summary:
+      'Tres casos de industria 4.0: arquitectura de alto nivel para modelos de machine learning, un ETL para un dashboard y el entrenamiento de un modelo predictivo.',
+  },
+  {
+    id: 'nasa-space-apps-2025',
+    name: 'NASA Space Apps Challenge',
+    year: 2025,
+    place: null,
+    summary: 'Exploración de literatura científica con RAG.',
+    project: 'nasa-space-apps',
+  },
+]
+
+export const PLACE_LABEL: Record<1 | 2 | 3, string> = {
+  1: '1.er lugar',
+  2: '2.º lugar',
+  3: '3.er lugar',
+}
 
 export const CONTACT = [
   { id: 'github', label: 'GitHub', href: 'https://github.com/zGreenCat' },

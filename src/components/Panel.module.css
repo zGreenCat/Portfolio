@@ -101,6 +101,25 @@
     height: 72%;
     padding: clamp(20px, 4vh, 28px) 20px clamp(22px, 4vh, 30px);
   }
+
+  /* La hoja arriba, sobre el cielo, y el velo del revés: oscuro donde se lee
+     y limpio abajo, que es donde está lo que hay que ver. El hueco de arriba
+     libra el botón del menú. */
+  .narrowTop .scrim {
+    background: linear-gradient(
+      180deg,
+      rgb(6 9 12 / 0.84) 0%,
+      rgb(6 9 12 / 0.74) 40%,
+      rgb(6 9 12 / 0.22) 54%,
+      rgb(6 9 12 / 0) 66%
+    );
+  }
+
+  .narrowTop .drawer {
+    inset: 0 0 auto 0;
+    height: 54%;
+    padding-top: 78px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
