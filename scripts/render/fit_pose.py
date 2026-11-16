@@ -19,6 +19,11 @@ pinning it, for sheets where the arms open a little. `FIT_NO_SWEEP=1` skips
 the round-the-clock arm search: an arm that only swings by the body never
 needs it, and the search can park it behind the trunk.
 
+`FIT_SHOT=<file.json>` fits against a shot other than the world camera: the
+file carries `camera` and `light` as a poses file does. The body is then free
+to slide sideways and to lean and turn as a whole, which the world shot never
+needs. This is for the greeting, the one sheet drawn in perspective.
+
 It is coordinate descent: each number is nudged both ways and kept when the
 picture gets closer, with the nudge halving every round. The first frame also
 fits `zoom`, because the sheets were not rendered at one scale; the rest of
@@ -54,6 +59,9 @@ FREE += [("leg_r", 1, 0.5), ("leg_l", 1, 0.5)]
 ARMS_FLAT = os.environ.get("FIT_ARMS_FLAT") == "1"
 if ARMS_FLAT:
     FREE = [(joint, 0, 1.0) for joint in ("arm_r", "arm_r_bend", "arm_l", "arm_l_bend")]
+SHOT = os.environ.get("FIT_SHOT")
+if SHOT and not ARMS_FLAT:
+    FREE = [("y", None, 1 / 16)] + [("root", axis, 1.0) for axis in (0, 1, 2)] + FREE
 ARM_SIDE_MAX = float(os.environ.get("FIT_ARM_SIDE_MAX", "720"))
 SWEEP_ARMS = os.environ.get("FIT_NO_SWEEP") != "1"
 LIMITS = {"arm_r_bend": (0, 150), "arm_l_bend": (0, 150), "leg_r_bend": (-150, 0), "leg_l_bend": (-150, 0)}
@@ -72,6 +80,7 @@ def normalise(pose):
     out = {}
     for key, value in pose.items():
         out[key] = float(value) if key in ("x", "y", "z", "head_yaw", "zoom") else list(value) if isinstance(value, list) else [float(value), 0.0, 0.0]
+    out.setdefault("root", [0.0, 0.0, 0.0])
     for joint, axis, _ in FREE:
         if axis is None:
             out.setdefault(joint, 0.0)
@@ -96,11 +105,17 @@ def put(pose, joint, axis, value):
 
 paths = sorted(os.path.join(TARGETS, name) for name in os.listdir(TARGETS) if name.endswith(".png"))
 height, width = pixels(paths[0]).shape[:2]
-shot = rig.world_camera(FOOT_Y)
+light = rig.WORLD_LIGHT
+if SHOT:
+    with open(SHOT) as fh:
+        custom = json.load(fh)
+    shot, light = custom["camera"], custom.get("light", rig.WORLD_LIGHT)
+else:
+    shot = rig.world_camera(FOOT_Y)
 shot["resolution"] = (width, height)
 scene = rig.setup_scene(shot)
 scene.eevee.taa_render_samples = 4
-joints = rig.build(rig.make_material(bpy.data.images.load(SKIN), rig.WORLD_LIGHT))
+joints = rig.build(rig.make_material(bpy.data.images.load(SKIN), light))
 scratch = os.path.join(tempfile.mkdtemp(dir="/dev/shm" if os.path.isdir("/dev/shm") else None), "fit.png")
 scene.render.filepath = scratch
 renders = 0
@@ -108,7 +123,8 @@ renders = 0
 
 def cost(pose, target, target_rgb):
     global renders
-    scene.camera.data.ortho_scale = shot["ortho_scale"] / pose["zoom"]
+    if shot["type"] == "ORTHO":
+        scene.camera.data.ortho_scale = shot["ortho_scale"] / pose["zoom"]
     rig.apply(joints, pose)
     bpy.ops.render.render(write_still=True)
     renders += 1
@@ -177,7 +193,7 @@ for index, path in enumerate(paths):
         for arm in ("arm_r", "arm_l"):
             pose[arm][1] = pose[arm][2] = 0.0
     steps = NEXT_STEPS if (per_frame or not first) else FIRST_STEPS
-    free = FREE + ([("zoom", None, 1 / 400)] if first and not per_frame else [])
+    free = FREE + ([("zoom", None, 1 / 400)] if first and not per_frame and not SHOT else [])
     best = fit(pose, path, steps, free)
     out.append({key: ([round(v, 2) for v in value] if isinstance(value, list) else round(value, 4)) for key, value in pose.items()})
     print(f"FIT {os.path.basename(path)} cost {best:.5f} zoom {pose['zoom']:.3f} renders {renders} {time.time() - began:.0f}s", flush=True)
