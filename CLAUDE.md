@@ -557,6 +557,14 @@ propósito — se añade un proyecto sin abrir el código de la animación.
   su mapa de bits —ventana × densidad— y en cualquier pantalla que no fuera
   1× dibujaba desplazado: al 125% de un portátil la perla salía del suelo.
   **Probar siempre también con `devicePixelRatio` distinto de 1.**
+- **El suelo del acantilado se alarga hacia atrás por su terreno, no por la
+  tesela** (`solid` en `Strip`). La tesela tiene suelo hasta el cantil y vacío
+  transparente después. Puestas una junto a otra y espejadas, a dos teselas
+  del ancla quedaban dos vacíos pegados: un tramo sin suelo. En escritorio
+  caía antes de la frontera del bioma y el recorte lo tapaba; en un móvil,
+  con teselas la mitad de anchas, caía dentro y se caminaba sobre la nada.
+  **El suelo se monta aparte de las demás capas** (otro `Strip`, más abajo
+  en `page.tsx`): un cambio a las capas hay que mirarlo en los dos sitios.
 - Todo lo visible en `public/` se sirve abierto, CV incluido.
 
 ## Abierto: ideas sin decidir

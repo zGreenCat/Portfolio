@@ -35,6 +35,18 @@ interface StripProps {
    *  el mundo anterior a ella, y ahí quedaba un hueco sin suelo. Al ir
    *  espejadas, el terreno continúa sin costura. */
   extend?: number
+  /**
+   * Fracción de la tesela, desde la izquierda, que tiene terreno; el resto es
+   * vacío transparente. Es el suelo del acantilado, que acaba en el cantil.
+   *
+   * Sin esto las teselas extra se ponían una al lado de otra, y el espejo de
+   * una tesela con vacío a la derecha tiene el vacío a la izquierda: a dos
+   * teselas del ancla quedaban dos vacíos pegados, un agujero sin suelo. En
+   * escritorio caía antes de la frontera del bioma y el recorte lo tapaba; en
+   * un móvil, con teselas la mitad de anchas, caía dentro y se caminaba sobre
+   * la nada. Con esto las extra se solapan para encadenar solo su terreno.
+   */
+  solid?: number
 }
 
 /**
@@ -66,6 +78,7 @@ export default function Strip({
   anchor,
   half,
   extend = 0,
+  solid,
 }: StripProps) {
   const file = half ? src.replace('.webp', '@half.webp') : src
   const anchored = anchor !== undefined
@@ -74,7 +87,24 @@ export default function Strip({
   let left: number
   let tiles: number
 
-  if (anchored) {
+  /** Dónde empieza cada tesela respecto a la primera, cuando no van seguidas. */
+  let offsets: number[] | null = null
+
+  if (anchored && solid !== undefined && extend > 0) {
+    // De izquierda a derecha, acabando en la anclada. La copia k cubre con su
+    // terreno el tramo [-k·s, -(k-1)·s] respecto al ancla: las impares van
+    // volteadas, con el terreno a su derecha; las pares, sin voltear, con el
+    // terreno a su izquierda.
+    const ground = solid * tileWidth
+    const starts = Array.from({ length: extend }, (_, i) => {
+      const k = extend - i
+      return k % 2 === 0 ? -k * ground : -(k - 1) * ground - tileWidth
+    })
+    starts.push(0)
+    tiles = starts.length
+    left = (anchor ?? 0) + starts[0]
+    offsets = starts.map((start) => start - starts[0])
+  } else if (anchored) {
     tiles = 1 + extend
     left = (anchor ?? 0) - extend * tileWidth
   } else {
@@ -92,7 +122,7 @@ export default function Strip({
   // origen, la paridad tiene que seguir siendo la misma o aparece la costura.
   const parity = anchored ? extend % 2 : (left / tileWidth) % 2
 
-  const width = tiles * tileWidth
+  const width = offsets ? offsets[offsets.length - 1] + tileWidth : tiles * tileWidth
   const clip = `inset(0 ${Math.max(0, width - (spanTo - shift - left))}px 0 ${Math.max(0, spanFrom - shift - left)}px)`
 
   return (
@@ -115,7 +145,13 @@ export default function Strip({
           alt=""
           decoding="async"
           className={styles.tile}
-          style={index % 2 !== parity ? { transform: 'scaleX(-1)' } : undefined}
+          style={{
+            transform: index % 2 !== parity ? 'scaleX(-1)' : undefined,
+            // Lo que le falta para caer en su sitio. El +1 deshace el píxel
+            // de solape que cada tesela ya lleva a su derecha.
+            marginLeft:
+              offsets && index > 0 ? offsets[index] - offsets[index - 1] - tileWidth + 1 : undefined,
+          }}
         />
       ))}
     </div>

@@ -1822,7 +1822,10 @@ export default function RecorridoPage() {
               viewport={viewW}
               {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
               half={half || lite}
-              extend={s.biome === 'b5' ? 2 : 0}
+              // El suelo del acantilado acaba en el cantil: sus copias extra
+              // se encadenan por el terreno, no por la tesela entera.
+              extend={s.biome === 'b5' ? 4 : 0}
+              solid={s.biome === 'b5' ? CLIFF_EDGE : undefined}
               anchor={s.biome === 'b5' ? cliffAnchor : undefined}
             />
           ))}
