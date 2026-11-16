@@ -231,8 +231,7 @@ Lo que tiene de distinto, y por qué:
   entonces. Al 20% el primer puesto caía bajo el velo del cajón; atado a la
   posición, quien cruzaba andando lo veía frenar y acelerar.
 - **Su cajón lo abre el gesto, no la distancia**, y mientras está abierto
-  cierra el del cofre. En estrecho va arriba (`narrow="top"` en `Panel`): la
-  hoja inferior tapaba justo al personaje celebrando. En ancho va más
+  cierra el del cofre. En ancho va más
   estrecho (`slim`): a 42% tapaba media columna del tercer puesto.
 
 El escenario es una capa propia, `b2_stage`, **anclada y en una sola copia**.
@@ -396,9 +395,20 @@ navegación, no la metáfora.
 - Los bloques de alto variable llevan `min-height` reservado para el peor caso
   —descripción, etiquetas y el hueco del enlace—, porque **dos de los seis
   proyectos no tienen URL** y sin reservarlo el paginador saltaba una línea.
-- **En estrecho la hoja de proyectos no tiene alto de sobra.** La descripción
-  va cortada a tres líneas (entera aplastaba la captura a un tercio) y el
-  enlace al podio sube a la línea del antetítulo en vez de ocupar una propia.
+- **En estrecho la hoja va ARRIBA, sobre el cielo, y es media pantalla.** En
+  vertical el mundo ocupa solo la franja de abajo y lo de arriba está vacío.
+  Estuvo abajo, al 76% del alto: tapaba el mundo entero y se quedaba con el
+  dedo, así que con un panel abierto no se podía ni ver ni andar. Ahora no
+  retiene el desplazamiento (`overscroll-behavior: auto`): deslizar sobre la
+  hoja mueve el mundo si el contenido cabe. Se barajaron un aviso que se abre
+  al tocarlo, la ventana gris del juego y una hoja de dos alturas; quedó esta
+  por ser arreglo y no rediseño.
+- **Cada panel se aprieta para caber en esa media pantalla**, y en móviles
+  de menos de ~800 px de alto alguno aún desliza por dentro. Proyectos pone
+  la captura pequeña junto al texto (`.lead`), corta la descripción a cuatro
+  líneas y las etiquetas a una fila; Sobre mí va a un párrafo por página
+  (`perPage`); Skills va en dos columnas y sin la nota de proyectos. El texto
+  completo sigue en ancho y en `/simple`.
 - `Book` pagina por **tandas de párrafos** (`perPage`), no uno por página: el
   contenido se queda en párrafos semánticos porque `/simple` los quiere sueltos.
 

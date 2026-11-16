@@ -94,6 +94,10 @@ export default function Inventory({ title, projects, openness, onPodium }: Inven
       role="dialog"
       openness={openness}
     >
+      {/* Captura y texto van juntos para poder ponerlos lado a lado en móvil,
+          donde la hoja es media pantalla. En ancho el envoltorio no pinta nada
+          (`display: contents`) y siguen apilados como siempre. */}
+      <div className={styles.lead}>
       {project.shot && !missing[project.id] ? (
         <button
           type="button"
@@ -119,8 +123,11 @@ export default function Inventory({ title, projects, openness, onPodium }: Inven
         </span>
       )}
 
-      <p className={styles.summary}>{project.summary}</p>
-      <p className={styles.description}>{project.description}</p>
+      <div className={styles.leadText}>
+        <p className={styles.summary}>{project.summary}</p>
+        <p className={styles.description}>{project.description}</p>
+      </div>
+      </div>
 
       <ul className={styles.tags}>
         {project.tags.map((tag) => (

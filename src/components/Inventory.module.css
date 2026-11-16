@@ -226,32 +226,75 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Solo agrupan: en ancho no existen para el diseño. */
+.lead,
+.leadText {
+  display: contents;
+}
+
+/* En móvil la hoja es media pantalla, arriba. La captura a todo el ancho se
+   la comía entera, así que va pequeña a la izquierda con el texto al lado; en
+   grande se ve pulsándola. La descripción se corta a cuatro líneas y las
+   etiquetas a una fila: el texto completo sigue en escritorio y en /simple. */
 @media (max-width: 760px) {
+  .lead {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .leadText {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .lead .shot {
+    flex: none;
+    width: 40%;
+  }
+
+  .summary {
+    font-size: 0.74rem;
+  }
+
+  .description {
+    flex: none;
+    min-height: 0;
+    font-size: 0.86rem;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+  }
+
+  .tags {
+    min-height: 0;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .tag {
+    flex: none;
+  }
+
+  .linkSlot {
+    min-height: 22px;
+  }
+
   .slot {
     height: 26px;
   }
 
-  /* En la hoja no sobra ni una línea: el proyecto más largo ya aprieta la
-     captura. El enlace sube a la línea del antetítulo, a la derecha, donde
-     no le quita alto a nada. */
-  /* La descripción se corta a tres líneas: entera, el proyecto más largo
-     aplastaba la captura a un tercio de su alto y pisaba las etiquetas. El
-     texto completo sigue en escritorio y en /simple. */
-  .description {
-    flex: none;
-    min-height: 0;
-    font-size: 0.9rem;
-    line-height: 1.55;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    overflow: hidden;
-  }
-
+  /* El enlace al podio va en la línea del antetítulo, a la derecha: ahí no
+     le quita alto a nada. */
   .podium {
     position: absolute;
-    top: clamp(20px, 4vh, 28px);
+    top: 78px;
     right: 20px;
     font-size: 0.78rem;
   }

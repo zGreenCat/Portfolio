@@ -1883,6 +1883,8 @@ export default function RecorridoPage() {
           title="Sobre mí"
           pages={ABOUT_PAGES}
           portrait={{ src: '/avatar.png', alt: 'Vicente Araya' }}
+          // En móvil la hoja es media pantalla: un párrafo por página.
+          perPage={compact ? 1 : 3}
           openness={bookOpen}
         />
         <CraftingTable openness={benchOpen} />

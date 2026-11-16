@@ -102,42 +102,42 @@
   }
 }
 
-/* En estrecho un cajón lateral es ilegible: pasa a hoja inferior. */
+/* En estrecho un cajón lateral es ilegible: pasa a una hoja ARRIBA, sobre el
+   cielo.
+ *
+ * En vertical el mundo ocupa solo la franja de abajo (`PORTRAIT_WORLD`), y lo
+ * de arriba es cielo vacío. La hoja va ahí. Estuvo abajo, al 76% del alto:
+ * tapaba el mundo entero —personaje, cofre, suelo— y además se quedaba con el
+ * dedo, así que desde que se abría no se podía ni ver por dónde se iba ni
+ * seguir andando.
+ *
+ * El velo va del revés que en ancho: oscuro donde se lee y limpio abajo, que
+ * es donde está lo que hay que ver. El hueco de arriba libra el botón del
+ * menú. Y no retiene el desplazamiento: si el contenido cabe, deslizar sobre
+ * la hoja mueve el mundo igual que deslizar fuera; si no cabe, primero corre
+ * el contenido y luego el mundo. */
 @media (max-width: 760px) {
   .scrim {
     background: linear-gradient(
       180deg,
-      rgb(6 9 12 / 0) 0%,
-      rgb(6 9 12 / 0.2) 26%,
-      rgb(6 9 12 / 0.72) 50%,
-      rgb(6 9 12 / 0.82) 100%
+      rgb(6 9 12 / 0.86) 0%,
+      rgb(6 9 12 / 0.8) 46%,
+      rgb(6 9 12 / 0.66) 54%,
+      rgb(6 9 12 / 0) 64%
     );
   }
 
   .drawer {
-    inset: auto 0 0 0;
-    width: auto;
-    height: 76%;
-    padding: clamp(20px, 4vh, 28px) 20px clamp(22px, 4vh, 30px);
-  }
-
-  /* La hoja arriba, sobre el cielo, y el velo del revés: oscuro donde se lee
-     y limpio abajo, que es donde está lo que hay que ver. El hueco de arriba
-     libra el botón del menú. */
-  .narrowTop .scrim {
-    background: linear-gradient(
-      180deg,
-      rgb(6 9 12 / 0.84) 0%,
-      rgb(6 9 12 / 0.74) 40%,
-      rgb(6 9 12 / 0.22) 54%,
-      rgb(6 9 12 / 0) 66%
-    );
-  }
-
-  .narrowTop .drawer {
     inset: 0 0 auto 0;
+    width: auto;
     height: 54%;
-    padding-top: 78px;
+    padding: 78px 20px 14px;
+    gap: 10px;
+    overscroll-behavior: auto;
+  }
+
+  .body {
+    gap: 10px;
   }
 }
 

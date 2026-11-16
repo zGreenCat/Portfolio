@@ -11,12 +11,6 @@ interface PanelProps {
   /** 0 = cerrado, 1 = abierto del todo. Lo gobierna la distancia al lugar. */
   openness: number
   /**
-   * Dónde va la hoja en pantallas estrechas. Abajo por defecto. `top` es para
-   * cuando lo que hay que ver está en el suelo: en vertical el mundo ocupa la
-   * mitad baja, y una hoja inferior tapaba al personaje celebrando en el podio.
-   */
-  narrow?: 'bottom' | 'top'
-  /**
    * Cajón más estrecho, para cuando lo que hay detrás también hay que verlo
    * entero y el contenido es poco. Solo cambia en ancho; en estrecho no.
    */
@@ -39,7 +33,6 @@ export default function Panel({
   title,
   role = 'region',
   openness,
-  narrow = 'bottom',
   slim = false,
   children,
 }: PanelProps) {
@@ -54,7 +47,7 @@ export default function Panel({
 
   return (
     <div
-      className={`${styles.wrap} ${narrow === 'top' ? styles.narrowTop : ''} ${slim ? styles.slim : ''}`}
+      className={`${styles.wrap} ${slim ? styles.slim : ''}`}
       style={{ opacity: openness }}
     >
       <div className={styles.scrim} aria-hidden="true" />

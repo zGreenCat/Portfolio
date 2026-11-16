@@ -14,16 +14,42 @@
   gap: 7px;
 }
 
-/* En la hoja de móvil las cinco no cabían por poco y había que deslizar para
-   ver la última. Con los huecos apretados entran sin tocar el tamaño del
-   texto. */
+/* En móvil la hoja es media pantalla. Las cinco recetas van en dos columnas
+   y sin la nota de en qué proyectos se usó cada una: en una columna solo se
+   veían tres y había que deslizar. La nota sigue en escritorio y en /simple. */
 @media (max-width: 760px) {
+  /* Columnas de texto y no rejilla: en rejilla cada fila medía lo que su
+     receta más larga y la quinta se caía de la hoja. Así se reparten por
+     alto, tres a un lado y dos al otro. */
   .recipes {
-    gap: 9px;
+    display: block;
+    columns: 2;
+    column-gap: 16px;
   }
 
   .recipe {
+    break-inside: avoid;
     gap: 3px;
+    margin-bottom: 10px;
+  }
+
+  .result {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+  }
+
+  .tech {
+    gap: 1px 8px;
+  }
+
+  .item {
+    font-size: 0.8rem;
+    line-height: 1.3;
+    gap: 5px;
+  }
+
+  .note {
+    display: none;
   }
 }
 
