@@ -58,14 +58,6 @@ export const PROJECTS: Project[] = [
     url: 'https://kreatracker.cl/login',
   },
   {
-    id: 'postea',
-    name: 'Postea',
-    summary: 'SaaS de chatbot con IA · Shinsekai',
-    description:
-      'Plataforma SaaS que permite integrar un chatbot en sitios externos mediante un widget, con capacidades de IA generativa sobre Gemini 2.5. Desarrollado durante mi práctica profesional.',
-    tags: ['Desarrollo Web', 'APIs', 'Gemini 2.5', 'IA generativa'],
-  },
-  {
     id: 'rincon-chilenito',
     shot: '/projects/rincon-chilenito.webp',
     name: 'El Rincón Chilenito',
@@ -183,7 +175,7 @@ export const RECIPES: Recipe[] = [
     id: 'ia',
     grid: ['OpenAI', 'Gemini', 'RAG', 'LLM', 'Knowledge Graphs', null, null, 'FastAPI', null],
     result: 'Producto con IA',
-    note: 'Portal Coloso · NASA Space Apps · Postea',
+    note: 'Portal Coloso · NASA Space Apps',
   },
   {
     id: 'movil',

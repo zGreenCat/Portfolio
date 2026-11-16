@@ -143,13 +143,7 @@ px/bloque, un 47% más grande que el resto.
 
 ## Pendientes
 
-### 1 · Captura de Postea
-
-Único proyecto sin imagen en el carrusel. Su diapositiva muestra «producto
-interno · sin demo pública», que es cierto —es un SaaS de Shinsekai— así que no
-corre prisa.
-
-### 2 · La niebla nunca salió
+### 1 · La niebla nunca salió
 
 Saturación relativa al suelo, medida sobre los renders actuales:
 
@@ -171,7 +165,7 @@ En proyección ortográfica una colina lejana se dibuja **del mismo tamaño** qu
 una cercana. Lo único que las separa es la niebla. Por eso una `far` sin niebla
 no se lee como fondo: se lee como un muro.
 
-### 3 · `layer_front` — opcional
+### 2 · `layer_front` — opcional
 
 Una capa por delante del personaje, para que pase por detrás de un tronco.
 Nunca ha hecho falta.

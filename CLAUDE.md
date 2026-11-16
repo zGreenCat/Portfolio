@@ -361,7 +361,7 @@ navegación, no la metáfora.
 - `.body` lleva `flex: 1` y `min-height: 0`. Sin altura propia, un
   `margin-top: auto` dentro no tiene espacio que repartir.
 - Los bloques de alto variable llevan `min-height` reservado para el peor caso
-  —descripción, etiquetas y el hueco del enlace—, porque **tres de los siete
+  —descripción, etiquetas y el hueco del enlace—, porque **dos de los seis
   proyectos no tienen URL** y sin reservarlo el paginador saltaba una línea.
 - **En estrecho la hoja de proyectos no tiene alto de sobra.** La descripción
   va cortada a tres líneas (entera aplastaba la captura a un tercio) y el

@@ -80,7 +80,7 @@
   box-shadow: inset 0 0 0 1px rgb(238 242 240 / 0.18);
 }
 
-/* Tres de los siete proyectos no tienen enlace público, así que el hueco se
+/* Dos de los seis proyectos no tienen enlace público, así que el hueco se
    reserva igual: si no, el paginador saltaba una línea en esos. */
 .linkSlot {
   min-height: 26px;
@@ -180,7 +180,7 @@
 }
 
 /* Un segmento por proyecto: de un vistazo se ve cuántos hay, cuál miras y
-   cuántos quedan. Siete puntos sueltos hay que contarlos. */
+   cuántos quedan. Seis puntos sueltos hay que contarlos. */
 .slot {
   flex: 1;
   height: 22px;
