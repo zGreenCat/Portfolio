@@ -229,10 +229,20 @@ podio con los números al revés.
 
 **El cofre va pegado al escenario por la izquierda**, no en el `at` de la
 sección, donde caía encima del primer puesto. Es un render del modelo del
-juego con su textura (`scripts/render/chest.py`), a la escala del mundo: 14
+juego con su textura (`scripts/render/props.py`), a la escala del mundo: 14
 de los 16 píxeles de un bloque. Su sitio se calcula (`chestLeft`,
 `chestAtRef`) porque todo ello crece con el alto de la pantalla.
 «Experiencias» aterriza ahí, con el cofre a la espalda y el escenario delante.
+
+**Los carteles de Contacto son el cartel de roble del juego**, renderizado
+igual que el cofre (`props.py sign`); `Signs.tsx` solo le escribe encima, en
+negro y centrado como en el juego. Fueron dos cajas de color en CSS. Van **en
+proporción al personaje** —un bloque de ancho y algo más de uno de alto, contra
+los casi dos que mide él—, así que su tamaño sale del alto de la ventana
+(`vh`), no del ancho: atados al ancho le llegaban por los hombros. En vertical
+el personaje es demasiado pequeño para seguirlo: se quedan en su mínimo
+legible y se les acorta el poste. Se oscurecen de noche menos que el terreno,
+para poder leerlos.
 
 Los eventos están en `EVENTS` (`src/content/portfolio.ts`). Tres tienen puesto
 y suben; el que no, va aparte como logro del juego.
@@ -500,12 +510,6 @@ Nada de esto está empezado. Queda escrito para que no se pierda entre sesiones.
 Pedido por Vicente: que los hackatones lleven fotos suyas de cada evento, no
 solo texto. Sin decidir cómo. Lo natural sería en el cajón del podio, una por
 evento, y que se abran en el visor (`Lightbox`, ya hecho). Faltan las fotos.
-
-### Carteles de Contacto más Minecraft (arreglo, no función)
-
-Los carteles del acantilado (`Signs.tsx`) no se leen como carteles del juego.
-Es un arreglo de aspecto: tablón y poste con la textura real, como se hizo
-con el cofre (`scripts/render/chest.py`), y el texto como va en el juego.
 
 ### Easter egg: blackjack en el templo
 

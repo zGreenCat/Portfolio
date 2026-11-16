@@ -15,6 +15,10 @@ interface SignsProps {
  * El cartel es el widget de enlace nativo del mundo de Minecraft, así que no
  * hace falta explicarlo. Van dentro de la capa del suelo para que se desplacen
  * con él: son parte del sitio, no una interfaz superpuesta.
+ *
+ * La tabla y el poste son el cartel de roble del juego, renderizado con su
+ * textura (`scripts/render/props.py`); aquí solo se le escribe encima. Fueron
+ * dos cajas de color en CSS y no se leían como carteles.
  */
 export default function Signs({ openness }: SignsProps) {
   if (openness <= 0.01) return null
@@ -40,7 +44,6 @@ export default function Signs({ openness }: SignsProps) {
             : { target: '_blank', rel: 'noreferrer' })}
         >
           <span className={styles.board}>{item.label}</span>
-          <span className={styles.post} />
         </a>
       ))}
     </div>

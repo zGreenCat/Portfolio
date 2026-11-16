@@ -1,15 +1,16 @@
-"""Renders the chest, closed and open, from the game's own texture.
+"""Renders the things planted in the world that are not blocks, from the
+game's own textures: the chest, closed and open, and the sign.
 
-Usage: blender -b -P chest.py -- <chest_texture.png> <out_dir>
+Usage: blender -b -P props.py -- <chest|sign> <texture.png> <out_dir>
 
-A chest is not a block: it is a 14x14x14 model with a lid on a hinge and a
-latch, unwrapped on a 64x64 sheet. So it does not go through world.py, which
-only knows cubes with one texture per face. It does share its camera and its
-light, placed where the chest stands next to the stage, so it sits in the
-taiga like everything else there.
+A chest is a 14x14x14 model with a lid on a hinge and a latch, unwrapped on a
+64x64 sheet (entity/chest/normal.png). A sign is a board on a stick, on a
+32x32 one (block/oak_sign.png). Neither goes through world.py, which only
+knows cubes with one texture per face. They do share its camera and its light,
+so they sit in the world like everything else there.
 
-Writes chest_closed.png and chest_open.png, cut to the same width and the same
-foot, so swapping one for the other does not move the chest.
+Every picture of a kind is cut to the same width and the same foot, so
+swapping one for another does not move the thing.
 """
 import math
 import os
@@ -19,16 +20,17 @@ import bpy
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
-TEXTURE, OUT = sys.argv[sys.argv.index("--") + 1:][:2]
+KIND, TEXTURE, OUT = sys.argv[sys.argv.index("--") + 1:][:3]
 
 CANVAS = (3840, 3000)
 BLOCK_PX = 133
 FOV = 7.0
 SURFACE_ROW = 2811
 FRONT, END = 0.9, 0.72
-SHEET = 64
-# Blocks from the left edge of the stage layer: where it stands on the site.
-AT_X = 5.2
+# Side of the texture sheet, where the thing stands in blocks from the left
+# edge of the canvas, and the box it can reach, in texture pixels. The chest
+# stands left of the stage, lid up included; the sign, in the middle.
+SHEET, AT_X, REACH = {"chest": (64, 5.2, (16, 22, 24)), "sign": (32, 14.4, (24, 16, 26))}[KIND]
 OVERSAMPLE = 2
 # The lid swings a quarter turn back, as in the game.
 OPEN = -90.0
@@ -69,13 +71,20 @@ def material():
     return mat
 
 
-def box(verts, polys, uvs, lo, hi, sheet_at, hinge=None, angle=0.0):
+def box(verts, polys, uvs, lo, hi, sheet_at=None, hinge=None, angle=0.0, faces=None):
     """One box of the model, in texture pixels: x across, y away from the
     camera, z up. `sheet_at` is its corner on the sheet, laid out as the game
-    lays out every box. The sides are stored upside down there."""
+    lays out every box of an entity; the sides are stored upside down there.
+    A block model says where each face is instead: `faces` maps front, back,
+    left, right, top and bottom to (u0, u1, top row, bottom row)."""
     (x0, y0, z0), (x1, y1, z1) = lo, hi
     w, d, h = round(x1 - x0), round(y1 - y0), round(z1 - z0)
-    u, v = sheet_at
+    if faces is None:
+        u, v = sheet_at
+        rows = (v + d + h, v + d)
+        faces = {"front": (u + 2 * d + w, u + 2 * d + 2 * w, *rows), "back": (u + d, u + d + w, *rows),
+                 "left": (u, u + d, *rows), "right": (u + d + w, u + 2 * d + w, *rows),
+                 "top": (u + d + w, u + d + 2 * w, v, v + d), "bottom": (u + d, u + d + w, v, v + d)}
 
     def turned(point):
         if hinge is None:
@@ -92,13 +101,38 @@ def box(verts, polys, uvs, lo, hi, sheet_at, hinge=None, angle=0.0):
         uvs.extend((a / SHEET, 1 - b / SHEET) for a, b in
                    ((ua, top_row), (ub, top_row), (ub, bottom_row), (ua, bottom_row)))
 
-    rows = (v + d + h, v + d)
-    quad([(x0, y0, z1), (x1, y0, z1), (x1, y0, z0), (x0, y0, z0)], u + 2 * d + w, u + 2 * d + 2 * w, *rows)
-    quad([(x1, y1, z1), (x0, y1, z1), (x0, y1, z0), (x1, y1, z0)], u + d, u + d + w, *rows)
-    quad([(x0, y1, z1), (x0, y0, z1), (x0, y0, z0), (x0, y1, z0)], u, u + d, *rows)
-    quad([(x1, y0, z1), (x1, y1, z1), (x1, y1, z0), (x1, y0, z0)], u + d + w, u + 2 * d + w, *rows)
-    quad([(x0, y1, z1), (x1, y1, z1), (x1, y0, z1), (x0, y0, z1)], u + d + w, u + d + 2 * w, v, v + d)
-    quad([(x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0)], u + d, u + d + w, v, v + d)
+    quad([(x0, y0, z1), (x1, y0, z1), (x1, y0, z0), (x0, y0, z0)], *faces["front"])
+    quad([(x1, y1, z1), (x0, y1, z1), (x0, y1, z0), (x1, y1, z0)], *faces["back"])
+    quad([(x0, y1, z1), (x0, y0, z1), (x0, y0, z0), (x0, y1, z0)], *faces["left"])
+    quad([(x1, y0, z1), (x1, y1, z1), (x1, y1, z0), (x1, y0, z0)], *faces["right"])
+    quad([(x0, y1, z1), (x1, y1, z1), (x1, y0, z1), (x0, y0, z1)], *faces["top"])
+    quad([(x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0)], *faces["bottom"])
+
+
+def link(name, verts, polys, uvs):
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], polys)
+    layer = mesh.uv_layers.new(name="uv")
+    for loop, uv in zip(layer.data, uvs):
+        loop.uv = uv
+    mesh.materials.append(MATERIAL)
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = (AT_X, 0, 0)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+def sign(_):
+    """A board on a stick. The sheet has the two faces of the board and the
+    stick; the board's edges are the outer two pixels of its own face."""
+    verts, polys, uvs = [], [], []
+    stick = {"front": (28, 30, 0, 14), "back": (28, 30, 0, 14), "left": (30, 32, 0, 14),
+             "right": (30, 32, 0, 14), "top": (28, 30, 0, 2), "bottom": (28, 30, 0, 2)}
+    board = {"front": (0, 24, 0, 12), "back": (0, 24, 14, 26), "left": (0, 2, 0, 12),
+             "right": (22, 24, 0, 12), "top": (0, 24, 0, 2), "bottom": (0, 24, 10, 12)}
+    box(verts, polys, uvs, (11, 7, 0), (13, 9, 14), faces=stick)
+    box(verts, polys, uvs, (0, 7, 14), (24, 9, 26), faces=board)
+    return link("sign", verts, polys, uvs)
 
 
 def chest(angle):
@@ -109,16 +143,7 @@ def chest(angle):
     box(verts, polys, uvs, (1 + inset, 1 + inset, 0), (15 - inset, 15 - inset, 10), (0, 19))
     box(verts, polys, uvs, (1, 1, 9), (15, 15, 14), (0, 0), hinge, angle)
     box(verts, polys, uvs, (7, 0, 7), (9, 1, 11), (0, 0), hinge, angle)
-    mesh = bpy.data.meshes.new("chest")
-    mesh.from_pydata(verts, [], polys)
-    layer = mesh.uv_layers.new(name="uv")
-    for loop, uv in zip(layer.data, uvs):
-        loop.uv = uv
-    mesh.materials.append(MATERIAL)
-    obj = bpy.data.objects.new("chest", mesh)
-    obj.location = (AT_X, 0, 0)
-    bpy.context.collection.objects.link(obj)
-    return obj
+    return link("chest", verts, polys, uvs)
 
 
 def camera(scene):
@@ -139,11 +164,11 @@ def camera(scene):
     cam.rotation_euler = (math.radians(90), 0, 0)
     scene.collection.objects.link(cam)
     scene.camera = cam
-    # Only the corner of the canvas the chest can reach, lid up included. The
-    # whole canvas at this size is 46 Mpx of nothing.
+    # Only the corner of the canvas the thing can reach. The whole canvas at
+    # this size is 46 Mpx of nothing.
     bpy.context.view_layer.update()
     reach = [world_to_camera_view(scene, cam, Vector((AT_X + x / 16, y / 16, z / 16)))
-             for x in (0, 16) for y in (0, 22) for z in (0, 24)]
+             for x in (0, REACH[0]) for y in (0, REACH[1]) for z in (0, REACH[2])]
     scene.render.use_border = True
     scene.render.use_crop_to_border = True
     scene.render.border_min_x = min(p.x for p in reach)
@@ -191,8 +216,10 @@ for engine in ("BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"):
 MATERIAL = material()
 camera(scene)
 shots = {}
-for name, angle in (("chest_closed", 0.0), ("chest_open", OPEN)):
-    obj = chest(angle)
+SHOTS = {"chest": (chest, (("chest_closed", 0.0), ("chest_open", OPEN))), "sign": (sign, (("sign", 0.0),))}
+build, takes = SHOTS[KIND]
+for name, angle in takes:
+    obj = build(angle)
     path = os.path.join(OUT, name + ".png")
     scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
@@ -203,4 +230,4 @@ right = max(b[2] for _, b in shots.values())
 foot = min(b[1] for _, b in shots.values())
 for name, (path, bounds) in shots.items():
     size = cut(path, left, foot, right, bounds[3])
-    print(f"CHEST {name} {size[0]}x{size[1]} at {OVERSAMPLE}x")
+    print(f"PROP {name} {size[0]}x{size[1]} at {OVERSAMPLE}x")

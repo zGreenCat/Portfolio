@@ -4,56 +4,78 @@
   bottom: var(--char-feet);
   display: flex;
   align-items: flex-end;
-  gap: clamp(18px, 2.4vw, 42px);
+  gap: clamp(6px, 1.5vw, 24px);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Están al final del recorrido, donde ya es de noche. Sin esto lucían como
+     a mediodía sobre un mundo a oscuras. Se oscurecen menos que el terreno:
+     hay que poder leerlos. */
+  filter: brightness(calc(1 - var(--night, 0) * 0.32));
 }
 
+/* El cartel entero es la imagen: 399×435, tabla arriba y poste abajo.
+
+   Va en proporción al personaje, como en el juego: un bloque de ancho y algo
+   más de uno de alto, contra los casi dos que mide él. El personaje mide un
+   quinto del alto de la ventana, así que el cartel sale de ahí (`vh`) y no
+   del ancho: atado al ancho le llegaba por los hombros. */
 .sign {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: relative;
+  flex: none;
+  width: clamp(72px, 11vh, 132px);
+  aspect-ratio: 399 / 435;
+  background: url('/textures/sign.webp') center / 100% 100% no-repeat;
   text-decoration: none;
-  /* El poste queda por debajo del suelo: el cartel está clavado, no apoyado. */
-  padding-bottom: 2px;
-}
-
-/* Tabla del cartel: madera con bisel, como el bloque del juego. */
-.board {
-  width: clamp(96px, 10vw, 148px);
-  padding: 12px 8px;
-  text-align: center;
-  background: #9a7343;
-  border: 3px solid #4e3418;
-  box-shadow:
-    inset 3px 3px 0 rgb(255 255 255 / 0.18),
-    inset -3px -3px 0 rgb(0 0 0 / 0.28);
-  color: #2a1b0c;
-  font-size: clamp(10px, 1vw, 12px);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   transition:
     translate 0.14s ease,
-    background 0.14s ease;
+    filter 0.14s ease;
 }
 
-.post {
-  width: 14px;
-  height: clamp(26px, 3vh, 44px);
-  background: #6b4a2e;
-  box-shadow: inset -3px 0 0 rgb(0 0 0 / 0.3);
+/* El texto, sobre la tabla y nada más: ocupa las 12 filas de arriba de las 26
+   de la imagen. Negro y centrado, como se escribe en el juego. */
+.board {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 46.2%;
+  display: grid;
+  place-items: center;
+  padding: 0 6%;
+  text-align: center;
+  color: #17100a;
+  font-size: clamp(9px, 1.3vh, 12px);
+  font-weight: 700;
+  line-height: 1.15;
 }
 
-.sign:hover .board,
-.sign:focus-visible .board {
-  background: #b0864f;
+.sign:hover,
+.sign:focus-visible {
   translate: 0 -4px;
+  filter: brightness(1.14);
 }
 
 .sign:focus-visible {
-  outline: none;
+  outline: 3px solid #ffdc4a;
+  outline-offset: 3px;
 }
 
-.sign:focus-visible .board {
-  border-color: #ffdc4a;
+/* En vertical el mundo ocupa solo la franja de abajo y el personaje es mucho
+   más pequeño. El cartel no puede seguirlo —dejaría de leerse—, así que se
+   queda en su mínimo y se le acorta el poste: se enseña la imagen sin su
+   cuarto de abajo, como si estuviera más clavado. */
+@media (orientation: portrait) {
+  .sign {
+    width: clamp(72px, 5.6vh, 132px);
+    aspect-ratio: 399 / 330;
+    background-size: 100% auto;
+    background-position: top;
+  }
+
+  .board {
+    height: 60.9%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sign {
+    transition: none;
+  }
 }

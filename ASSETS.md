@@ -522,10 +522,17 @@ se suman a los del canvas y se ve cargado.
   en la fila que se le pida. `gen_podium_world.py` escribe la escena del
   escenario. Las texturas no están en el repo.
 
-  **`chest.py` renderiza el cofre**, cerrado y abierto, a
-  `public/textures/chest_{closed,open}.webp`. Va aparte porque un cofre no es
-  un bloque: es un modelo de 14×14×14 con tapa y pestillo sobre una hoja de
-  64×64 (`entity/chest/normal.png`). Comparte cámara y luz con `world.py`.
+  **`props.py` renderiza lo plantado que no es un bloque**, con la cámara y
+  la luz de `world.py`: el cofre (`chest`, cerrado y abierto, modelo de
+  14×14×14 con tapa y pestillo sobre `entity/chest/normal.png`) y el cartel
+  (`sign`, tabla y poste sobre `block/oak_sign.png`). Escribe PNG recortados
+  al mismo ancho y al mismo pie; de ahí salen `public/textures/chest_*.webp`
+  y `sign.webp`, sin pérdida:
+
+  ```bash
+  blender -b -P scripts/render/props.py -- sign <texturas>/oak_sign.png /tmp/out
+  magick /tmp/out/sign.png -define webp:lossless=true public/textures/sign.webp
+  ```
 
   Las hojas del sitio se renderizan todas con `zoom` 1, no con el que trae
   cada calco: ese valor solo servía para casar con la hoja original.
