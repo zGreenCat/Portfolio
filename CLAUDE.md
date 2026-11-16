@@ -309,6 +309,72 @@ crupier.
 que el mundo que ya existe. Lo que sí aporta es que se note que alguien se lo
 pasó bien construyendo esto.
 
+### Podio de hackatones
+
+El personaje se sube a un podio y enseña los eventos: dos HackaDisc, el NASA
+Space Apps Challenge y Hackamine. La idea original es podio con medalla.
+
+**Los resultados, que son los que hacen que el podio sea verdad:**
+
+| Evento | Año | Resultado | Escalón |
+|---|---|---|---|
+| HackaDisc | 2025 | 1.er lugar | oro, el alto |
+| HackaDisc | 2024 | 2.º lugar | hierro |
+| Hackamine | sin confirmar | 3.er lugar | cobre |
+| NASA Space Apps Challenge | 2025 | sin puesto | fuera del podio |
+
+Qué se hizo, en palabras del autor:
+
+- **HackaDisc 2024:** un dashboard con un modelo estadístico para Pignus. No
+  tiene proyecto en el inventario; el de 2025 sí (`hackadisc`).
+- **Hackamine:** tres casos de la industria, sobre industria 4.0: arquitectura
+  de alto nivel para modelos de machine learning, un ETL para un dashboard y
+  el entrenamiento de un modelo predictivo.
+- **Sin rol** en ninguno: no hubo roles definidos. Ojo: la ficha del proyecto
+  NASA en `portfolio.ts` dice «Como Team Lead coordiné…»; hay que aclarar cuál
+  de las dos cosas vale antes de publicar el evento.
+
+Tres puestos, tres escalones: el podio no exagera nada. **NASA no sube al
+podio.** Va al lado como logro del juego —«¡Logro desbloqueado!»—, que es la
+forma que tiene Minecraft de decir «hiciste esto» sin decir «ganaste». Ponerle
+medalla sería lo único falso de la sección.
+
+Idea de materiales, sin decidir: los escalones como bloques de oro, hierro y
+cobre, que son el oro, la plata y el bronce del propio juego.
+
+**Lo que queda por resolver:**
+
+- **No repetir el inventario.** NASA y HackaDisc ya son proyectos. Aquí va el
+  evento: fecha, equipo, rol, resultado. El qué se construyó se queda en su
+  proyecto, y de aquí se enlaza.
+- **Dónde va en el mundo.** Las secciones son lugares con su `at`. O es un
+  lugar nuevo —mueve los `at` de lo que venga después y hay que decidir bioma—,
+  o es un punto dentro de un bioma que ya existe, como el cofre.
+
+**Lo que ya existe**, todo en `scripts/render/`:
+
+- **El lugar.** `gen_podium_world.py` escribe las tres capas —explanada con el
+  escenario, abetos y banderines, dos cordilleras nevadas— y `world.py` las
+  renderiza con la cámara de `ASSETS.md`. El podio son tres columnas de cuarzo
+  de alturas distintas, con tapa que sobresale, banda de su metal y panel con
+  su número: así los construye la gente en el juego. Tres bloques de mineral
+  sueltos se descartaron por simples.
+- **Dónde pisa.** La escena declara `anchors` y el render imprime su píxel. Un
+  bloque más al fondo cae más abajo en pantalla de lo que dice su altura, por
+  la cámara: calculado a mano, el personaje flotaba sobre el podio.
+- **Las hojas.** `gen_podium.py` escribe `climb` —dos saltos, escenario →
+  2.º puesto → 1.º, giro hacia la cámara y brazos arriba— y `cheer`, la
+  celebración en bucle. Un solo salto largo hasta arriba se leía ingrávido.
+  El salto va dibujado en el sitio: los arcos los pone la página.
+- **La medalla.** En `rig.py`; una pose la enseña con `"medal": 1`.
+
+**Lo que falta:**
+
+- Importar las capas como bioma nuevo, la sección en la barra y mover Skills.
+- Los dos saltos por código en el bucle, reutilizando el mecanismo de `sit`.
+- `EVENTS` en `src/content/portfolio.ts`, su cajón, y su bloque en `/simple`.
+- Las hojas nuevas no deben entrar en la carga que bloquea la pantalla.
+
 ### Dominio propio
 
 El sitio está en Vercel y se redespliega solo con cada push a `main`. **Nunca se

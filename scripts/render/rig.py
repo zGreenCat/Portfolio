@@ -201,6 +201,59 @@ def bend_trunks(j):
         mesh.update()
 
 
+MEDAL_COLOURS = {"ribbon": (0.78, 0.10, 0.12), "rim": (0.78, 0.56, 0.08), "gold": (1.0, 0.80, 0.18), "shine": (1.0, 0.95, 0.62)}
+
+
+def flat(name, rgb):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    emit = nt.nodes.new("ShaderNodeEmission")
+    emit.inputs["Color"].default_value = (*[c ** 2.2 for c in rgb], 1)
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    nt.links.new(emit.outputs[0], out.inputs["Surface"])
+    return mat
+
+
+def medal(parent):
+    """A ribbon round the neck and a gold disc on the chest. It hangs from the
+    chest pivot, so it rides the shoulders; a pose shows it with "medal": 1."""
+    verts, polys, slots = [], [], []
+    names = list(MEDAL_COLOURS)
+
+    def slab(colour, outline, x0, x1):
+        base = len(verts)
+        count = len(outline)
+        verts.extend([(x0, y, z) for y, z in outline] + [(x1, y, z) for y, z in outline])
+        polys.append(tuple(base + count + k for k in range(count)))
+        slots.append(names.index(colour))
+        for k in range(count):
+            polys.append((base + k, base + (k + 1) % count, base + count + (k + 1) % count, base + count + k))
+            slots.append(names.index(colour))
+
+    def disc(radius, sides=12):
+        return [(radius * math.cos(2 * math.pi * k / sides), 1.7 + radius * math.sin(2 * math.pi * k / sides)) for k in range(sides)]
+
+    front = 2.0
+    # The ribbon comes down from each shoulder to the disc.
+    slab("ribbon", [(-3.4, 6.0), (-2.4, 6.0), (0.5, 2.4), (-0.5, 2.4)], front, front + 0.18)
+    slab("ribbon", [(2.4, 6.0), (3.4, 6.0), (0.5, 2.4), (-0.5, 2.4)], front, front + 0.18)
+    slab("rim", disc(1.55), front + 0.1, front + 0.42)
+    slab("gold", disc(1.2), front + 0.2, front + 0.5)
+    slab("shine", [(-0.45, 2.15), (0.1, 2.5), (0.3, 2.2), (-0.25, 1.85)], front + 0.3, front + 0.54)
+    mesh = bpy.data.meshes.new("medal")
+    mesh.from_pydata(verts, [], polys)
+    for name in names:
+        mesh.materials.append(flat("medal_" + name, MEDAL_COLOURS[name]))
+    for poly, slot in zip(mesh.polygons, slots):
+        poly.material_index = slot
+    obj = bpy.data.objects.new("medal", mesh)
+    obj.parent = parent
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
 def pin(name, parent, mat, loc, uv, radius=2.0, half=2.0, sides=20):
     """A cylinder along Y at a limb joint, coloured from the middle of the limb."""
     ring = [(radius * math.cos(2 * math.pi * k / sides), radius * math.sin(2 * math.pi * k / sides)) for k in range(sides)]
@@ -257,6 +310,8 @@ def build(mat):
             mitre(name + "_bend", high, "bottom", "parent")
             mitre(name + "_bend", low, "top", "child")
         pin(name + "_pin", upper, mat, (0, 0, top - 6), uv)
+    build.medal = medal(j["chest"])
+    build.medal.hide_render = True
     return j
 
 
@@ -285,6 +340,7 @@ def apply(j, pose):
     j["head"].rotation_euler.z -= math.radians(pose.get("head_yaw", 0))
     apply_mitres(j)
     bend_trunks(j)
+    build.medal.hide_render = not pose.get("medal")
 
 
 def world_camera(foot_y=FOOT_Y):
