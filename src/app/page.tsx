@@ -11,6 +11,7 @@ import Character, {
   type CharacterState,
 } from '@/components/Character'
 import { CELL_HEIGHT, STATES, sheetSrc, wantsHalfSheet } from '@/components/characterSheets'
+import { easeFor } from '@/components/smoothing'
 import EnderPearl, { type PearlThrow } from '@/components/EnderPearl'
 import Book from '@/components/Book'
 import CraftingTable from '@/components/CraftingTable'
@@ -53,6 +54,9 @@ const PEEK = { cellWidth: 960, cellHeight: 570, columns: 8, rows: 4, frames: 32,
  *  bloquea la pantalla, así que en pantallas pequeñas se sirve a la mitad. La
  *  celda se declara igual en los dos casos: el fondo se escala al tamaño pedido. */
 const peekSrc = (half: boolean) => `/sprites/peek_wave${half ? '@half' : ''}.webp`
+
+/** Lo que el mundo se acerca al scroll en un frame a 60 Hz. */
+const WORLD_EASE = 0.12
 
 /** Alto de página dedicado al recorrido. */
 const SCROLL_LENGTH = 7000
@@ -1044,8 +1048,9 @@ export default function RecorridoPage() {
         catchUpRef.current = false
       } else {
         // Suavizado, sin tope: el mundo sigue al scroll y se detiene cuando
-        // tú te detienes.
-        current += (target - current) * 0.12
+        // tú te detienes. El paso sale del tiempo del frame, no es fijo: fijo,
+        // a 120 Hz el mundo respondía el doble de rápido que a 60.
+        current += (target - current) * easeFor(WORLD_EASE, dt)
         if (Math.abs(target - current) < 0.00002) current = target
       }
 
@@ -1278,7 +1283,7 @@ export default function RecorridoPage() {
           1 - Math.min(1, Math.abs(current - PODIUM_AT) / walkIn),
         )
       } else {
-        podiumFocusRef.current += ((focused ? 1 : 0) - podiumFocusRef.current) * 0.1
+        podiumFocusRef.current += ((focused ? 1 : 0) - podiumFocusRef.current) * easeFor(0.1, dt)
         if (Math.abs(podiumFocusRef.current - (focused ? 1 : 0)) < 0.002) {
           podiumFocusRef.current = focused ? 1 : 0
         }
@@ -1341,7 +1346,7 @@ export default function RecorridoPage() {
       // La arena también quita visibilidad al fondo, no solo cae. Los velos son
       // del tamaño de la pantalla, así que esto es composición y no re-filtrado.
       const wantFog = 'fog' in SECTIONS[index] ? 1 : 0
-      fogRef.current += (wantFog - fogRef.current) * 0.05
+      fogRef.current += (wantFog - fogRef.current) * easeFor(0.05, dt)
       const fog = quantize(fogRef.current, 24)
       if (fog !== fogWrittenRef.current) {
         fogWrittenRef.current = fog

@@ -16,7 +16,8 @@ No hay linter propio. `npm run build` sí pasa ESLint.
 
 **Los tests van en `tests/*.test.mjs` y no llevan framework**: `node --test`
 importa los `.ts` tal cual. Por eso solo alcanzan a módulos sin React, sin
-navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`): la lógica
+navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`,
+`characterSheets.ts`, `smoothing.ts`): la lógica
 que merezca test se saca a un módulo así. El aviso de `MODULE_TYPELESS` al
 correrlos es inofensivo; no añadir `"type": "module"` al `package.json`.
 
@@ -140,6 +141,11 @@ Reglas al tocar el bucle:
   (`GAIT_HOLD_SECONDS`) y el reposo espera `IDLE_SECONDS` —poco: en esa
   espera la zancada no avanza y con 0,3 s se quedaba clavado al frenar—. Todo en segundos:
   en frames, a 120 Hz valía la mitad.
+- **Los suavizados van por tiempo, no por frame** (`easeFor`, en
+  `smoothing.ts`). Eran `valor += (destino - valor) * 0.12` a secas, y a
+  120 Hz el mundo seguía al scroll el doble de rápido que a 60; a 30 fps, la
+  mitad. `easeFor(0.12, dt)` da 0,12 exacto a 60 Hz y lo equivalente a
+  cualquier otra tasa. Un suavizado nuevo en el bucle va por aquí.
 - **La zancada tiene cadencia mínima (`MIN_CADENCE`).** Sale de la distancia
   recorrida, y al frenar la distancia se acaba antes que la marcha: se quedaba
   un cuarto de segundo clavado en una pose de correr.
@@ -472,7 +478,7 @@ propósito — se añade un proyecto sin abrir el código de la animación.
   con marcadores grises; el trabajo está en `470cc76` y vuelve con
   `git revert 402cd9b` en cuanto existan la foto y el render.
 - **No reintroducir Lenis ni GSAP.** Se quitaron a propósito. El mundo ya suaviza
-  el scroll con su propio `current += (target - current) * 0.12`, y montar Lenis
+  el scroll con su propio `current += (target - current) * easeFor(…)`, y montar Lenis
   encima hace que dos suavizados se peleen. GSAP son timelines, y aquí el scroll
   es una posición: no hay línea de tiempo que animar.
 - **`ASSETS.md` manda sobre las decisiones de render.** No cambiar cámara,
