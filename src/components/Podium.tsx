@@ -1,7 +1,10 @@
 'use client'
 
-import { EVENTS, PLACE_LABEL, PROJECTS } from '@/content/portfolio'
+import { useEffect, useState } from 'react'
 
+import { EVENTS, PLACE_LABEL, PROJECTS, eventThumb } from '@/content/portfolio'
+
+import Lightbox, { warmCompanion } from './Lightbox'
 import Panel from './Panel'
 import styles from './Podium.module.css'
 
@@ -49,6 +52,21 @@ export function PodiumMedal() {
 }
 
 export default function Podium({ openness }: PodiumProps) {
+  /** Las fotos de un evento, abiertas en el visor. */
+  const [viewing, setViewing] = useState<{ id: string; index: number } | null>(null)
+
+  // Al bajar del podio se cierra el cajón, y con él lo que hubiera abierto.
+  useEffect(() => {
+    if (openness < 0.15) setViewing(null)
+  }, [openness])
+
+  const open = openness > 0.9
+  useEffect(() => {
+    if (open) warmCompanion()
+  }, [open])
+
+  const shown = viewing ? EVENTS.find((event) => event.id === viewing.id) : undefined
+
   const placed = EVENTS.filter((event) => event.place !== null).sort(
     (a, b) => (a.place ?? 0) - (b.place ?? 0),
   )
@@ -76,6 +94,20 @@ export default function Podium({ openness }: PodiumProps) {
                   </a>
                 ) : null}
               </div>
+              {event.photos && event.photos.length > 0 ? (
+                <button
+                  type="button"
+                  className={styles.photo}
+                  aria-label={`Ver las ${event.photos.length} fotos de ${event.name} ${event.year}`}
+                  onClick={() => setViewing({ id: event.id, index: 0 })}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={eventThumb(event.id)} alt="" loading="lazy" decoding="async" />
+                  <span className={styles.count} aria-hidden="true">
+                    {event.photos.length}
+                  </span>
+                </button>
+              ) : null}
             </li>
           )
         })}
@@ -101,6 +133,19 @@ export default function Podium({ openness }: PodiumProps) {
             )
           })}
         </ul>
+      ) : null}
+
+      {viewing && shown?.photos ? (
+        <Lightbox
+          items={shown.photos.map((photo) => ({
+            src: photo.src,
+            alt: photo.alt,
+            caption: `${shown.name} ${shown.year}`,
+          }))}
+          index={viewing.index}
+          onIndex={(index) => setViewing({ id: viewing.id, index })}
+          onClose={() => setViewing(null)}
+        />
       ) : null}
     </Panel>
   )

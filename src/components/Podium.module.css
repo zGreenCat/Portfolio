@@ -45,9 +45,66 @@
 
 .text {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+}
+
+/* La portada del evento, a la derecha de su texto. Se pulsa y abre el visor
+   con todas sus fotos; el número dice cuántas hay. */
+.photo {
+  position: relative;
+  flex: none;
+  width: clamp(72px, 9vh, 96px);
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.04);
+  box-shadow: inset 0 0 0 1px rgb(238 242 240 / 0.18);
+  cursor: zoom-in;
+}
+
+.photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  transition: scale 0.18s ease;
+}
+
+.photo:hover img,
+.photo:focus-visible img {
+  scale: 1.06;
+}
+
+.photo:focus-visible {
+  outline: 2px solid #8fc4a0;
+  outline-offset: 3px;
+}
+
+.count {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgb(6 9 12 / 0.78);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  color: #eef2f0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo img {
+    transition: none;
+  }
 }
 
 .rank {

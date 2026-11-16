@@ -261,6 +261,15 @@ pantalla y él quedaba detrás de uno.
 Los eventos están en `EVENTS` (`src/content/portfolio.ts`). Tres tienen puesto
 y suben; el que no, va aparte como logro del juego.
 
+**Los eventos llevan fotos** (`photos` en `EVENTS`, archivos en
+`public/events/<id>-<n>.webp` a 1920 px). En el cajón del podio cada uno
+enseña la miniatura de su portada (`<id>-thumb.webp`) con el número de fotos, y
+al pulsarla se abren en el visor. Tres por evento, elegidas entre las que
+mandó Vicente: se dejaron fuera las de público general, donde sale mucha
+gente que no eligió estar en un portfolio, y los `alt` describen la escena
+sin nombrar a nadie. NASA no tiene todavía. Los originales no están en el
+repo. `npm test` comprueba que cada foto declarada exista.
+
 ### Hojas del personaje: a la mitad y ya calientes
 
 Los datos de las hojas viven en `characterSheets.ts`, sin React, para poder
@@ -518,12 +527,6 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 ## Abierto: ideas sin decidir
 
 Nada de esto está empezado. Queda escrito para que no se pierda entre sesiones.
-
-### Fotos en los hackatones
-
-Pedido por Vicente: que los hackatones lleven fotos suyas de cada evento, no
-solo texto. Sin decidir cómo. Lo natural sería en el cajón del podio, una por
-evento, y que se abran en el visor (`Lightbox`, ya hecho). Faltan las fotos.
 
 ### Easter egg: blackjack en el templo
 

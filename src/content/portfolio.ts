@@ -87,7 +87,17 @@ export interface EventEntry {
   summary: string
   /** `id` del proyecto del inventario que salió de ahí, si lo hay. */
   project?: string
+  /**
+   * Fotos del evento, en `public/events/<id>-<n>.webp`. La primera es la
+   * portada, y tiene además su miniatura en `<id>-thumb.webp`. Sin fotos, el
+   * evento va solo con texto. El `alt` describe la escena y no nombra a nadie:
+   * salen compañeros de equipo.
+   */
+  photos?: { src: string; alt: string }[]
 }
+
+/** La miniatura de la portada de un evento, para el cajón del podio. */
+export const eventThumb = (id: string) => `/events/${id}-thumb.webp`
 
 /**
  * Hackatones. El podio del recorrido tiene tres escalones porque aquí hay tres
@@ -102,6 +112,20 @@ export const EVENTS: EventEntry[] = [
     place: 1,
     summary: 'Dashboard predictivo de cobranza para Insecap.',
     project: 'hackadisc',
+    photos: [
+      {
+        src: '/events/hackadisc-2025-1.webp',
+        alt: 'El equipo con el cheque de primer lugar de HackaDisc 2025',
+      },
+      {
+        src: '/events/hackadisc-2025-2.webp',
+        alt: 'Agradeciendo al micrófono con el cheque de primer lugar',
+      },
+      {
+        src: '/events/hackadisc-2025-3.webp',
+        alt: 'Presentando el dashboard frente al gráfico proyectado',
+      },
+    ],
   },
   {
     id: 'hackadisc-2024',
@@ -109,6 +133,20 @@ export const EVENTS: EventEntry[] = [
     year: 2024,
     place: 2,
     summary: 'Dashboard con un LM predictivo para Pignus.',
+    photos: [
+      {
+        src: '/events/hackadisc-2024-1.webp',
+        alt: 'El equipo con el cheque de segundo lugar de HackaDisc 2024',
+      },
+      {
+        src: '/events/hackadisc-2024-2.webp',
+        alt: 'Presentando el proyecto junto al pendón de la universidad',
+      },
+      {
+        src: '/events/hackadisc-2024-3.webp',
+        alt: 'El dashboard construido para Pignus, con sus estadísticas por empresa',
+      },
+    ],
   },
   {
     id: 'hackamine-2026',
@@ -117,6 +155,20 @@ export const EVENTS: EventEntry[] = [
     place: 3,
     summary:
       'Tres casos de industria 4.0: arquitectura de alto nivel para modelos de machine learning, un ETL para un dashboard y el entrenamiento de un modelo predictivo.',
+    photos: [
+      {
+        src: '/events/hackamine-2026-1.webp',
+        alt: 'El equipo recibiendo el cheque de tercer lugar de Hackamine 2026',
+      },
+      {
+        src: '/events/hackamine-2026-2.webp',
+        alt: 'El equipo con las poleras de Hackamine',
+      },
+      {
+        src: '/events/hackamine-2026-3.webp',
+        alt: 'Los equipos premiados en el escenario de Hackamine',
+      },
+    ],
   },
   {
     id: 'nasa-space-apps-2025',
