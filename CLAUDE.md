@@ -391,6 +391,11 @@ propósito — se añade un proyecto sin abrir el código de la animación.
   Los paneles usaban `SECTIONS[2]` y se descolocaban al tocar la lista.
 - **El `id` de Experiencias sigue siendo `proyectos`.** Cambió el rótulo; el
   ancla se quedó para no romper enlaces ya compartidos.
+- **Un `<canvas>` a pantalla completa lleva `width` y `height` en CSS.**
+  `inset: 0` no estira un elemento reemplazado. El de la perla medía lo que
+  su mapa de bits —ventana × densidad— y en cualquier pantalla que no fuera
+  1× dibujaba desplazado: al 125% de un portátil la perla salía del suelo.
+  **Probar siempre también con `devicePixelRatio` distinto de 1.**
 - Todo lo visible en `public/` se sirve abierto, CV incluido.
 
 ## Abierto: ideas sin decidir
@@ -422,38 +427,33 @@ decidir nada.
 Construida y revertida. Ver *Trampas reales*. Vuelve con un `git revert` en
 cuanto existan la foto y el render de cuerpo entero.
 
-### Lanzamiento y perla
+### Perla
 
-**El gesto de lanzar no se animaba, y ya sí.** En el bucle de `page.tsx`, la
-rama que escribe el frame de la zancada corría también en `throw` y pisaba el
-que escribe el efecto del lanzamiento. Parado, la zancada no avanza, así que
-el sprite se quedaba en el frame 1 los 700 ms. Ahora esa rama excluye `throw`
-y corren los 19 frames. Queda un parpadeo de un frame al arrancar.
+Hecho: sale de la mano (`THROW_RELEASE`, que mide el rig con su sonda `probe`
+y hay que volver a medir si cambia la hoja `throw`), vuela en arco con
+gravedad, su tamaño es proporción del alto del personaje
+(`PEARL_OF_CHARACTER`) y deja una estela de partículas de portal.
 
-Mejoras de la perla, por lo que más se nota. Todas en `EnderPearl.tsx`:
+**El lanzamiento tuvo dos fallos de un frame, por si vuelven:**
 
-1. **Tamaño atado al personaje.** Hoy son 32 px fijos y en pantallas grandes
-   se queda pequeña.
-2. **Partículas de portal** siguiéndola, en vez de solo copias del sprite.
-3. **Arco con gravedad.** Ahora sale recta a velocidad fija.
+- La rama de la zancada del bucle corría también en `throw` y pisaba el frame
+  del gesto: parado, se quedaba en el frame 1 los 700 ms.
+- El efecto del gesto calculaba el tiempo con la marca del frame, que puede
+  ser anterior a cuando arrancó. Tiempo negativo → frame −1 → al envolver, el
+  último del gesto: un parpadeo con el brazo extendido al empezar. Y lanzando
+  en marcha el nodo traía el desplazamiento de la zancada sobre la hoja nueva.
+  Ahora el tiempo no baja de cero y el frame 0 se escribe en un
+  `useLayoutEffect`, antes de pintar.
 
-Ya sale de la mano: `THROW_RELEASE` lo mide el rig con su sonda `probe`, y hay
-que volver a medirlo si cambia la hoja `throw`.
+**La mano se sitúa midiendo la celda del sprite en pantalla**
+(`getBoundingClientRect`), no deduciéndola del 20% y la línea del suelo. La
+deducción no sabía nada de lo que desplaza al personaje: en el podio la perla
+salía del suelo, a un lado.
 
 **No renderizarla en 3D.** En el juego la perla lanzada es el sprite plano de
 16×16 de cara a la cámara, que es lo que ya hace el sitio; en 3D sería menos
-fiel. Dura medio segundo a 32 px: el volumen no se percibiría. La única
-excepción con sentido sería la perla **en la mano** mientras carga el
-lanzamiento, que hoy va vacía.
-
-### Lo que bloquea de verdad
-
-Por orden de lo que más se nota:
-
-1. **`b5_far`** — compensado en la importación, con el parche marcado
-
-Está detallado en `ASSETS.md`. Las seis hojas del personaje ya salen de
-`scripts/render/` (Blender por script) y no bloquean.
+fiel. La única excepción con sentido sería la perla **en la mano** mientras
+carga el lanzamiento, que hoy va vacía.
 
 ## Documentación
 

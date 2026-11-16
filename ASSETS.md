@@ -78,10 +78,12 @@ carpeta de renders para que la importación lo recorte igual que al resto.
 anclado con `CLIFF_EDGE = 2371/3840`, la última columna con suelo. El `far` de
 `b3` tampoco: es un templo, y los edificios no se repiten cada 300 metros.
 
-**`b5_far` está desfasado.** Se renderizó antes de que bajaras el terreno de
-`b5`, así que su escena tiene el suelo 79 px más arriba. La importación lo
-compensa recortándolo por su propia línea en vez de por la del bioma, con un
-`QUITAR EN CUANTO SE RE-RENDERICE` marcado en el script.
+**`b5_far` estuvo desfasado.** Se renderizó antes de bajar el terreno de `b5`,
+con el suelo 79 px más arriba, y la importación lo compensaba con un caso
+especial. Ya no: el PNG fuente se bajó esos 79 px (el original queda al lado
+como `b5_far.antes-de-bajar-79.png`) y se importa como los demás. La capa
+resultante es idéntica píxel a píxel a la que había. Si se vuelve a renderizar
+desde Mine-imator con el terreno actual, entra tal cual.
 
 ### Tubería de importación
 
@@ -134,18 +136,13 @@ px/bloque, un 47% más grande que el resto.
 
 ## Pendientes
 
-### 1 · `b5_far` — desfasado
-
-Ver *Capas de mundo*. Va compensado en la importación; el parche se quita
-cuando se re-renderice.
-
-### 2 · Captura de Postea
+### 1 · Captura de Postea
 
 Único proyecto sin imagen en el carrusel. Su diapositiva muestra «producto
 interno · sin demo pública», que es cierto —es un SaaS de Shinsekai— así que no
 corre prisa.
 
-### 3 · La niebla nunca salió
+### 2 · La niebla nunca salió
 
 Saturación relativa al suelo, medida sobre los renders actuales:
 
@@ -167,7 +164,7 @@ En proyección ortográfica una colina lejana se dibuja **del mismo tamaño** qu
 una cercana. Lo único que las separa es la niebla. Por eso una `far` sin niebla
 no se lee como fondo: se lee como un muro.
 
-### 4 · `layer_front` — opcional
+### 3 · `layer_front` — opcional
 
 Una capa por delante del personaje, para que pase por detrás de un tronco.
 Nunca ha hecho falta.

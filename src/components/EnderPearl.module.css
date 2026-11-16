@@ -1,6 +1,12 @@
+/* El ancho y el alto van escritos: un canvas es un elemento reemplazado e
+   `inset: 0` no lo estira. Sin ellos medía lo que su mapa de bits —la ventana
+   por la densidad de píxeles— y en cualquier pantalla que no fuera 1× todo se
+   dibujaba desplazado: al 125% la perla salía del suelo en vez de la mano. */
 .canvas {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 30;
   pointer-events: none;
 }

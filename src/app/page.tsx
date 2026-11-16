@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import Character, {
   CELL_WIDTH,
@@ -117,6 +117,9 @@ const MAX_SHEET_FPS = 34
  *  En segundos, como todo lo de la marcha. Estuvo en frames, y en un monitor
  *  de 120 Hz valía la mitad. */
 const IDLE_SECONDS = 0.1
+/** Lado de la perla respecto al alto del personaje: los 32 px que medía en un
+ *  escritorio normal, hechos proporción. */
+const PEARL_OF_CHARACTER = 0.176
 /** Duración del lanzamiento completo. */
 const THROW_MS = 700
 /** Dónde empieza a caer la tarde y dónde es noche cerrada, en progreso de
@@ -623,13 +626,23 @@ export default function RecorridoPage() {
   }, [characterState])
 
   // --- gesto de lanzamiento ---
+  // El primer frame se escribe al montar la hoja, antes de pintar. Lanzando en
+  // marcha, el nodo traía el desplazamiento de la zancada, y sobre la hoja de
+  // lanzar eso era una pose de mitad del gesto durante un frame.
+  useLayoutEffect(() => {
+    if (characterState === 'throw') writeFrame(0)
+  }, [characterState, writeFrame])
+
   useEffect(() => {
     if (characterState !== 'throw') return
     const t0 = performance.now()
     let raf = 0
     let released = false
     const step = (now: number) => {
-      const t = (now - t0) / THROW_MS
+      // Nunca negativo: la marca del frame puede ser anterior al momento en
+      // que arrancó el efecto, y un tiempo negativo daba el frame -1, que al
+      // envolver es el último del gesto. Era el parpadeo al empezar a lanzar.
+      const t = Math.max(0, (now - t0) / THROW_MS)
       if (!released && t >= THROW_RELEASE.frame / FRAME_COUNT.throw) {
         released = true
         play('throw')
@@ -1421,13 +1434,23 @@ export default function RecorridoPage() {
 
       // La perla sale de la mano en el frame de máxima extensión, no del
       // centro del personaje: la geometría de la hoja dice dónde está.
+      //
+      // La celda se mide en pantalla, no se deduce. Deducida —20% del ancho,
+      // pies en la línea del suelo— no sabía nada de lo que desplaza al
+      // personaje: en el podio la perla salía del suelo, a un lado, y en
+      // vertical el alto del mundo no es el de la ventana. Todas las hojas de
+      // perfil comparten celda, así que la que haya ahora vale.
+      const cell = spriteRef.current?.getBoundingClientRect()
       const sheet = SHEET_GEOMETRY.throw
-      const scale = charHeight / sheet.charHeight
-      const cellBottom = feetVhRef.current * window.innerHeight - (600 - sheet.footY) * scale
-      const cellTopY = window.innerHeight - cellBottom - 600 * scale
-      const handX =
-        window.innerWidth * (actorXRef.current / 100) + (THROW_RELEASE.handX - sheet.centerX) * scale
-      const handY = cellTopY + THROW_RELEASE.handY * scale
+      const scale = cell ? cell.width / CELL_WIDTH : charHeight / sheet.charHeight
+      const cellLeft = cell
+        ? cell.left
+        : window.innerWidth * (actorXRef.current / 100) - sheet.centerX * scale
+      const cellTop = cell
+        ? cell.top
+        : window.innerHeight - feetVhRef.current * worldPx - sheet.footY * scale
+      const handX = cellLeft + THROW_RELEASE.handX * scale
+      const handY = cellTop + THROW_RELEASE.handY * scale
 
       setShot({
         fromX: handX,
@@ -1443,6 +1466,7 @@ export default function RecorridoPage() {
         },
         // La perla espera a que la mano llegue al frame de suelta.
         delayMs: (THROW_RELEASE.frame / FRAME_COUNT.throw) * THROW_MS,
+        size: Math.max(16, Math.round(charHeight * PEARL_OF_CHARACTER)),
         // Reaparece en el impacto, con el estallido.
         onLand: () => {
           play('teleport')

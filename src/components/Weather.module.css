@@ -1,8 +1,12 @@
 /* Encima del mundo pero por debajo de los paneles y de la perla: el clima
    pasa por delante del terreno, no por delante de lo que se lee. */
+/* Ancho y alto escritos: `inset: 0` no estira un canvas. Sin ellos medía lo
+   que su mapa de bits y en pantallas de más de 1× el clima salía ampliado. */
 .canvas {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 9;
   pointer-events: none;
 }

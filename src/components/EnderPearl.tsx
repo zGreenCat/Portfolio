@@ -20,13 +20,18 @@ export interface PearlThrow {
   /** Espera antes de que la perla aparezca: el tiempo que tarda la mano en
    *  llegar al frame de suelta. Sin esto la perla sale antes del gesto. */
   delayMs?: number
+  /** Lado de la perla en pantalla. Lo da el alto del personaje: con un tamaño
+   *  fijo, en una pantalla grande era una mota y en un móvil media cabeza. */
+  size: number
 }
 
 const PEARL_SRC = '/textures/ender_pearl.png'
-/** Tamaño en pantalla del sprite de 16×16. Múltiplo entero: 16 × 2. */
-const PEARL_PX = 32
+/** Lado del sprite, en sus propios píxeles. */
+const TEXELS = 16
 const GRAVITY = 2100 // px/s²
 const PARTICLES = 110
+/** Partículas de portal que suelta por segundo mientras vuela. */
+const WAKE_PER_SECOND = 220
 
 interface Particle {
   x: number
@@ -79,6 +84,10 @@ export default function EnderPearl({ shot }: { shot: PearlThrow | null }) {
 
     const sprite = new Image()
     sprite.src = PEARL_SRC
+    const size = shot.size
+    /** Un píxel del sprite en pantalla: las partículas se miden en esto, para
+     *  que crezcan con la perla. */
+    const texel = size / TEXELS
 
     // Se retrasa el arranque hasta que la mano llega al frame de suelta.
     const start = performance.now() + (shot.delayMs ?? 0)
@@ -95,7 +104,10 @@ export default function EnderPearl({ shot }: { shot: PearlThrow | null }) {
     let vx = vw * 0.85
     let vy = -vh * 1.15
 
-    const trail: { x: number; y: number; life: number }[] = []
+    // La estela: partículas de portal que se quedan atrás y se apagan, como
+    // las que deja en el juego. Antes eran copias del propio sprite.
+    let wake: Particle[] = []
+    let owed = 0
 
     const draw = (now: number) => {
       // Antes de la suelta no se dibuja nada: la mano aún no ha llegado.
@@ -112,29 +124,45 @@ export default function EnderPearl({ shot }: { shot: PearlThrow | null }) {
         y += vy * dt
         vy += GRAVITY * dt
 
-        trail.unshift({ x, y, life: 1 })
-        if (trail.length > 7) trail.pop()
-
-        trail.forEach((t, i) => {
-          ctx.globalAlpha = 0.34 * (1 - i / trail.length)
-          const s = PEARL_PX * (1 - i * 0.09)
-          ctx.drawImage(sprite, t.x - s / 2, t.y - s / 2, s, s)
+        owed += WAKE_PER_SECOND * dt
+        while (owed >= 1) {
+          owed -= 1
+          wake.push({
+            x: x + (Math.random() - 0.5) * size * 0.7,
+            y: y + (Math.random() - 0.5) * size * 0.7,
+            // Heredan un poco del vuelo y se quedan flotando.
+            vx: vx * 0.08 + (Math.random() - 0.5) * 40,
+            vy: vy * 0.08 + (Math.random() - 0.5) * 40,
+            life: 0.6 + Math.random() * 0.4,
+            size: Math.max(3, Math.round(texel * (1.5 + Math.random() * 1.5))),
+          })
+        }
+        wake.forEach((p) => {
+          p.x += p.vx * dt
+          p.y += p.vy * dt
+          p.life -= dt * 1.5
+        })
+        wake = wake.filter((p) => p.life > 0)
+        wake.forEach((p) => {
+          ctx.globalAlpha = Math.min(1, p.life * 1.8)
+          ctx.fillStyle = p.life > 0.45 ? '#e6b3ff' : '#8b3fc4'
+          ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size)
         })
         ctx.globalAlpha = 1
-        ctx.drawImage(sprite, x - PEARL_PX / 2, y - PEARL_PX / 2, PEARL_PX, PEARL_PX)
+        ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size)
 
-        if (stage === 'out' && (y < -PEARL_PX || x > vw + PEARL_PX)) {
+        if (stage === 'out' && (y < -size || x > vw + size)) {
           // Fuera de plano: aquí se salta, y nadie ve el corte.
           if (!crossed) {
             crossed = true
             shot.onCross()
           }
           stage = 'in'
-          trail.length = 0
+          wake = []
           // Reentra por arriba, cayendo hacia el punto de aterrizaje.
           const fall = 0.42
           x = shot.toX - vw * 0.28
-          y = -PEARL_PX
+          y = -size
           vx = (shot.toX - x) / fall
           vy = (shot.toY - y - 0.5 * GRAVITY * fall * fall) / fall
         } else if (stage === 'in' && y >= shot.toY) {
@@ -150,7 +178,7 @@ export default function EnderPearl({ shot }: { shot: PearlThrow | null }) {
               vx: Math.cos(a) * sp,
               vy: Math.sin(a) * sp - 90,
               life: 1,
-              size: 2 + Math.floor(Math.random() * 4),
+              size: Math.max(2, Math.round(texel * (1 + Math.floor(Math.random() * 2)))),
             }
           })
         }
