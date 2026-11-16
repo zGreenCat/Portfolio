@@ -14,6 +14,19 @@
   gap: 7px;
 }
 
+/* En la hoja de móvil las cinco no cabían por poco y había que deslizar para
+   ver la última. Con los huecos apretados entran sin tocar el tamaño del
+   texto. */
+@media (max-width: 760px) {
+  .recipes {
+    gap: 9px;
+  }
+
+  .recipe {
+    gap: 3px;
+  }
+}
+
 /* Lo que produce va primero: es el titular de la receta, no el resultado de
    una operación que haya que seguir. */
 .result {

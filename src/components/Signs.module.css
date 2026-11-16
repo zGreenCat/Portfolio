@@ -74,6 +74,24 @@
   }
 }
 
+/* En un móvil los cuatro llenan el ancho y el personaje, que aterriza al 41%,
+   quedaba detrás de uno con solo el gorro asomando. Se reparten dos a cada
+   lado suyo: el ancho sale de lo que hay a su izquierda, y el tercero deja el
+   hueco donde él se planta. */
+@media (orientation: portrait) and (max-width: 520px) {
+  .row {
+    gap: 6px;
+  }
+
+  .sign {
+    width: calc((41vw - 22px) / 2);
+  }
+
+  .sign:nth-child(3) {
+    margin-left: 32px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sign {
     transition: none;

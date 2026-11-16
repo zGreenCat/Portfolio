@@ -21,6 +21,12 @@ navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`,
 que merezca test se saca a un módulo así. El aviso de `MODULE_TYPELESS` al
 correrlos es inofensivo; no añadir `"type": "module"` al `package.json`.
 
+**Para probar sin navegador a mano: `scripts/dev/browse.mjs`.** Abre el
+sitio en Chromium sin ventana, a la ventana y densidad que se le pida,
+ejecuta un script en la página y opcionalmente guarda una captura:
+`node scripts/dev/browse.mjs 400x820 2 1 '<js>' [captura.png]`. Renderiza por
+software: vale para posiciones y tamaños, no para medir rendimiento.
+
 **No lances `npm run build` con `npm run dev` corriendo**: comparten `.next` y el
 resultado son 500 hasta que se borra el directorio.
 
@@ -248,7 +254,9 @@ los casi dos que mide él—, así que su tamaño sale del alto de la ventana
 (`vh`), no del ancho: atados al ancho le llegaban por los hombros. En vertical
 el personaje es demasiado pequeño para seguirlo: se quedan en su mínimo
 legible y se les acorta el poste. Se oscurecen de noche menos que el terreno,
-para poder leerlos.
+para poder leerlos. En un móvil se reparten **dos a cada lado del
+personaje**, que aterriza al 41% del ancho: los cuatro seguidos llenaban la
+pantalla y él quedaba detrás de uno.
 
 Los eventos están en `EVENTS` (`src/content/portfolio.ts`). Tres tienen puesto
 y suben; el que no, va aparte como logro del juego.
