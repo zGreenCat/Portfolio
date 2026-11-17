@@ -76,9 +76,6 @@ import {
   RUN_SCREENS,
   SCROLL_LENGTH,
   SECTIONS,
-  SIT_AT,
-  SIT_RELEASE,
-  SIT_SECONDS,
   SPLASHES,
   STRIDE,
   THROW_MS,
@@ -106,17 +103,14 @@ import {
   CHEST_PX,
   MEDAL,
   PODIUM_AT,
-  PODIUM_CANCEL,
   PODIUM_NEAR,
-  PODIUM_RELEASE,
-  PODIUM_SECONDS,
   PODIUM_X,
-  PODIUM_ZONE,
   STAGE,
   podiumPose,
 } from '@/world/podium'
 
 import { advanceCycle, easePace, pickGait, stillTime } from '@/world/gait'
+import { stepClimb, stepSit } from '@/world/gestures'
 
 import styles from './recorrido.module.css'
 
@@ -810,65 +804,38 @@ export default function RecorridoPage() {
       pace = easePace(pace, speed, dt)
       stillFor = stillTime(stillFor, speed, dt)
 
-      /*
-       * Sentarse y levantarse son dos gestos, no un control continuo, y sus
-       * condiciones son asimétricas a propósito:
-       *
-       *   sentarse   depende de haber LLEGADO   → mira `current`
-       *   levantarse depende de que te hayas IDO → mira `target`
-       *
-       * Mirar `target` para sentarse lo disparaba al tocar fondo el scroll,
-       * antes de que el personaje llegara al borde. Y mirar `current` para
-       * levantarse no funciona porque con el mundo congelado deja de moverse.
-       *
-       * El orden importa: sentado, `current >= SIT_AT` es cierto siempre, así
-       * que la condición de levantarse tiene que evaluarse primero.
-       */
-      if (target < SIT_RELEASE) sitWantRef.current = false
-      else if (current >= SIT_AT) sitWantRef.current = true
-
-      // El sentido solo se replantea con el gesto en reposo —en 0 o en 1—, así
-      // que a media animación se termina lo empezado en vez de darse la vuelta.
-      if (sitRef.current === 0 || sitRef.current === 1) {
-        sitDirRef.current = sitWantRef.current ? 1 : -1
-      }
-      sitRef.current = Math.min(
-        1,
-        Math.max(0, sitRef.current + (sitDirRef.current * dt) / SIT_SECONDS),
+      // Sentarse y subir al podio: las reglas de cada gesto están en
+      // `gestures.ts`. Aquí se guarda su estado y se atiende lo que tocan fuera.
+      const sit = stepSit(
+        { at: sitRef.current, dir: sitDirRef.current, want: sitWantRef.current },
+        current,
+        target,
+        dt,
       )
-      const sitAt = sitRef.current
+      sitRef.current = sit.at
+      sitDirRef.current = sit.dir
+      sitWantRef.current = sit.want
+      const sitAt = sit.at
 
-      // Subir al podio sigue la misma regla, con una diferencia: no se dispara
-      // por llegar, se pide. Hubo una versión que subía al detenerse delante, y
-      // la zona eran 84 px de scroll: con la perla se acertaba siempre y con
-      // la rueda casi nunca, así que una vez abajo no había forma de volver.
-      const fromPodium = Math.abs(target - PODIUM_AT)
-      if (fromPodium > PODIUM_RELEASE) podiumWantRef.current = false
-      if (fromPodium > PODIUM_CANCEL) podiumAskRef.current = false
-      else if (
-        podiumAskRef.current &&
-        Math.abs(current - PODIUM_AT) < PODIUM_ZONE &&
-        podiumFocusRef.current > 0.97
-      ) {
-        // Llegó andando. El mundo se clava en el sitio exacto, no donde lo
-        // dejó el suavizado: de eso depende que caiga sobre la columna.
-        podiumAskRef.current = false
-        podiumWantRef.current = true
-        sitLockRef.current = PODIUM_AT
-      }
-      if (podiumRef.current === 0 || podiumRef.current === 1) {
-        podiumDirRef.current = podiumWantRef.current ? 1 : -1
-        // Por dónde baja se decide arriba y no se cambia a medio salto.
-        podiumAheadRef.current = podiumRef.current === 1 && target > PODIUM_AT
-      }
-      const wasUp = podiumRef.current > 0
-      podiumRef.current = Math.min(
-        1,
-        Math.max(0, podiumRef.current + (podiumDirRef.current * dt) / PODIUM_SECONDS),
+      const stepped = stepClimb(
+        {
+          at: podiumRef.current,
+          dir: podiumDirRef.current,
+          want: podiumWantRef.current,
+          ask: podiumAskRef.current,
+          ahead: podiumAheadRef.current,
+        },
+        { current, target, focus: podiumFocusRef.current, dt },
       )
-      const podiumAt = podiumRef.current
-      const leavingAhead = podiumDirRef.current < 0 && podiumAheadRef.current
-      if (wasUp && podiumAt === 0 && leavingAhead) {
+      podiumRef.current = stepped.climb.at
+      podiumDirRef.current = stepped.climb.dir
+      podiumWantRef.current = stepped.climb.want
+      podiumAskRef.current = stepped.climb.ask
+      podiumAheadRef.current = stepped.climb.ahead
+      if (stepped.arrived) sitLockRef.current = PODIUM_AT
+      const podiumAt = stepped.climb.at
+      const leavingAhead = stepped.leavingAhead
+      if (stepped.landedAhead) {
         podiumLandRef.current =
           PODIUM_AT +
           ((STAGE.exit.x * worldPx) / WORLD_UNIT -
