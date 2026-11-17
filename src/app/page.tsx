@@ -39,521 +39,96 @@ import Strip from '@/components/ParallaxLayer'
 import layerStyles from '@/components/ParallaxLayer.module.css'
 import SpriteGrid from '@/components/SpriteGrid'
 
+import {
+  BAR_CELLS,
+  CATCH_UP_BLOCKS,
+  CHAR_FEET_VH,
+  CHAR_HEIGHT_VH,
+  CLIFF_EDGE,
+  CLIFF_FROM,
+  CLIFF_X,
+  DUSK_FROM,
+  ENTRY_FROM,
+  ENTRY_SECONDS,
+  ENTRY_TO,
+  GAIT_HOLD_SECONDS,
+  HALF_RES_WIDTH,
+  IDLE_SECONDS,
+  Kind,
+  LAYER_ASPECT,
+  LAYER_SPEED,
+  LITE_MS,
+  LITE_SAMPLE,
+  MAX_LOADING_MS,
+  MAX_SHEET_FPS,
+  MIN_CADENCE,
+  MIN_LOADING_MS,
+  MOUNT_RADIUS,
+  NIGHT_AT,
+  NIGHT_STEPS,
+  PACE_SECONDS,
+  PANEL_OPEN_AT,
+  PANEL_STEPS,
+  PEARL_OF_CHARACTER,
+  PEEK,
+  PEEK_CELL_VH,
+  PEEK_CELL_VW,
+  PORTRAIT_WORLD,
+  PRELOAD,
+  PREWARM_DROP,
+  PREWARM_RADIUS,
+  RUN_SCREENS,
+  SCROLL_LENGTH,
+  SECTIONS,
+  SIT_AT,
+  SIT_RELEASE,
+  SIT_SECONDS,
+  SPEED_RUN,
+  SPEED_RUN_OFF,
+  SPEED_WALK,
+  SPLASHES,
+  STRIDE,
+  THROW_MS,
+  WALK_SCREENS,
+  WORLD_EASE,
+  WORLD_LENGTH,
+  atOf,
+  peekSrc,
+  scrollFromWorld,
+  wantsHalfLayers,
+  wantsHalfSprites,
+  worldFromScroll,
+} from '@/world/constants'
+import {
+  BOUNDS,
+  biomeAt,
+  clearingPhase,
+  fitBounds,
+  layerSrc,
+  panelOpenness,
+  quantize,
+} from '@/world/geometry'
+import {
+  CHEST_GAP,
+  CHEST_PX,
+  MEDAL,
+  PODIUM_AT,
+  PODIUM_CANCEL,
+  PODIUM_NEAR,
+  PODIUM_RELEASE,
+  PODIUM_SECONDS,
+  PODIUM_X,
+  PODIUM_ZONE,
+  STAGE,
+  podiumPose,
+} from '@/world/podium'
+
 import styles from './recorrido.module.css'
 
 /** `waiting`: cargado, con la portada todavía puesta y el mundo quieto detrás. */
 type Phase = 'loading' | 'waiting' | 'greeting' | 'entering' | 'ready'
 type CoverState = 'on' | 'leaving' | 'off'
 
-const PRELOAD = [
-  '/sprites/run.webp',
-  '/sprites/idle.webp',
-  '/layers/b1_ground.webp',
-  '/layers/b1_near.webp',
-  '/layers/b1_mid.webp',
-  '/layers/b1_far.webp',
-]
-
-const BAR_CELLS = 14
-const MIN_LOADING_MS = 500
-const MAX_LOADING_MS = 1500
-
-/** Sin los 5 frames vacíos del original: cuatro al inicio y uno al final, que
- *  eran 0,4 s de nada. Y a 18 fps en vez de 12: los 12 venían de cuando el
- *  saludo iba gobernado por scroll, pero se reproduce solo y se veía a tirones. */
-const PEEK = { cellWidth: 960, cellHeight: 570, columns: 8, rows: 4, frames: 32, fps: 18 }
-/** El saludo pesa lo suyo descomprimido —70 MB entero— y va en la carga que
- *  bloquea la pantalla, así que en pantallas pequeñas se sirve a la mitad. La
- *  celda se declara igual en los dos casos: el fondo se escala al tamaño pedido. */
-const peekSrc = (half: boolean) => `/sprites/peek_wave${half ? '@half' : ''}.webp`
-
-/** Con los botones de andar: anchos de pantalla por segundo, andando y
- *  corriendo. En pantalla y no en bloques: en un móvil el mundo es pequeño y
- *  a velocidad de bloques cruzarlo llevaba un minuto. */
-const WALK_SCREENS = 0.4
-const RUN_SCREENS = 1.25
-
-/** Lo que el mundo se acerca al scroll en un frame a 60 Hz. */
-const WORLD_EASE = 0.12
-
-/** Alto de página dedicado al recorrido. */
-const SCROLL_LENGTH = 7000
-
-/**
- * La ÚNICA correspondencia entre scroll y mundo. Estaba repetida en seis
- * sitios; tenerla aquí es lo que permite moverla sin que alguno se quede atrás.
- */
-const worldFromScroll = (y: number) => Math.min(1, Math.max(0, y / SCROLL_LENGTH))
-const scrollFromWorld = (at: number) => at * SCROLL_LENGTH
-/** Píxeles de mundo que recorre la capa del suelo de punta a punta. */
-const WORLD_LENGTH = 12000
-/** El ancho de una tesela, en unidades de la caja del mundo. */
-const LAYER_ASPECT = 3840 / WORLD_UNIT
-/** Bloques que avanza cada ciclo. Caminar cubre menos suelo por zancada, así
- *  que su ciclo tiene que ir más apretado o los pies patinan. */
-const STRIDE: Record<CharacterState, number> = {
-  run: 2.1,
-  walk: 1.25,
-  idle: 1,
-  throw: 1,
-  sit: 1,
-  climb: 1,
-  cheer: 1,
-  type: 1,
-}
-/** Umbrales de marcha, en bloques por segundo. `walk` cubre 1,25 bloques en
- *  25 frames: por encima de ~2 b/s su ciclo se dispara, así que ahí ya corre. */
-const SPEED_RUN = 2.2
-const SPEED_WALK = 0.45
-/** Para dejar de correr hay que bajar bastante más de lo que costó arrancar.
- *  Con un solo umbral, frenando cerca de él la marcha cambiaba en cada frame:
- *  correr, caminar, correr. */
-const SPEED_RUN_OFF = 1.4
-/** La marcha se elige con la velocidad suavizada, no con la del frame, y
- *  suavizada despacio. Un golpe de rueda son más de 13 bloques por segundo
- *  que se apagan en un cuarto de segundo: con la del frame, cada golpe era
- *  correr, caminar y parar. Así varios golpes seguidos son correr, que es lo
- *  que dice su media. */
-const PACE_SECONDS = 0.55
-/** Cadencia mínima de cada marcha, en zancadas por segundo. La zancada sale
- *  de la distancia recorrida, y frenando esa distancia se acaba antes que la
- *  marcha: se quedaba un cuarto de segundo clavado en una pose de correr. Con
- *  un mínimo termina el paso en vez de congelarse. Queda por debajo de lo que
- *  cada marcha da a su velocidad más baja, así que solo actúa al frenar. */
-const MIN_CADENCE: Partial<Record<CharacterState, number>> = { run: 1, walk: 0.5 }
-/** Lo que una marcha se mantiene antes de poder cambiar a la otra. */
-const GAIT_HOLD_SECONDS = 0.25
-/** Tope de fotogramas por segundo de las hojas del personaje.
- *
- *  El ciclo va atado a la distancia recorrida para que los pies no patinen,
- *  pero sin tope un golpe de rueda lo dispara a cientos de fps y parece un
- *  fallo.
- *
- *  El tope va aquí y no en la velocidad del mundo: frenando el mundo, este se
- *  quedaba por detrás del scroll y seguía avanzando durante segundos después
- *  de soltar. A cambio, en un golpe muy fuerte los pies patinan un instante —
- *  con todo pasando a esa velocidad, no se aprecia. */
-const MAX_SHEET_FPS = 34
-/** Tiempo seguido por debajo del umbral antes de pasar a reposo. Corto: en
- *  esa espera la zancada no avanza, y con 0,3 s se quedaba clavado en la pose
- *  de correr al frenar. No hace falta más para la rueda: un golpe tarda unos
- *  300 ms en apagarse, así que golpes seguidos no llegan a esta espera.
- *
- *  En segundos, como todo lo de la marcha. Estuvo en frames, y en un monitor
- *  de 120 Hz valía la mitad. */
-const IDLE_SECONDS = 0.1
-/** Lado de la perla respecto al alto del personaje: los 32 px que medía en un
- *  escritorio normal, hechos proporción. */
-const PEARL_OF_CHARACTER = 0.176
-/** Duración del lanzamiento completo. */
-const THROW_MS = 700
-/** Dónde empieza a caer la tarde y dónde es noche cerrada, en progreso de
- *  mundo. El anochecer se reparte por el último tercio para que se perciba
- *  como un viaje largo, no como un cambio de bioma. */
-const DUSK_FROM = 0.62
-const NIGHT_AT = 0.94
-/** Alto del personaje como fracción del alto del MUNDO, no de la pantalla. */
-/** Alto del personaje como fracción de la caja del mundo. Medido sobre la
- *  pasada `ref`, que trae al personaje colocado a escala de mundo: 271 px. */
-const CHAR_HEIGHT_VH = 271 / WORLD_UNIT
-/** En vertical el mundo no ocupa toda la pantalla: escalarlo al alto dejaba
- *  ver 5 bloques y el personaje se comía el 40% del ancho. Ocupando la franja
- *  baja entra el triple de mundo y queda cielo arriba, que es donde vive el
- *  título. */
-const PORTRAIT_WORLD = 0.46
-/** Por debajo de este ancho el saludo va a mitad de resolución, y las capas
- *  también, sin mirar nada más. */
-const HALF_RES_WIDTH = 900
-/** Ancho de una capa a media resolución, en sus propios píxeles. */
-const HALF_LAYER_PX = 1920
-/**
- * Las capas enteras (3840 px) solo se usan si la tesela ocupa en pantalla, en
- * píxeles físicos, más de esto veces la media. Por debajo se sirve la media.
- *
- * Antes mandaba solo el ancho de la ventana, y un portátil de 1080p al 125%
- * —982 px de ancho, tesela de 2.600 px físicos— cargaba las de 3840 para
- * encogerlas en cada frame: 36–45 fps en una gráfica integrada, con hasta
- * quince a la vez en las fronteras. Con la media, 60. La media se amplía como
- * mucho este factor, y el mundo son bloques: no se nota como en una foto.
- */
-const FULL_RES_FROM = 1.7
-
-/** ¿Tocan las hojas del personaje a la mitad en esta ventana? */
-function wantsHalfSprites(): boolean {
-  const portrait = window.innerHeight > window.innerWidth
-  const world = window.innerHeight * (portrait ? PORTRAIT_WORLD : 1)
-  const cell = world * CHAR_HEIGHT_VH * (CELL_HEIGHT / SHEET_GEOMETRY.idle.charHeight)
-  return wantsHalfSheet(cell * window.devicePixelRatio)
-}
-
-/** ¿Tocan las capas a media resolución en esta ventana? */
-function wantsHalfLayers(): boolean {
-  if (window.innerWidth < HALF_RES_WIDTH) return true
-  const portrait = window.innerHeight > window.innerWidth
-  const world = window.innerHeight * (portrait ? PORTRAIT_WORLD : 1)
-  return world * LAYER_ASPECT * window.devicePixelRatio < HALF_LAYER_PX * FULL_RES_FROM
-}
-/** Sale por el borde de abajo y ocupa media pantalla de alto. En vertical eso
- *  lo haría más ancho que la pantalla y los brazos se cortarían por los lados,
- *  así que el ancho también pone tope. */
-const PEEK_CELL_VH = 0.5
-const PEEK_CELL_VW = 0.96
-
-const ENTRY_FROM = -28
-/** Posición del personaje en pantalla, en %. Es también su centro visual:
- *  Character se desplaza -centerX, así que `left` cae en su eje. */
-const ENTRY_TO = 20
-/** Fila del render donde caen los pies en b1. De ahí sale --char-feet: los
- *  pies van 26 px por debajo de la superficie, dentro de la banda de hierba. */
-/** Cuánto se hunde el pie por debajo de la superficie. Medido sobre la `ref`:
- *  pies en la fila 2738 con la superficie en 2716. */
-const FEET_BELOW_SURFACE = 22
-const CHAR_FEET_VH = (GROUND_BELOW - FEET_BELOW_SURFACE) / WORLD_UNIT
-/** Entra caminando, no corriendo: viene de saludar, no de una carrera.
- *  Más lento que antes porque a paso de caminata 1,4 s se leía como prisa. */
-const ENTRY_SECONDS = 2.2
-
-const LAYER_SPEED = { far: 0.15, mid: 0.3, near: 0.55, ground: 1 } as const
-
-const ALL_KINDS = ['far', 'mid', 'near', 'ground'] as const
-const END_KINDS = ['far', 'ground'] as const
-type Kind = (typeof ALL_KINDS)[number]
-
-/** Las secciones son lugares del mundo, no pantallas: `at` es su posición.
- *  Cada una tiene su bioma; el prefijo nombra los cuatro archivos de capa. */
-/** `surfaceY` es la fila del render donde está la superficie que se pisa.
- *  No es la misma en todos: la taiga lleva capa de nieve encima de la hierba y
- *  su suelo queda 17 px más alto. En vez de pedir que lo igualen —que sería
- *  quitarle la nieve— el personaje sube con el terreno. */
-const SECTIONS = [
-  { id: 'inicio', label: 'Inicio', at: 0, biome: 'b1', surfaceY: 2716, kinds: ALL_KINDS },
-  // El templo del desierto no se tesela: es un edificio, y los edificios no
-  // se repiten cada 300 metros. Va anclado a la sección.
-  {
-    id: 'sobre-mi',
-    label: 'Sobre mí',
-    at: 0.24,
-    biome: 'b3',
-    surfaceY: 2716,
-    kinds: ALL_KINDS,
-    anchored: ['far'] as readonly string[],
-    fog: true,
-    weather: 'sand' as WeatherKind,
-  },
-  // Proyectos y hackatones comparten lugar: el cofre y, un poco antes, el
-  // escenario del podio. El `id` sigue siendo `proyectos` para no romper los
-  // enlaces que ya circulan; lo que cambió es el rótulo.
-  {
-    id: 'proyectos',
-    label: 'Experiencias',
-    at: 0.52,
-    biome: 'b2',
-    surfaceY: 2705,
-    kinds: ALL_KINDS,
-    fog: true,
-    weather: 'snow' as WeatherKind,
-  },
-  {
-    id: 'skills',
-    label: 'Skills',
-    at: 0.74,
-    biome: 'b4',
-    surfaceY: 2716,
-    kinds: ALL_KINDS,
-    weather: 'petals' as WeatherKind,
-  },
-  // El acantilado es el final del mundo: una sola copia anclada, sin repetir,
-  // y sin capas intermedias porque ahí ya no hay recorrido que acompañar.
-  { id: 'contacto', label: 'Contacto', at: 0.96, biome: 'b5', surfaceY: 2716, kinds: END_KINDS },
-] as const
-
-/** Posición de una sección por su `id`. Los paneles la buscaban por su puesto
- *  en la lista, y eso se rompe en cuanto se inserta o se reordena una. */
-const atOf = (id: (typeof SECTIONS)[number]['id']) =>
-  SECTIONS.find((section) => section.id === id)?.at ?? 0
-
-/*
- * El podio. Va en la taiga, justo después del cofre, y es lo segundo del
- * recorrido que NO es una posición: como sentarse, es un gesto que corre por
- * tiempo y no escucha la rueda hasta que termina. A diferencia de sentarse, no
- * se dispara solo: se pide con un botón.
- */
-/** Dónde se planta para subir. El escenario mide dieciséis bloques y crece
- *  con el alto de la pantalla, mientras que el bioma mide lo mismo en píxeles:
- *  más adelante que esto, en un monitor de 1440 se salía por la frontera con
- *  los cerezos. */
-const PODIUM_AT = 0.46
-/** Hueco entre el cofre y el peldaño del estrado, en px del render. Ahí se
- *  planta el personaje: con el cofre a su espalda y el escenario delante. */
-const CHEST_GAP = 190
-/** Ancho del cofre en px del render: 14 de los 16 píxeles de un bloque, como
- *  en el juego. Lo imprime `scripts/render/chest.py`. */
-const CHEST_PX = 124
-/** La medalla que flota a la entrada del escenario, en px del render. */
-const MEDAL = { width: 88, up: 240 } as const
-/** Holgura para dar por llegado al personaje después de pedirlo. Tiene que
- *  ser de píxeles: el mundo se clava donde está al empezar a subir, y lo que
- *  falte por andar es lo que flotaría fuera de la columna. */
-const PODIUM_ZONE = 0.0006
-/** Pedirlo desde más cerca que esto no es una caminata: no hay recorrido con
- *  el que acompasar el encuadre. */
-const PODIUM_NEAR = 0.005
-/** Si la rueda se mueve esto mientras va de camino, es que ya no quiere ir. */
-const PODIUM_CANCEL = 0.002
-/** Y alejarse de verdad para que baje, igual que con `SIT_RELEASE`. */
-const PODIUM_RELEASE = 0.035
-/** Lo que dura subir: 32 frames de la hoja `climb`. */
-const PODIUM_SECONDS = 1.6
-/** En el podio el personaje se va a la izquierda. El escenario queda a su
- *  derecha y el cajón ocupa el otro 42%: al 20% el primer puesto caía bajo el
- *  velo del cajón. */
-const PODIUM_X = 7
-/**
- * Puntos de apoyo del escenario, en píxeles del render. Los imprime
- * `scripts/render/world.py` (ANCHOR) al renderizar `podium_stage`; si cambia
- * la escena hay que volver a copiarlos. `x` cuenta desde donde se planta en el
- * estrado, `up` desde la línea de los pies en el suelo.
- */
-const STAGE = {
-  /** Columna del render donde se planta, sobre la alfombra. */
-  anchorX: 1287.1,
-  /** El estrado: de su peldaño izquierdo a su extremo derecho. */
-  from: -274.8,
-  to: 1688,
-  /** Lo que levanta el estrado: media losa, vista por la cámara. */
-  lift: 67.6,
-  second: { x: 314.1, up: 353.9 },
-  first: { x: 706.7, up: 484.8 },
-  /** La bajada hacia delante: el tercer puesto y la alfombra del otro lado. */
-  third: { x: 1099.3, up: 288.5 },
-  exit: { x: 1413.4, up: 67.6 },
-} as const
-/** Los dos saltos de `climb`: frames en el aire y altura del arco, en px del
- *  render. Los frames salen de `HOPS` en `scripts/render/gen_podium.py`. */
-const PODIUM_HOPS = [
-  { from: 4, to: 10, arc: 92 },
-  { from: 13, to: 19, arc: 88 },
-] as const
-/** Frame de `climb` en el que ya ha caído y empieza a girarse (`LANDED`). */
-const PODIUM_LANDED = 20
-
-type Spot = { x: number; up: number }
-const PODIUM_WAY_UP: readonly Spot[] = [{ x: 0, up: STAGE.lift }, STAGE.second, STAGE.first]
-const PODIUM_WAY_DOWN: readonly Spot[] = [STAGE.first, STAGE.third, STAGE.exit]
-
-/** Dónde está respecto a su sitio en el estrado, en el frame `frame` de los
- *  saltos, yendo de parada en parada. */
-function hopSpot(frame: number, stops: readonly Spot[]): Spot {
-  for (let i = 0; i < PODIUM_HOPS.length; i += 1) {
-    const hop = PODIUM_HOPS[i]
-    if (frame <= hop.from) return stops[i]
-    if (frame < hop.to) {
-      const u = (frame - hop.from) / (hop.to - hop.from)
-      return {
-        x: stops[i].x + (stops[i + 1].x - stops[i].x) * u,
-        up: stops[i].up + (stops[i + 1].up - stops[i].up) * u + hop.arc * 4 * u * (1 - u),
-      }
-    }
-  }
-  return stops[stops.length - 1]
-}
-
-/**
- * Frame de `climb` y sitio en el estrado para un punto `at` del gesto (0→1).
- *
- * Subir y bajar de vuelta son la misma hoja en un sentido y en el otro. Bajar
- * hacia delante no: se gira de nuevo de perfil —el final de la hoja al revés—
- * y luego da los mismos dos saltos hacia delante, ahora al tercer puesto y al
- * suelo. Rebobinar ahí lo devolvía al lado por el que vino justo cuando se iba
- * por el otro.
- */
-function podiumPose(at: number, leavingAhead: boolean): { frame: number; spot: Spot } {
-  const last = FRAME_COUNT.climb - 1
-  if (!leavingAhead) {
-    const frame = at * FRAME_COUNT.climb
-    return { frame: Math.min(last, Math.floor(frame)), spot: hopSpot(frame, PODIUM_WAY_UP) }
-  }
-  const elapsed = (1 - at) * FRAME_COUNT.climb
-  const turn = FRAME_COUNT.climb - PODIUM_LANDED
-  if (elapsed < turn) return { frame: last - Math.floor(elapsed), spot: STAGE.first }
-  const frame = elapsed - turn
-  return {
-    frame: Math.min(PODIUM_LANDED - 1, Math.floor(frame)),
-    spot: hopSpot(frame, PODIUM_WAY_DOWN),
-  }
-}
-
-/**
- * Cuánto hay que correr el suelo de los cerezos para que `frontier` caiga en
- * el centro de un claro.
- *
- * Su tesela lleva un árbol en la primera mitad y el resto despejado. Repetida
- * alternando volteada, los claros se juntan de dos en dos alrededor de cada
- * unión impar: en T, 3T, 5T… Así que se corre hasta que la frontera caiga en
- * una de esas. Vale igual para la capa `near`, que tiene el árbol en el centro
- * de la tesela y el claro más ancho en las mismas uniones.
- */
-function clearingPhase(frontier: number, tile: number): number {
-  const period = 2 * tile
-  return (((frontier - tile) % period) + period) % period
-}
-
-/** Fracción de la tesela donde se acaba el suelo del acantilado. */
-const CLIFF_EDGE = 2371 / 3840
-/** En el acantilado el personaje se desplaza hacia el centro. El árbol queda
- *  772 px a la izquierda del borde del vacío, y con él al 20% se salía de
- *  cuadro. Además, encuadrar más abierto sienta mejor a un final. */
-const CLIFF_X = 48
-const CLIFF_FROM = 0.84
-/**
- * Sentarse es lo único del recorrido que NO va atado a la posición: es un gesto
- * que se hace en el sitio al llegar al borde, no algo que se rasque con la
- * rueda. Avanza por tiempo y se queda en el último frame.
- *
- * Retroceder lo reproduce hacia atrás al mismo ritmo, así que el personaje se
- * levanta en vez de saltar de golpe a estar de pie.
- */
-const SIT_AT = 0.998
-/** Hay que retroceder de verdad para que se levante. Sin esta holgura, un roce
- *  de rueda en el borde bajaba del umbral y arrancaba el gesto contrario al
- *  instante: ir y venir así se lee como si la animación siguiera a la rueda. */
-const SIT_RELEASE = 0.97
-const SIT_SECONDS = 1.35
-/** Tope de velocidad, en bloques por segundo, SOLO para recuperar la distancia
- *  que se acumuló mientras el mundo estaba congelado. El suavizado normal sigue
- *  sin tope: ponérselo a todo ya causó sensación de lag en su día. */
-const CATCH_UP_BLOCKS = 14
-
-/**
- * Modo ligero: se enciende solo cuando la máquina no da.
- *
- * El caso que lo motiva es la aceleración por hardware desactivada. Con GPU el
- * `filter` de las capas se aplica una vez sobre una textura y moverla sale
- * gratis; sin ella, el navegador repinta ~43 Mpx filtrados en cada frame sobre
- * la CPU y el recorrido se arrastra.
- *
- * Se mide el tiempo real de frame, no las capacidades del navegador: no hay
- * forma fiable de preguntar si la GPU está activa, y el síntoma es lo que
- * importa. Solo cuentan los frames en los que el mundo se mueve — parado, un
- * frame lento no significa nada.
- */
-const LITE_SAMPLE = 120
-/** 40 fps de media. Estuvo en 33 ms —30 fps—, y un equipo a 35–45 iba a
- *  tirones sin que saltara nunca. */
-const LITE_MS = 25
-
-/** Tramo de mundo, en unidades de progreso, en el que el personaje sube o baja
- *  entre las superficies de dos biomas. El terreno cambia de golpe —como en el
- *  juego— pero un salto de 37 px en los pies sí se notaría. */
-const FEET_EASE = 0.03
-/** Fuera de este radio el bioma se desmonta: cuatro capas de 3840×1440 son
- *  ~88 MB de memoria descomprimida, y cinco biomas a la vez matan un móvil. */
-const MOUNT_RADIUS = 0.34
-/** Radio en el que un bioma se descomprime por adelantado, antes de montarse.
- *  Descomprimir una capa de 3840×1440 cuesta bastante y caía justo al cruzar
- *  la frontera; adelantarlo lo mete en un tramo tranquilo. */
-const PREWARM_RADIUS = MOUNT_RADIUS + 0.14
-const PREWARM_DROP = PREWARM_RADIUS + 0.05
-
-/** Escalones de la noche y de la apertura de paneles. Los dos alimentan estado
- *  de React: cuantizarlos convierte 60 re-render/s en unos pocos por tramo. La
- *  noche además mueve un `filter` sobre superficies del ancho del mundo. */
-const NIGHT_STEPS = 24
-const PANEL_STEPS = 20
-
-const quantize = (value: number, steps: number) => Math.round(value * steps) / steps
-
-const layerSrc = (biome: string, kind: string, half: boolean) =>
-  `/layers/${biome}_${kind}${half ? '@half' : ''}.webp`
-
-/** Distancias de apertura de los paneles, en unidades de progreso del mundo.
- *  Se cierran más lejos de lo que se abren: sin esa histéresis, un roce de
- *  rueda mientras lees el panel lo haría parpadear. */
-const PANEL_OPEN_AT = 0.058
-const PANEL_CLOSE_AT = 0.098
-
-/** Cuánto está abierto el panel de una sección según lo cerca que estés. */
-function panelOpenness(at: number, world: number): number {
-  const d = Math.abs(at - world)
-  return Math.min(1, Math.max(0, 1 - (d - PANEL_OPEN_AT) / (PANEL_CLOSE_AT - PANEL_OPEN_AT)))
-}
-
-const SPLASHES = [
-  '¡Hecho con bloques!',
-  'Sin plantillas',
-  'Renderizado a mano',
-  '¡Prueba la perla!',
-  'Ahora con parallax',
-  'Se acepta feedback',
-]
-
-/**
- * Territorio de cada bioma, en progreso de mundo. La frontera cae a mitad de
- * camino entre dos secciones.
- *
- * Cada bioma se **recorta** a su territorio en vez de fundirse con el vecino.
- * Fundir mostraba los dos terrenos a la vez —cactus sobre cerezos— y además
- * dejaba pasar el cielo, porque dos capas al 50% componen un 75%, no un 100%.
- *
- * Una frontera dura tampoco es una concesión: en Minecraft los biomas cambian
- * de golpe.
- */
-function makeBounds(viewport: number, tile: number) {
-  const bounds = SECTIONS.map((section, i) => {
-    const prev = SECTIONS[i - 1]
-    const next = SECTIONS[i + 1]
-    return {
-      from: prev ? (prev.at + section.at) / 2 : -Infinity,
-      to: next ? (section.at + next.at) / 2 : Infinity,
-    }
-  })
-
-  // La primera frontera se empuja más allá del borde derecho de la pantalla:
-  // con el bioma de inicio midiendo menos de un viewport, se veía el siguiente
-  // nada más entrar, antes de haber caminado nada.
-  const clear = (viewport * 1.12) / WORLD_LENGTH
-  if (bounds[0].to < clear) {
-    bounds[0].to = clear
-    bounds[1].from = clear
-  }
-
-  // La frontera con el acantilado no va a mitad de camino sino en un claro. Su
-  // suelo es una tesela con un cerezo en la primera mitad y el tramo final
-  // despejado, repetida hacia atrás de espaldas a sí misma: los claros caen
-  // donde se juntan dos finales, cada dos copias. A mitad de camino el recorte
-  // partía un árbol en dos. Se elige el claro más cercano a esa mitad, y como
-  // la tesela mide según la pantalla, la frontera también.
-  const last = bounds.length - 1
-  const ground = CLIFF_EDGE * tile
-  const anchor = WORLD_LENGTH + viewport * (CLIFF_X / 100) - ground
-  const midway = bounds[last].from * WORLD_LENGTH
-  const clearings = [1, 3, 5]
-    .map((copies) => (anchor - copies * ground) / WORLD_LENGTH)
-    .filter((at) => at > SECTIONS[last - 1].at + 0.03 && at < SECTIONS[last].at - 0.03)
-  if (clearings.length > 0) {
-    const frontier = clearings.reduce((best, at) =>
-      Math.abs(at * WORLD_LENGTH - midway) < Math.abs(best * WORLD_LENGTH - midway) ? at : best,
-    )
-    bounds[last - 1].to = frontier
-    bounds[last].from = frontier
-  }
-  return bounds
-}
-
-let BOUNDS = makeBounds(1920, 1080 * LAYER_ASPECT)
-
-/** Índice del bioma que pisas, y cuánto has entrado en el siguiente. */
-function biomeAt(world: number): { index: number; blend: number; next: number } {
-  let index = 0
-  BOUNDS.forEach((b, i) => {
-    if (world >= b.from) index = i
-  })
-  const edge = BOUNDS[index].to
-  const next = Math.min(SECTIONS.length - 1, index + 1)
-  const blend =
-    edge === Infinity ? 0 : Math.min(1, Math.max(0, (world - (edge - FEET_EASE)) / FEET_EASE))
-  return { index, blend, next }
-}
 
 function preload(src: string): Promise<void> {
   return new Promise((resolve) => {
@@ -985,7 +560,7 @@ export default function RecorridoPage() {
       setViewW(window.innerWidth)
       setHalf(wantsHalfLayers())
       setSpriteHalf(wantsHalfSprites())
-      BOUNDS = makeBounds(window.innerWidth, world * LAYER_ASPECT)
+      fitBounds(window.innerWidth, world * LAYER_ASPECT)
       setCompact(window.innerWidth <= 760)
       setCharHeight(world * CHAR_HEIGHT_VH)
       setPeekScale(
