@@ -53,20 +53,16 @@ import {
   ENTRY_TO,
   GAIT_HOLD_SECONDS,
   HALF_RES_WIDTH,
-  IDLE_SECONDS,
   Kind,
   LAYER_ASPECT,
   LAYER_SPEED,
   LITE_MS,
   LITE_SAMPLE,
   MAX_LOADING_MS,
-  MAX_SHEET_FPS,
-  MIN_CADENCE,
   MIN_LOADING_MS,
   MOUNT_RADIUS,
   NIGHT_AT,
   NIGHT_STEPS,
-  PACE_SECONDS,
   PANEL_OPEN_AT,
   PANEL_STEPS,
   PEARL_OF_CHARACTER,
@@ -83,9 +79,6 @@ import {
   SIT_AT,
   SIT_RELEASE,
   SIT_SECONDS,
-  SPEED_RUN,
-  SPEED_RUN_OFF,
-  SPEED_WALK,
   SPLASHES,
   STRIDE,
   THROW_MS,
@@ -122,6 +115,8 @@ import {
   STAGE,
   podiumPose,
 } from '@/world/podium'
+
+import { advanceCycle, easePace, pickGait, stillTime } from '@/world/gait'
 
 import styles from './recorrido.module.css'
 
@@ -812,9 +807,8 @@ export default function RecorridoPage() {
       worldDeltaRef.current = travelled
       const speed = dt > 0 ? Math.abs(travelled) / dt / block : 0
       previous = worldX
-      pace += (speed - pace) * (1 - Math.exp(-dt / PACE_SECONDS))
-      if (speed <= SPEED_WALK) stillFor += dt
-      else stillFor = 0
+      pace = easePace(pace, speed, dt)
+      stillFor = stillTime(stillFor, speed, dt)
 
       /*
        * Sentarse y levantarse son dos gestos, no un control continuo, y sus
@@ -897,27 +891,10 @@ export default function RecorridoPage() {
         else if (podiumAt > 0) applyState('climb')
         // Quieto mientras la cámara lo alcanza: el mundo corre, pero él no.
         else if (landed) applyState('idle')
-        else if (stillFor >= IDLE_SECONDS) {
-          applyState('idle')
-          gaitHeld = GAIT_HOLD_SECONDS
-        } else if (speed > SPEED_WALK) {
-          // Desde parado se arranca en la marcha que toque. En marcha, solo
-          // se cambia pasado el margen y con la anterior ya asentada. Y para
-          // echar a correr tiene que seguir yendo rápido ahora mismo: tras un
-          // golpe suelto la media sigue alta cuando el mundo ya está frenando,
-          // y arrancaba a correr para pararse al instante.
-          const moving = stateRef.current === 'run' || stateRef.current === 'walk'
-          const running = stateRef.current === 'run'
-          const wantsRun = running
-            ? pace > SPEED_RUN_OFF
-            : pace > SPEED_RUN && speed > SPEED_RUN
-          if (!moving) {
-            applyState(pace > SPEED_RUN ? 'run' : 'walk')
-            gaitHeld = 0
-          } else if (wantsRun !== running && gaitHeld >= GAIT_HOLD_SECONDS) {
-            applyState(wantsRun ? 'run' : 'walk')
-            gaitHeld = 0
-          }
+        else {
+          const gait = pickGait({ now: stateRef.current, speed, pace, stillFor, held: gaitHeld })
+          if (gait.state) applyState(gait.state)
+          gaitHeld = gait.held
         }
       }
       gaitHeld += dt
@@ -926,15 +903,7 @@ export default function RecorridoPage() {
       // `stride` son los píxeles que avanza un ciclo completo, así que
       // worldX/stride son ciclos y ×count da el frame. Character envuelve.
       const active = stateRef.current
-      const stride = block * STRIDE[active]
-      // El avance del ciclo sale de la distancia, pero acotado: así los pies
-      // no patinan a velocidad normal y no se dispara en un golpe fuerte.
-      // En valor absoluto: el ciclo siempre corre hacia delante. Con el signo,
-      // retroceder lo reproducía al revés y el personaje caminaba de espaldas.
-      const wanted = (Math.abs(travelled) / stride) * FRAME_COUNT[active]
-      const cap = MAX_SHEET_FPS * dt
-      const floor = (MIN_CADENCE[active] ?? 0) * dt
-      cycle = (cycle + Math.max(floor, Math.min(cap, wanted) / FRAME_COUNT[active])) % 1
+      cycle = advanceCycle(cycle, active, travelled, block, dt)
       if (active === 'sit') {
         // El frame lo marca la posición, no la distancia recorrida: el gesto
         // tiene principio y final, no es un ciclo.
