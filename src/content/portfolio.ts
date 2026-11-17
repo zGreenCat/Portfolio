@@ -268,3 +268,29 @@ export const TECH_KIND: Record<string, 'front' | 'back' | 'ia' | 'infra'> = {
   Vercel: 'infra',
   GitHub: 'infra',
 }
+
+/**
+ * «Cómo está hecho», en la portada: tres decisiones del mundo recorrible con
+ * su cifra. Son afirmaciones medidas —el porqué de cada una está en
+ * `CLAUDE.md`—, así que si cambia el número de allí, cambia aquí.
+ */
+export const MADE = [
+  {
+    id: 'render',
+    figure: '82 s',
+    title: 'Animaciones por script',
+    text: 'Las hojas del personaje se renderizan con Blender sin ventana, desde código. Cambiar la skin o una pose es editar un número y volver a lanzarlo.',
+  },
+  {
+    id: 'fps',
+    figure: '39 → 60 fps',
+    title: 'Medido en un portátil real',
+    text: 'En una gráfica integrada iba a tirones. Medí dónde se iba el tiempo, serví las imágenes al tamaño al que se ven y dejé las animaciones decodificadas de antemano.',
+  },
+  {
+    id: 'scroll',
+    figure: '1 número',
+    title: 'El scroll es una posición',
+    text: 'Nada se dispara por eventos: el mundo entero es función de dónde estás. Volver sobre tus pasos no deja nada desincronizado.',
+  },
+] as const

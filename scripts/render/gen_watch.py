@@ -50,7 +50,7 @@ def beat(u, at, width):
     return math.sin(math.pi * smooth((u - at) / width)) if at <= u <= at + width else 0.0
 
 
-def pose(shown=1.0, bounce=0.0, breath=0.0, at_you=0.0, pointing=0.0, nod=0.0, wondering=0.0, tap=0.0):
+def pose(shown=1.0, bounce=0.0, breath=0.0, at_you=0.0, pointing=0.0, nod=0.0, wondering=0.0, tap=0.0, blink=0.0):
     looking = 1 - at_you
     return {
         "z": BELOW * (1 - shown) + bounce + 0.25 * breath,
@@ -66,6 +66,9 @@ def pose(shown=1.0, bounce=0.0, breath=0.0, at_you=0.0, pointing=0.0, nod=0.0, w
         # The other one hangs, or comes up to the chin.
         "arm_r": [4 * breath * (1 - wondering) + 52 * wondering, -4 + 16 * wondering, 0],
         "arm_r_bend": 6 + (122 - 9 * tap) * wondering,
+        # The eyes go to the picture with the head, and come back to you.
+        "eyes": 0.8 * looking,
+        "blink": blink,
     }
 
 
@@ -83,6 +86,9 @@ for i in range(SEGMENTS["point"]):
         pointing=window(u, 0.02, 0.26, 0.74, 1.0),
         # Two nods, the second smaller, each with a jab of the arm.
         nod=beat(u, 0.36, 0.14) + 0.6 * beat(u, 0.52, 0.12),
+        # He blinks as his eyes leave the picture and again on the way back.
+        # Never in the rest: that loops, and it would be a blink a second.
+        blink=beat(u, 0.08, 0.14) + beat(u, 0.8, 0.14),
     ))
 for i in range(SEGMENTS["wonder"]):
     u = i / SEGMENTS["wonder"]
@@ -91,6 +97,7 @@ for i in range(SEGMENTS["wonder"]):
         wondering=window(u, 0.02, 0.26, 0.74, 1.0),
         # The hand taps the chin twice while he thinks.
         tap=beat(u, 0.38, 0.12) + beat(u, 0.54, 0.12),
+        blink=beat(u, 0.64, 0.14),
     ))
 
 tall = CELL[1] / PX_PER_UNIT

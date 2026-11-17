@@ -11,3 +11,16 @@
 export function easeFor(perFrameAt60: number, dt: number): number {
   return 1 - Math.pow(1 - perFrameAt60, dt * 60)
 }
+
+/** Píxeles que la rueda avanza por «línea», cuando el navegador cuenta así. */
+const LINE_PX = 40
+
+/**
+ * Lo que pide un golpe de rueda, en píxeles. `deltaMode` dice en qué viene:
+ * 0 píxeles, 1 líneas (Firefox con ratón), 2 páginas.
+ */
+export function wheelPixels(delta: number, deltaMode: number, pageHeight: number): number {
+  if (deltaMode === 1) return delta * LINE_PX
+  if (deltaMode === 2) return delta * pageHeight
+  return delta
+}

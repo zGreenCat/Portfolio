@@ -17,17 +17,17 @@ para escalar y colocar cada hoja.
 
 | Hoja | Frames | Montaje | Peso | charHeight | footY | centerX |
 |---|---|---|---|---|---|---|
-| `peek_wave` | 32 | rejilla 8×4 | 504 KB | — | — | — |
-| `peek_wave@half` | 32 | rejilla 8×4 | 237 KB | — | — | — |
-| `peek_watch` | 64 | rejilla 8×8 | 517 KB | — | — | — |
-| `run` | 16 | tira | 147 KB | 408 | 540 | 232 |
-| `walk` | 25 | tira | 166 KB | 408 | 540 | 232 |
-| `idle` | 16 | tira | 73 KB | 408 | 540 | 232 |
-| `throw` | 19 | tira | 137 KB | 408 | 540 | 232 |
-| `climb` | 32 | tira | 191 KB | 408 | 540 | 232 |
-| `cheer` | 16 | tira | 147 KB | 408 | 540 | 232 |
-| `type` | 16 | tira | 101 KB | 408 | 540 | 232 |
-| `sit` | 31 | tira | 223 KB | 408 | 540 | 232 |
+| `peek_wave` | 32 | rejilla 8×4 | 506 KB | — | — | — |
+| `peek_wave@half` | 32 | rejilla 8×4 | 286 KB | — | — | — |
+| `peek_watch` | 64 | rejilla 8×8 | 495 KB | — | — | — |
+| `run` | 16 | tira | 188 KB | 408 | 540 | 232 |
+| `walk` | 25 | tira | 219 KB | 408 | 540 | 232 |
+| `idle` | 16 | tira | 101 KB | 408 | 540 | 232 |
+| `throw` | 19 | tira | 182 KB | 408 | 540 | 232 |
+| `climb` | 32 | tira | 260 KB | 408 | 540 | 232 |
+| `cheer` | 16 | tira | 183 KB | 408 | 540 | 232 |
+| `type` | 16 | tira | 127 KB | 408 | 540 | 232 |
+| `sit` | 31 | tira | 253 KB | 408 | 540 | 232 |
 
 Cada hoja de perfil tiene además su `@half` (celda de 230×300), que es la que
 se sirve salvo en pantallas grandes. Se genera de la entera:
@@ -136,7 +136,7 @@ px/bloque, un 47% más grande que el resto.
 
 ### Otros
 
-`skin.png` 64×64 · `cv-vicente-araya.pdf` · `og.jpg` 1200×630 ·
+`skin.png` 64×64 (la escribe `scripts/render/gen_skin.py`, junto con `avatar.png`) · `cv-vicente-araya.pdf` · `og.jpg` 1200×630 ·
 `sounds/` button, throw, teleport (24 KB los tres) ·
 `textures/` chest_closed, chest_open, ender_pearl
 
@@ -474,6 +474,11 @@ se suman a los del canvas y se ve cargado.
 ## Herramientas
 
 - **Mine-imator** — rápido, alfa nativo. La opción por defecto.
+- **`scripts/render/render_all.sh`** — rehace las once hojas del personaje y
+  sus `@half` desde `public/skin.png`. La última, `duo`, es el avatar de la
+  portada: imprime la medida de su celda, que hay que copiar a `coverSheet.ts`
+  si cambia. Es lo que hay que lanzar tras tocar la
+  skin (`gen_skin.py`) o el rig. Lo de abajo explica cada pieza.
 - **`scripts/render/`** — Blender sin ventana. `rig.py` monta la skin como
   cajas con sus articulaciones, una cámara ortográfica de verdad y renderiza
   una lista de poses; `gen_sit.py` escribe esa lista. De aquí sale `sit`. Las

@@ -7,6 +7,8 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 30;
+  /* Por encima de la portada: al volver a ella con `/tp`, el segundo
+     estallido cae sobre su avatar. */
+  z-index: 55;
   pointer-events: none;
 }

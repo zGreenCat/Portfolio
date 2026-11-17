@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 import Character, {
   CELL_WIDTH,
@@ -27,6 +27,7 @@ import Inventory from '@/components/Inventory'
 import PerfMeter from '@/components/PerfMeter'
 import Podium, { PodiumMedal } from '@/components/Podium'
 import WalkPad from '@/components/WalkPad'
+import Cover, { COVER_LEAVE_MS } from '@/components/Cover'
 import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
 import type { WeatherState } from '@/components/Weather'
@@ -40,7 +41,9 @@ import SpriteGrid from '@/components/SpriteGrid'
 
 import styles from './recorrido.module.css'
 
-type Phase = 'loading' | 'greeting' | 'entering' | 'ready'
+/** `waiting`: cargado, con la portada todavía puesta y el mundo quieto detrás. */
+type Phase = 'loading' | 'waiting' | 'greeting' | 'entering' | 'ready'
+type CoverState = 'on' | 'leaving' | 'off'
 
 const PRELOAD = [
   '/sprites/run.webp',
@@ -563,6 +566,12 @@ function preload(src: string): Promise<void> {
 
 export default function RecorridoPage() {
   const [phase, setPhase] = useState<Phase>('loading')
+  /** La portada. Arranca puesta también en el servidor: su contenido tiene
+   *  que ir en el HTML servido. */
+  const [cover, setCover] = useState<CoverState>('on')
+  const coverRef = useRef<CoverState>('on')
+  /** Vuelve con un `/tp`: entra barriendo, al revés de como se aparta. */
+  const [coverArrives, setCoverArrives] = useState(false)
   const [progress, setProgress] = useState(0)
   const [characterState, setCharacterState] = useState<CharacterState>('idle')
   const [charHeight, setCharHeight] = useState(200)
@@ -652,7 +661,8 @@ export default function RecorridoPage() {
   /** Destino de un teletransporte en curso, para ir decodificando su bioma. */
   const warmAtRef = useRef<number | null>(null)
   /** Adónde lleva el `/tp` que se está escribiendo. */
-  const chatTargetRef = useRef<{ at: number; id: string } | null>(null)
+  /** Adónde lleva el `/tp` que se está escribiendo: una sección, o la portada. */
+  const chatTargetRef = useRef<{ at: number; id: string } | 'cover' | null>(null)
   /** `?fps`: enseña el medidor. */
   const [meter, setMeter] = useState(false)
 
@@ -844,6 +854,57 @@ export default function RecorridoPage() {
     return true
   }, [landingFor, resumeTarget])
 
+  /**
+   * Fin de la carga. Con la portada puesta el mundo espera detrás, quieto: la
+   * entrada caminando arranca al apartarla.
+   */
+  const begin = useCallback(() => {
+    if (coverRef.current !== 'off') {
+      setPhase('waiting')
+      return
+    }
+    setPhase(armResume() ? 'entering' : 'greeting')
+  }, [armResume])
+
+  // Con el ancla de una sección o con el scroll restaurado se llega al mundo,
+  // sin portada. El CSS ya la esconde cuando hay ancla; esto la desmonta.
+  useLayoutEffect(() => {
+    if (window.location.hash.length > 1 || window.scrollY > 0) {
+      coverRef.current = 'off'
+      setCover('off')
+    }
+  }, [])
+
+  const enterWorld = useCallback(() => {
+    if (coverRef.current !== 'on') return
+    coverRef.current = 'leaving'
+    setCover('leaving')
+    setHidden(false)
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.setTimeout(
+      () => {
+        coverRef.current = 'off'
+        setCover('off')
+        // La primera vez saluda, como siempre: asoma, saluda y entra andando.
+        setPhase((now) => (now === 'waiting' ? 'greeting' : now))
+      },
+      still ? 0 : COVER_LEAVE_MS,
+    )
+  }, [])
+
+  /** Vuelve a poner la portada. El mundo regresa al inicio: a medio camino
+   *  podía quedar un cajón abierto asomando por la diagonal. `arrives` la
+   *  hace entrar barriendo; sin él aparece de golpe. */
+  const openCover = useCallback((arrives = false) => {
+    snapRef.current = true
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    setActive('inicio')
+    coverRef.current = 'on'
+    setCoverArrives(arrives)
+    setCover('on')
+  }, [])
+
   // --- carga ---
   useEffect(() => {
     let cancelled = false
@@ -863,7 +924,7 @@ export default function RecorridoPage() {
           window.clearTimeout(cap)
           // Quien vuelve ya te vio saludar. La entrada caminando y el reposo sí
           // se quedan: son lo que planta al personaje en el suelo.
-          setPhase(armResume() ? 'entering' : 'greeting')
+          begin()
         },
         Math.max(0, MIN_LOADING_MS - (performance.now() - t0)),
       )
@@ -894,25 +955,27 @@ export default function RecorridoPage() {
     const cap: number = window.setTimeout(() => {
       if (cancelled || settled) return
       settled = true
-      setPhase(armResume() ? 'entering' : 'greeting')
+      begin()
     }, MAX_LOADING_MS)
 
     return () => {
       cancelled = true
       window.clearTimeout(cap)
     }
-  }, [armResume])
+  }, [begin])
 
   useEffect(() => {
     // En pantallas táctiles el scroll no se suelta nunca: se anda con los
     // botones, que lo mueven por código. Con el dedo, el navegador desplazaba
     // primero su propia página y luego avanzaba el personaje.
     const touch = window.matchMedia('(pointer: coarse)').matches
-    document.body.style.overflow = phase === 'ready' && !touch ? '' : 'hidden'
+    // Con la portada puesta tampoco: ella baja dentro de su propia caja, y el
+    // scroll del documento es la posición del mundo.
+    document.body.style.overflow = phase === 'ready' && !touch && cover === 'off' ? '' : 'hidden'
     return () => {
       document.body.style.overflow = ''
     }
-  }, [phase])
+  }, [phase, cover])
 
   useEffect(() => {
     const fit = () => {
@@ -1641,6 +1704,24 @@ export default function RecorridoPage() {
     setChat({ key: performance.now(), command: tpCommand(section.label), reply: tpReply(section.label) })
   }, [])
 
+  /**
+   * A la portada se vuelve siempre con el comando, nunca de golpe: se deshace
+   * en el mundo y se rehace en la portada, sobre su avatar. Poner la hoja
+   * encima sin más se veía como un corte.
+   */
+  const tpToCover = useCallback(() => {
+    if (teleportingRef.current || coverRef.current !== 'off') return
+    play('button')
+    setMenuOpen(false)
+    teleportingRef.current = true
+    chatTargetRef.current = 'cover'
+    if (sitRef.current === 0 && podiumRef.current === 0) {
+      stateRef.current = 'type'
+      setCharacterState('type')
+    }
+    setChat({ key: performance.now(), command: tpCommand('Portada'), reply: tpReply('Portada') })
+  }, [])
+
   const sendChat = useCallback(() => {
     const target = chatTargetRef.current
     if (!target) return
@@ -1649,7 +1730,7 @@ export default function RecorridoPage() {
     const sheet = SHEET_GEOMETRY.idle
     const scale = cell ? cell.width / CELL_WIDTH : charHeight / sheet.charHeight
     const middle = (sheet.footY - sheet.charHeight / 2) * scale
-    setShot({
+    const shot: PearlThrow = {
       blink: true,
       fromX: cell ? cell.left + sheet.centerX * scale : window.innerWidth * (actorXRef.current / 100),
       fromY: cell ? cell.top + middle : window.innerHeight - feetVhRef.current * worldPx - charHeight / 2,
@@ -1658,11 +1739,25 @@ export default function RecorridoPage() {
       size: Math.max(16, Math.round(charHeight * PEARL_OF_CHARACTER)),
       onCross: () => {
         setHidden(true)
-        jumpTo(target.at, target.id)
+        if (target !== 'cover') {
+          jumpTo(target.at, target.id)
+          return
+        }
+        // La portada tiene que estar montada ya: el segundo estallido cae
+        // sobre su avatar, y dónde está solo se sabe midiéndolo.
+        flushSync(() => openCover(true))
+        setChat(null)
+        const avatar = document.querySelector('[data-cover-avatar]')?.getBoundingClientRect()
+        if (avatar) {
+          shot.toX = avatar.left + avatar.width / 2
+          shot.toY = avatar.top + avatar.height * 0.45
+        }
       },
       onLand: () => {
         play('teleport')
-        setHidden(false)
+        // En la portada se queda sin pintar hasta que se vuelva a entrar: en
+        // vertical el mundo va debajo del papel y asomaba junto a la foto.
+        if (target !== 'cover') setHidden(false)
         stateRef.current = 'idle'
         setCharacterState('idle')
       },
@@ -1671,8 +1766,9 @@ export default function RecorridoPage() {
         warmAtRef.current = null
         setShot(null)
       },
-    })
-  }, [jumpTo, charHeight, worldPx])
+    }
+    setShot(shot)
+  }, [jumpTo, openCover, charHeight, worldPx])
 
   const closeChat = useCallback(() => setChat(null), [])
 
@@ -1778,16 +1874,18 @@ export default function RecorridoPage() {
           lector de pantalla se topa con un mundo de canvas sin contenido; esto
           es la salida, y tiene que estar antes que los cinco botones de la
           barra en vez de enterrada detrás de ellos. */}
-      <Link href="/simple" className={styles.skip}>
-        Ir a la versión en texto, sin animaciones
-      </Link>
+      {cover === 'off' ? (
+        <button type="button" className={styles.skip} onClick={() => openCover()}>
+          Ir a la portada, con todo el contenido en texto
+        </button>
+      ) : null}
 
       {/* La página nunca navega, así que cambiar de sección era silencioso. */}
       <p className={styles.announce} aria-live="polite">
         {SECTIONS.find((section) => section.id === active)?.label ?? ''}
       </p>
 
-      <div className={styles.stage}>
+      <div className={styles.stage} inert={cover !== 'off'}>
         <NightSky night={night} />
 
         {(['far', 'mid', 'near'] as Kind[]).map((kind) => (
@@ -2031,14 +2129,17 @@ export default function RecorridoPage() {
           </div>
         ) : null}
 
-        <div className={`${styles.titles} ${titleClass}`}>
-          <h1 className={styles.name}>Vicente Araya</h1>
-          <span className={styles.splash}>{splash}</span>
-          <span className={styles.role}>Desarrollador full-stack</span>
-        </div>
+        {/* Con la portada puesta el titular es el suyo. */}
+        {cover === 'off' ? (
+          <div className={`${styles.titles} ${titleClass}`}>
+            <h1 className={styles.name}>Vicente Araya</h1>
+            <span className={styles.splash}>{splash}</span>
+            <span className={styles.role}>Desarrollador full-stack</span>
+          </div>
+        ) : null}
 
         <nav
-          className={`${styles.nav} ${phase === 'ready' ? styles.navIn : ''}`}
+          className={`${styles.nav} ${phase === 'ready' && cover === 'off' ? styles.navIn : ''}`}
           aria-label="Secciones"
         >
           <button
@@ -2080,16 +2181,19 @@ export default function RecorridoPage() {
             >
               {muted ? '🔇 Sonido' : '🔊 Sonido'}
             </button>
-            <Link
-              href="/simple"
+            <button
+              type="button"
               className={`${styles.navButton} ${reduced ? styles.navQuiet : ''}`}
+              onClick={tpToCover}
             >
-              Versión en texto
-            </Link>
+              Portada
+            </button>
           </div>
         </nav>
 
-        <div className={`${styles.loader} ${phase !== 'loading' ? styles.loaderDone : ''}`}>
+        <div
+          className={`${styles.loader} ${phase !== 'loading' || cover !== 'off' ? styles.loaderDone : ''}`}
+        >
           <span className={styles.loaderTitle}>Cargando mundo</span>
           <div
             className={styles.bar}
@@ -2109,12 +2213,15 @@ export default function RecorridoPage() {
 
       <EnderPearl shot={shot} />
       <Chat request={chat} onSend={sendChat} onDone={closeChat} />
-      {phase === 'ready' ? (
+      {phase === 'ready' && cover === 'off' ? (
         <WalkPad
           walk={viewW * WALK_SCREENS * (SCROLL_LENGTH / WORLD_LENGTH)}
           run={viewW * RUN_SCREENS * (SCROLL_LENGTH / WORLD_LENGTH)}
         />
       ) : null}
+      {cover === 'off' ? null : (
+        <Cover leaving={cover === 'leaving'} arrives={coverArrives} onEnter={enterWorld} />
+      )}
     </main>
   )
 }

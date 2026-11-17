@@ -57,22 +57,24 @@ Como estado, React reconciliaba el árbol entero sesenta veces por segundo.
 de las capas, fuerza media resolución y quita el clima. Sin GPU, esos filtros
 obligan a repintar decenas de megapíxeles en cada frame.
 
-## Dos rutas
+## Portada y mundo
 
-`/` es el mundo. **`/simple` es el mismo contenido en texto**, como server
-component y sin JavaScript propio.
+`/` abre con una portada: la pantalla partida en diagonal entre una página
+sobria y el mundo, con todo el contenido debajo. «Recorrer el mundo» la
+aparta y deja el mundo, que ya estaba montado detrás. Un enlace con ancla
+(`/#contacto`) entra directo al mundo.
 
-No es un plan B estético. En `/` los paneles se montan al acercarse caminando,
-así que el HTML servido no contiene ningún proyecto: buscadores,
-previsualizaciones de enlace y lectores de pantalla no veían nada. Las dos rutas
-leen del mismo archivo de contenido.
+La portada es también lo que pone el contenido en el HTML servido. En el mundo
+los paneles se montan al acercarse caminando, así que por sí solo no sirve
+ningún proyecto a buscadores, previsualizaciones de enlace ni lectores de
+pantalla. `/simple`, que cumplía ese papel, redirige a `/`.
 
 ## Estructura
 
 ```
 src/app/page.tsx            el recorrido completo
 src/app/recorrido.module.css
-src/app/simple/             versión en texto
+src/components/Cover.tsx    la portada, encima del mundo
 src/components/             personaje, paneles, perla, cielo, clima
 src/content/portfolio.ts    proyectos, sobre mí, skills, contacto
 src/content/layers.ts       generado — alto de cada capa y escala

@@ -17,7 +17,8 @@ No hay linter propio. `npm run build` sí pasa ESLint.
 **Los tests van en `tests/*.test.mjs` y no llevan framework**: `node --test`
 importa los `.ts` tal cual. Por eso solo alcanzan a módulos sin React, sin
 navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`,
-`characterSheets.ts`, `smoothing.ts`, `teleport.ts`, `walkSpeed.ts`): la lógica
+`characterSheets.ts`, `coverSheet.ts`, `smoothing.ts`, `teleport.ts`,
+`walkSpeed.ts`): la lógica
 que merezca test se saca a un módulo así. El aviso de `MODULE_TYPELESS` al
 correrlos es inofensivo; no añadir `"type": "module"` al `package.json`.
 
@@ -48,13 +49,73 @@ Alias: `@/*` → `./src/*`.
 
 | Ruta | Qué es |
 |------|--------|
-| `/` | El mundo recorrible. Client component. |
-| `/simple` | El mismo contenido en texto. **Server component, 0 B de JS propio.** |
+| `/` | La portada, y detrás el mundo recorrible. Client component. |
+| `/simple` | Redirige a `/` (`next.config.ts`). Fue la versión en texto. |
 
-`/simple` no es un plan B estético. En `/` los paneles se montan al acercarse
-caminando, así que **el HTML servido no contiene ningún proyecto**: buscadores,
-previsualizaciones de enlace y lectores de pantalla no ven nada. Las dos rutas
-leen de `@/content/portfolio`, así que el texto se toca en un solo sitio.
+**El contenido va en el HTML servido gracias a la portada.** En el mundo los
+paneles se montan al acercarse caminando, así que por sí solo no sirve ningún
+proyecto: buscadores, previsualizaciones de enlace y lectores de pantalla no
+verían nada. Eso lo cubría `/simple`; ahora lo cubre la portada, que se pinta
+también en el servidor. Portada y mundo leen de `@/content/portfolio`, así que
+el texto se toca en un solo sitio.
+
+## La portada (`Cover.tsx`)
+
+Lo primero que se ve. Nació de que el sitio se sentía «demasiado Minecraft» y
+poco de Vicente: quien no caminaba no veía su trabajo, y quien sí, veía sobre
+todo bloques. La pantalla va **partida en diagonal**: papel a la izquierda,
+mundo a la derecha, su nombre cruzando la costura —negro sobre el papel,
+blanco sobre el mundo— y él y su avatar justo en el corte, en la misma
+postura y con el mismo polerón. Al bajar, el contenido sube encima como un
+telón: hackatones, proyectos, cómo está hecho, sobre mí, stack y contacto.
+
+- **Es una hoja encima del mundo real, no otra página.** Lo que se ve por la
+  diagonal es el mundo de verdad, montado detrás y quieto. Con dos rutas, el
+  mundo de la portada sería una copia que habría que calzar al píxel con el
+  real justo al entrar. «Recorrer el mundo» aparta la hoja —la diagonal barre
+  hacia el lado— y no hay cambio de página.
+- **Tiene su propio scroll** (`position: fixed`, `overflow-y: auto`). El
+  scroll del documento es la posición del mundo y no se comparte. Mientras
+  está puesta, el `body` no desplaza y `.stage` va `inert`.
+- **La rueda va suavizada a mano**, con `easeFor`, como el mundo: manda un
+  destino y la hoja lo alcanza. Con ratón el navegador la movía a saltos.
+  Solo la rueda —dedo, teclado y barra van por el navegador— y no con Lenis,
+  por lo mismo que se quitó del mundo.
+- **El mundo espera detrás.** La carga termina en la fase `waiting`; el
+  saludo y la entrada caminando arrancan al apartar la portada (`begin`,
+  `enterWorld`). Hubo una versión que se saltaba el saludo al venir de la
+  portada y se echó de menos.
+- **Con ancla se llega directo al mundo.** `/#contacto` no enseña portada:
+  la esconde el CSS con `:has(:target)` antes de que React arranque, y
+  después la desmonta la página. Por eso **dentro de la portada no hay
+  enlaces con ancla**: `:target` la escondería a ella misma. «Ver mi trabajo»
+  desplaza por código. Los `id` de sus títulos van con prefijo `portada-`
+  para no chocar con los marcadores de sección del mundo.
+- **Se vuelve a ella con `/tp portada`, siempre** (`tpToCover`, botón
+  «Portada» de la barra): se deshace en el mundo y el segundo estallido cae
+  sobre su avatar de la portada, que entra barriendo al revés (`arrives`).
+  Ponerla encima sin más se veía como un corte. Por eso el canvas de la perla
+  va por encima de la portada, y dónde cae el estallido se mide en el nodo
+  (`data-cover-avatar`) con la portada ya montada (`flushSync`). El mundo
+  regresa al inicio —a medio camino podía quedar un cajón abierto asomando
+  por la diagonal— y el personaje del mundo no se pinta hasta volver a
+  entrar. El primer elemento enfocable la pone de golpe, sin gesto.
+- **El avatar está vivo** (`duo`, de `gen_duo.py`): siete poses sueltas, cinco
+  miradas y dos de parpadeo. Sigue al puntero y parpadea por su cuenta,
+  escribiendo al nodo, sin estado. Qué pose toca lo decide `coverSheet.ts`,
+  con tests. La hoja se recorta a la caja común de las siete poses, así que
+  **su celda cambia si cambia la skin o la pose**: `render_all.sh` imprime la
+  medida y hay que copiarla a `DUO`; el test lo vigila.
+- **Los dos van recortados como una pegatina**: contorno claro y filo oscuro
+  alrededor de la silueta de ambos (`drop-shadow` encadenados). Es lo que
+  hace que una foto y un muñeco de bloques se lean como una sola cosa.
+- **En vertical la diagonal se tumba**: papel arriba con el nombre, mundo
+  abajo con los dos. Las cifras no salen y el botón de entrar va sobre el
+  cielo; abajo les tapaba las piernas.
+- **La foto (`public/vicente.webp`) se sirve abierta**, como todo `public/`.
+  Es un recorte sin fondo; el original no está en el repo.
+- Las tres cifras del bloque «Cómo está hecho» viven en `MADE`
+  (`portfolio.ts`) y salen de mediciones anotadas en este archivo.
 
 ## Arquitectura del mundo
 
@@ -444,9 +505,9 @@ navegación, no la metáfora.
   descripción a cuatro líneas y las etiquetas a una fila; Sobre mí va a un
   párrafo por página (`perPage`); Skills va en dos columnas y sin la nota de
   proyectos; Hackatones deja cada evento en puesto, nombre y foto. El texto
-  completo sigue en ancho y en `/simple`. Comprobado hasta 360×640.
+  completo sigue en ancho y en la portada. Comprobado hasta 360×640.
 - `Book` pagina por **tandas de párrafos** (`perPage`), no uno por página: el
-  contenido se queda en párrafos semánticos porque `/simple` los quiere sueltos.
+  contenido se queda en párrafos semánticos porque la portada los quiere sueltos.
 
 Los proyectos son un carrusel con una captura por diapositiva
 (`public/projects/<id>.webp`, carga diferida). Si falta una, la diapositiva se
@@ -522,9 +583,36 @@ significa nada. La noche no se pierde: pasa a un velo del tamaño de la pantalla
 
 ### Sprites por script (`scripts/render/`)
 
-Las seis hojas del personaje salen de aquí, no de Mine-imator: un generador o
+Las once hojas del personaje salen de aquí, no de Mine-imator: un generador o
 un archivo de `poses/` da las poses y `rig.py` las renderiza con Blender sin
-ventana. El comando completo está en `ASSETS.md`, en *Herramientas*.
+ventana. **`scripts/render/render_all.sh` las rehace todas** desde
+`public/skin.png` en minuto y medio, con sus `@half`.
+
+**El personaje es Vicente, no un panda.** La skin la dibuja
+`scripts/render/gen_skin.py` —pelo oscuro rizado, lentes de ceja, sombra de
+barba, polerón oliva de cuello redondo con su parche, collar con la luna y
+cargo café, como en la foto de la portada— y escribe también el
+retrato de «Sobre mí» (`avatar.png`). Es un script y no un PNG pintado a mano
+para que cambiar un color sea editarlo y volver a lanzar `render_all.sh`. El
+panda queda en `scripts/render/skin-panda.png`. Decisiones que costaron:
+
+- **El pelo va en la capa de la cabeza**; la de fuera solo lleva mechones
+  sueltos. Con todo el pelo fuera la cabeza entera se inflaba como un casco.
+  Arriba no hay mechones: esa capa son planos sin grosor y de canto eran
+  rayitas flotando.
+- **Para que no parezca Steve**: flequillo que tapa la frente, sin nariz ni
+  perilla marrón, barba solo en sombra. Los lentes son la fila de arriba del
+  ojo; con aro entero se comían la cara, que mide ocho píxeles.
+- **La capa de fuera lleva lo que abulta**: cuello, puños y elástico del
+  polerón; pretina, bajo y bolsillos del cargo.
+
+**Los ojos se mueven** (`rig.py`, *Eyes that move*). La skin pinta el ojo
+entero en blanco y la pupila es una pieza aparte que se desliza; un párpado
+baja para parpadear. Una pose los mueve con `eyes` (−1…1) y `blink` (0…1).
+Solo se usan en los primeros planos —el saludo parpadea, el del visor mira la
+imagen y vuelve a ti—: en las hojas del mundo la pupila mide un píxel. En el
+visor **el reposo no parpadea**: es un tramo que se repite y sería un
+parpadeo por segundo.
 
 El saludo (`peek_wave`) sube por el borde de abajo, así que `.greeter` va
 centrado y pegado al fondo, y su escala la limitan el alto **y el ancho**: en
@@ -561,10 +649,10 @@ propósito — se añade un proyecto sin abrir el código de la animación.
   añadió así. Sigue sin tocarse por intuición: el número sale de la importación.
 - **El mapeo scroll↔mundo vive en `worldFromScroll` / `scrollFromWorld`.**
   Estuvo repetido en seis sitios y moverlo sin unificarlo dejó alguno atrás.
-- **La entrada partida se quitó, no se perdió.** Foto y skin a pantalla
-  completa, apartándose con scroll. Se revirtió en `402cd9b` porque se desplegó
-  con marcadores grises; el trabajo está en `470cc76` y vuelve con
-  `git revert 402cd9b` en cuanto existan la foto y el render.
+- **La entrada partida acabó siendo la portada.** Hubo una primera versión
+  —foto y skin a pantalla completa, apartándose con scroll— que se revirtió
+  en `402cd9b` porque se desplegó con marcadores grises. No hay que
+  recuperarla: `Cover.tsx` es esa idea, hecha con la foto y el render reales.
 - **No reintroducir Lenis ni GSAP.** Se quitaron a propósito. El mundo ya suaviza
   el scroll con su propio `current += (target - current) * easeFor(…)`, y montar Lenis
   encima hace que dos suavizados se peleen. GSAP son timelines, y aquí el scroll
@@ -607,6 +695,17 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 
 Nada de esto está empezado. Queda escrito para que no se pierda entre sesiones.
 
+### Partir `page.tsx`
+
+Pasa de 2.200 líneas en un solo componente, con una treintena de estados, y
+casi nada de su lógica tiene tests porque vive dentro de React. Acordado
+dejarlo para después de subir la portada, y no mezclarlo con ella. El orden
+pensado, sin cambiar comportamiento y verificando tras cada paso: constantes
+y geometría del mundo a un módulo sin React; la marcha a una función pura
+con tests; sentarse y el podio, cada uno a su hook; el teletransporte (perla,
+`/tp`, vuelta a la portada) a otro; la carga y el reaterrizaje a otro; el JSX
+de las capas a su componente. Quedaría el bucle y el montaje.
+
 ### Easter egg: blackjack en el templo
 
 Los templos del desierto del juego tienen una cámara secreta con un cofre. El
@@ -626,11 +725,6 @@ pasó bien construyendo esto.
 El sitio está en Vercel y se redespliega solo con cada push a `main`. **Nunca se
 configuró un dominio.** Se habló de NIC Chile y del GitHub Student Pack, sin
 decidir nada.
-
-### Entrada partida
-
-Construida y revertida. Ver *Trampas reales*. Vuelve con un `git revert` en
-cuanto existan la foto y el render de cuerpo entero.
 
 ### Perla
 

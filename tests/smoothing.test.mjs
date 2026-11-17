@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { easeFor } from '../src/components/smoothing.ts'
+import { easeFor, wheelPixels } from '../src/components/smoothing.ts'
+
+test('la rueda se traduce a píxeles venga en lo que venga', () => {
+  assert.equal(wheelPixels(100, 0, 800), 100, 'píxeles: tal cual')
+  assert.equal(wheelPixels(3, 1, 800), 120, 'líneas')
+  assert.equal(wheelPixels(-1, 2, 800), -800, 'páginas')
+})
 
 /** Lo que queda por recorrer tras `seconds`, a `hz` frames por segundo. */
 function remaining(perFrame, hz, seconds) {

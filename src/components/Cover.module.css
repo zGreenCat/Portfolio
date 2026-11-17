@@ -1,0 +1,618 @@
+/* La portada: una hoja fija sobre el mundo, con su propio scroll. Por encima
+   de todo lo del mundo y por debajo del visor de imágenes. */
+.cover {
+  --paper: #eef0e8;
+  --ink: #1a1d15;
+  --muted: #5a6050;
+  --line: #d3d7c7;
+  --olive: #6e6418;
+  --olive-fill: #746a1a;
+  --on-olive: #fbfaf0;
+  --sticker: #fbfaf0;
+  --gold: #b88a12;
+  --iron: #7d848a;
+  --copper: #a85a34;
+  /* El corte, de arriba abajo: dónde cruza la diagonal el borde superior y
+     el inferior. En vertical se tumba y pasan a ser alturas. */
+  --cut-a: 60%;
+  --cut-b: 40%;
+
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+/* Quien llega con el ancla de una sección del mundo (`/#contacto`) va directo
+   al mundo. Esto la esconde antes de que React arranque; después la quita la
+   página. */
+:global(html):has(:target) .cover {
+  display: none;
+}
+
+.cover h1,
+.cover h2,
+.cover h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.cover h2 {
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 600;
+}
+
+.cover h3 {
+  font-size: 1.12rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cover p,
+.cover ol,
+.cover ul,
+.cover dl,
+.cover dd {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cover :focus-visible {
+  outline: 2px solid var(--olive);
+  outline-offset: 3px;
+}
+
+/* ---------- el arranque ---------- */
+
+/* Se queda fijo mientras la hoja sube encima. El lado del mundo es
+   transparente: lo que se ve es el mundo de verdad. */
+.hero {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.paper,
+.name {
+  position: absolute;
+  inset: 0;
+  transition: clip-path 0.7s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+.paper,
+.ink {
+  clip-path: polygon(0 0, var(--cut-a) 0, var(--cut-b) 100%, 0 100%);
+}
+
+.paper {
+  background: var(--paper);
+}
+
+/* El nombre cruza la costura: dos copias iguales, cada una recortada a su
+   lado. Negra sobre el papel, blanca sobre el mundo. */
+.cover .name {
+  margin: 0;
+  padding: 3.2vw 0 0 4vw;
+  font-family: var(--font-display);
+  font-size: 11.6vw;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.snow {
+  color: #fff;
+  text-shadow: 0 0.04em 0 rgb(0 0 0 / 0.35);
+  clip-path: polygon(var(--cut-a) 0, 100% 0, 100% 100%, var(--cut-b) 100%);
+  transition:
+    clip-path 0.7s cubic-bezier(0.3, 0, 0.2, 1),
+    opacity 0.3s ease 0.45s;
+}
+
+.under,
+.tally,
+.pair,
+.enter {
+  transition:
+    opacity 0.35s ease,
+    translate 0.7s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+.under {
+  position: absolute;
+  left: 4vw;
+  top: 17.5vw;
+  width: min(24vw, 340px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.role,
+.label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--olive);
+}
+
+.pitch {
+  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.fill {
+  border-color: var(--olive-fill);
+  background: var(--olive-fill);
+  color: var(--on-olive);
+}
+
+.button:hover {
+  filter: brightness(1.12);
+}
+
+.tally {
+  position: absolute;
+  left: 4vw;
+  bottom: max(22px, 4vh);
+  display: flex;
+  gap: 28px;
+}
+
+/* El número va arriba y su rótulo debajo, aunque en el HTML el rótulo sea el
+   término. */
+.tally div {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.tally dt {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.tally dd {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.6vw, 2.3rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Los dos juntos, recortados como una pegatina: un contorno claro y un filo
+   oscuro alrededor de la silueta de ambos. Es lo que hace que una foto y un
+   muñeco de bloques se lean como una sola cosa. */
+.pair {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: min(66vh, 43vw);
+  translate: -50% 0;
+  display: flex;
+  align-items: flex-end;
+  filter: drop-shadow(5px 0 0 var(--sticker)) drop-shadow(-5px 0 0 var(--sticker))
+    drop-shadow(0 5px 0 var(--sticker)) drop-shadow(0 -5px 0 var(--sticker))
+    drop-shadow(0 0 1.5px #17180e) drop-shadow(0 16px 22px rgb(0 0 0 / 0.38));
+  pointer-events: none;
+}
+
+.me,
+.avatar {
+  flex: none;
+  height: 100%;
+  width: auto;
+  max-width: none;
+}
+
+.me {
+  translate: 7% 0;
+}
+
+/* Siete poses en una tira; la página elige cuál con el desplazamiento del
+   fondo. Respira, que es lo que lo separa de una imagen quieta. */
+.avatar {
+  aspect-ratio: 605 / 1029;
+  translate: -7% 0;
+  background-size: 700% 100%;
+  background-position: 50% 0;
+  background-repeat: no-repeat;
+  transform-origin: 50% 100%;
+  animation: breathe 4.4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    transform: scaleY(1.008);
+  }
+}
+
+.enter {
+  position: absolute;
+  right: max(20px, 2.4vw);
+  bottom: max(22px, 4vh);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.3);
+}
+
+/* ---------- apartarse ---------- */
+
+/* La diagonal barre hacia el lado: el papel se va, el nombre se queda entero
+   en blanco un instante sobre el mundo y se apaga. */
+.leaving {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.leaving .paper,
+.leaving .ink {
+  clip-path: polygon(0 0, -45% 0, -65% 100%, 0 100%);
+}
+
+.leaving .snow {
+  clip-path: polygon(-45% 0, 100% 0, 100% 100%, -65% 100%);
+  opacity: 0;
+}
+
+.leaving .under,
+.leaving .tally {
+  translate: -60vw 0;
+  opacity: 0;
+}
+
+.leaving .pair,
+.leaving .enter,
+.leaving .sheet {
+  opacity: 0;
+}
+
+/* ---------- la hoja ---------- */
+
+.sheet {
+  position: relative;
+  z-index: 2;
+  border-top: 4px solid var(--olive-fill);
+  background: var(--paper);
+  box-shadow: 0 -18px 40px rgb(0 0 0 / 0.28);
+  transition: opacity 0.3s ease;
+}
+
+.section {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(44px, 7vw, 84px) max(20px, env(safe-area-inset-right, 0px)) 0
+    max(20px, env(safe-area-inset-left, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.section:last-child {
+  padding-bottom: clamp(44px, 7vw, 84px);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 60ch;
+}
+
+.muted {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+/* Lo que se pulsa para ver en grande. */
+.shot {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: none;
+  cursor: zoom-in;
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Hackatones: el puesto es el dato, así que va grande y en su metal. */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.place {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.place .shot {
+  aspect-ratio: 4 / 3;
+}
+
+.rank {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.rank b {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rank span {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gold b {
+  color: var(--gold);
+}
+
+.iron b {
+  color: var(--iron);
+}
+
+.copper b {
+  color: var(--copper);
+}
+
+.also {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.also b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.projects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px 24px;
+}
+
+.project {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.project .shot {
+  aspect-ratio: 16 / 9;
+  margin-bottom: 6px;
+}
+
+.summary {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--olive);
+}
+
+.cover .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tags li {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.go {
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--olive);
+  text-underline-offset: 3px;
+}
+
+.off {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 28px;
+}
+
+.facts li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 2px solid var(--ink);
+}
+
+.facts b {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.prose {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 68ch;
+}
+
+.stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 22px 28px;
+}
+
+.stack dt {
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  font-weight: 600;
+}
+
+.stack dd {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.contact {
+  margin-top: clamp(44px, 7vw, 84px);
+  padding-top: clamp(32px, 5vw, 56px);
+  border-top: 1px solid var(--line);
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---------- en vertical ---------- */
+
+/* La diagonal se tumba: papel arriba con el nombre, mundo abajo con los dos.
+   Las cifras no caben y la hoja de abajo ya las cuenta. */
+@media (max-width: 760px) {
+  .cover {
+    --cut-a: 46%;
+    --cut-b: 58%;
+  }
+
+  .paper,
+  .ink {
+    clip-path: polygon(0 0, 100% 0, 100% var(--cut-a), 0 var(--cut-b));
+  }
+
+  .snow {
+    clip-path: polygon(0 var(--cut-b), 100% var(--cut-a), 100% 100%, 0 100%);
+  }
+
+  .leaving .paper,
+  .leaving .ink {
+    clip-path: polygon(0 0, 100% 0, 100% -70%, 0 -58%);
+  }
+
+  .leaving .snow {
+    clip-path: polygon(0 -58%, 100% -70%, 100% 100%, 0 100%);
+  }
+
+  .leaving .under {
+    translate: 0 -60vh;
+  }
+
+  .cover .name {
+    padding: 22px 0 0 20px;
+    font-size: 19vw;
+    white-space: normal;
+  }
+
+  .under {
+    left: 20px;
+    top: calc(22px + 36vw);
+    width: calc(100% - 40px);
+    gap: 10px;
+  }
+
+  .tally {
+    display: none;
+  }
+
+  /* El ancho manda: los dos juntos miden 1,3 veces su alto. */
+  .pair {
+    height: min(50vh, 72vw);
+  }
+
+  /* Sobre el cielo, por encima de sus cabezas: abajo les tapaba las piernas. */
+  .enter {
+    top: calc(var(--cut-a) + 5%);
+    right: 12px;
+    bottom: auto;
+    padding: 9px 13px;
+    font-size: 0.84rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paper,
+  .name,
+  .snow,
+  .under,
+  .tally,
+  .pair,
+  .enter,
+  .sheet {
+    transition: none;
+  }
+
+  .avatar {
+    animation: none;
+  }
+}

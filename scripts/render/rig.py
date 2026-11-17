@@ -281,6 +281,36 @@ def pivot(name, parent, loc):
     return obj
 
 
+def patch(name, parent, mat, texel, wide, tall):
+    """A flat piece on the face, painted with one pixel of the skin. Its origin
+    is the middle of its top edge."""
+    verts = [(0, -wide / 2, 0), (0, wide / 2, 0), (0, wide / 2, -tall), (0, -wide / 2, -tall)]
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], [(0, 1, 2, 3)])
+    layer = mesh.uv_layers.new(name="uv")
+    for loop in layer.data:
+        loop.uv = ((texel[0] + 0.5) / TEX, 1 - (texel[1] + 0.5) / TEX)
+    mesh.materials.append(mat)
+    obj = bpy.data.objects.new(name, mesh)
+    obj.parent = parent
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+# Eyes that move. The skin paints both pixels of each eye white; the pupil is
+# a piece of its own that slides between them, and a lid of skin comes down
+# over the eye to blink. Their colours are two spare pixels of the skin, so
+# they take the same light as the face. A pose moves them with "eyes" (-1 to
+# his right .. 1 to his left, 0 is both pupils by the nose) and "blink" (0..1).
+# A skin with its eyes painted in, like the old panda, needs them off: a poses
+# file does that with "eyes_rig": false.
+EYE_ROW = 3.0          # top of the eye row, in head units
+PUPIL_TEXEL, LID_TEXEL = (0, 0), (1, 0)
+
+
+EYES_RIG = True
+
+
 def build(mat):
     j = {}
     j["root"] = pivot("root", None, (0, 0, 12))
@@ -310,6 +340,12 @@ def build(mat):
             mitre(name + "_bend", high, "bottom", "parent")
             mitre(name + "_bend", low, "top", "child")
         pin(name + "_pin", upper, mat, (0, 0, top - 6), uv)
+    build.eyes = {
+        "pupil_l": patch("pupil_l", j["head"], mat, PUPIL_TEXEL, 1, 1),
+        "pupil_r": patch("pupil_r", j["head"], mat, PUPIL_TEXEL, 1, 1),
+        "lid_l": patch("lid_l", j["head"], mat, LID_TEXEL, 2, 1),
+        "lid_r": patch("lid_r", j["head"], mat, LID_TEXEL, 2, 1),
+    }
     build.medal = medal(j["chest"])
     build.medal.hide_render = True
     return j
@@ -341,6 +377,16 @@ def apply(j, pose):
     apply_mitres(j)
     bend_trunks(j)
     build.medal.hide_render = not pose.get("medal")
+    gaze = max(-1.0, min(1.0, pose.get("eyes", 0)))
+    blink = max(0.0, min(1.0, pose.get("blink", 0)))
+    eyes = build.eyes
+    eyes["pupil_l"].location = (4.03, -2 + 0.5 * min(1, 1 + 2 * gaze), EYE_ROW)
+    eyes["pupil_r"].location = (4.03, 2 + 0.5 * max(-1, -1 + 2 * gaze), EYE_ROW)
+    for side, y in (("lid_l", -2), ("lid_r", 2)):
+        eyes[side].location = (4.06, y, EYE_ROW)
+        eyes[side].scale = (1, 1, max(blink, 0.001))
+    for name, obj in eyes.items():
+        obj.hide_render = not EYES_RIG or (name.startswith("lid") and blink <= 0)
 
 
 def world_camera(foot_y=FOOT_Y):
@@ -397,6 +443,8 @@ def main():
     if isinstance(data, list):
         data = {"frames": data}
     frames = data["frames"]
+    global EYES_RIG
+    EYES_RIG = bool(data.get("eyes_rig", True))
     shot = data.get("camera") or world_camera(foot_y)
     # A sheet fitted to an older one carries the scale that one was drawn at.
     if "zoom" in data and shot["type"] == "ORTHO":

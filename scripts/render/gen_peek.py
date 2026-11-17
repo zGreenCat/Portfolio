@@ -63,6 +63,9 @@ for i in range(FRAMES):
         "arm_r": [6 * arm_up, -(RAISED * arm_up + wave_r), 0],
         "arm_l_bend": 14 * arm_up + fold,
         "arm_r_bend": 14 * arm_up + fold,
+        # Two blinks: one as he lands, one mid-wave. Eyes that never close
+        # read as painted on.
+        "blink": max(0.0, 1 - abs(i - 8) / 1.5, 1 - abs(i - 22) / 1.5),
     })
 
 tall = CELL[1] / PX_PER_UNIT
