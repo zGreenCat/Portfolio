@@ -131,6 +131,27 @@ export function nearestSection(at: number): (typeof SECTIONS)[number] {
 }
 
 /**
+ * A qué sección se vuelve al cargar la página, por su índice, o `null` si es
+ * una visita limpia a Inicio y toca saludar.
+ *
+ * Quien recarga o vuelve con «atrás» (`restored`) regresa adonde estaba: el
+ * navegador le devuelve su scroll, y eso manda sobre el ancla, que puede ser
+ * la de una sección que ya dejó atrás.
+ *
+ * Quien abre un enlace con ancla va a esa sección, diga lo que diga el
+ * scroll. Mandaba siempre la posición, y en una visita nueva la posición no
+ * es de nadie: el navegador desplaza por su cuenta hasta el marcador del
+ * ancla, que está donde caiga el mundo a medio montar. `/#contacto` abierto
+ * en frío aterrizaba en Experiencias.
+ */
+export function resumeIndex(progress: number, hash: string, restored: boolean): number | null {
+  const byHash = SECTIONS.findIndex((section) => section.id === hash)
+  if (!restored && byHash >= 0) return byHash > 0 ? byHash : null
+  if (progress > 0.01) return SECTIONS.indexOf(nearestSection(progress))
+  return byHash > 0 ? byHash : null
+}
+
+/**
  * Dónde aterriza quien se teletransporta a una sección. No es exactamente la
  * sección: caer justo encima deja la siguiente frontera de bioma dentro del
  * cuadro.

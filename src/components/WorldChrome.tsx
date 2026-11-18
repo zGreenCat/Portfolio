@@ -8,7 +8,7 @@ import { BAR_CELLS, SECTIONS } from '@/world/constants'
 import type { Theme } from '@/world/daylight'
 
 import { CELL_WIDTH, SHEET_GEOMETRY } from './Character'
-import { CELL_HEIGHT, STATES, sheetSrc } from './characterSheets'
+import { CELL_HEIGHT, WALKING_STATES, sheetSrc } from './characterSheets'
 
 type Section = (typeof SECTIONS)[number]
 
@@ -146,7 +146,7 @@ export function WorldLoader({ done, progress }: { done: boolean; progress: numbe
 export function SheetWarmer({ charHeight, half }: { charHeight: number; half: boolean }) {
   return (
     <div className={styles.warm} aria-hidden="true">
-      {STATES.map((state) => {
+      {WALKING_STATES.map((state) => {
         const sheet = SHEET_GEOMETRY[state]
         const scale = charHeight / sheet.charHeight
         return (

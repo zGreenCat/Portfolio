@@ -70,6 +70,14 @@ export const SHEETS = {
 
 export const STATES = Object.keys(SHEETS) as CharacterState[]
 
+/**
+ * Las hojas que hacen falta al recorrer el mundo: las que se descargan en
+ * segundo plano y se calientan al entrar. `fall` no: solo sale al llegar de
+ * la 404, antes de que nada de eso corra, y calentarla después eran 8 MB
+ * decodificados para todo el mundo y para nada.
+ */
+export const WALKING_STATES = STATES.filter((state) => state !== 'fall')
+
 /** Frame en el que la mano suelta la perla, y dónde está esa mano dentro de la
  *  celda. Lo da el rig con su sonda, sobre el brazo ya extendido y nivelado. */
 export const THROW_RELEASE = { frame: 15, handX: 394, handY: 278 } as const

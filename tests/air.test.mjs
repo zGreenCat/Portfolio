@@ -3,7 +3,7 @@ import { test } from 'node:test'
 
 import { airAt, gust } from '../src/world/air.ts'
 import { MOUNT_RADIUS, SECTIONS } from '../src/world/constants.ts'
-import { nearestSection, sectionsNear } from '../src/world/geometry.ts'
+import { nearestSection, resumeIndex, sectionsNear } from '../src/world/geometry.ts'
 
 const at = (id) => SECTIONS.findIndex((section) => section.id === id)
 
@@ -62,4 +62,29 @@ test('se montan el bioma que pisas y sus vecinos cercanos, no los cinco', () => 
     assert.ok(near.length < SECTIONS.length, `${section.id} monta ${near.length}`)
   }
   assert.deepEqual(sectionsNear(0, MOUNT_RADIUS), [0, 1])
+})
+
+test('resumeIndex: un enlace con ancla va a su sección, diga lo que diga el scroll', () => {
+  const contact = SECTIONS.findIndex((section) => section.id === 'contacto')
+  const projects = SECTIONS.find((section) => section.id === 'proyectos')
+  // El navegador desplazó por su cuenta hasta cualquier sitio.
+  assert.equal(resumeIndex(projects.at, 'contacto', false), contact)
+  assert.equal(resumeIndex(0, 'contacto', false), contact)
+})
+
+test('resumeIndex: quien recarga vuelve adonde estaba, no a su ancla', () => {
+  const projects = SECTIONS.findIndex((section) => section.id === 'proyectos')
+  assert.equal(resumeIndex(SECTIONS[projects].at, 'contacto', true), projects)
+  // Sin scroll que restaurar, el ancla es lo único que hay.
+  assert.equal(resumeIndex(0, 'contacto', true), SECTIONS.findIndex((s) => s.id === 'contacto'))
+})
+
+test('resumeIndex: Inicio es una visita limpia, y un ancla que no es sección no cuenta', () => {
+  assert.equal(resumeIndex(0, '', false), null)
+  assert.equal(resumeIndex(0, 'inicio', false), null)
+  assert.equal(resumeIndex(0.004, '', true), null)
+  assert.equal(resumeIndex(0, 'portada-proyectos', false), null)
+  // Con un ancla ajena, la posición sigue valiendo.
+  const skills = SECTIONS.findIndex((section) => section.id === 'skills')
+  assert.equal(resumeIndex(SECTIONS[skills].at, 'x', false), skills)
 })

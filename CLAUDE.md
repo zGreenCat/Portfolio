@@ -116,6 +116,9 @@ la pantalla de muerte del juego. Responde 404 de verdad.
   portada», tras aterrizar entra la portada barriendo. Idea de Vicente. Entre
   una página y otra hay una carga entera y se ve la pantalla de carga del
   mundo: se dejó así a propósito, es la de cambiar de dimensión.
+- **La hoja `fall` no va con las demás** (`WALKING_STATES`): ni se descarga
+  en segundo plano ni se calienta. Solo sale al llegar de la 404, antes de
+  que nada de eso corra; `useEntry` la pide en ese momento.
 - **Adónde va queda anotado en `sessionStorage`** (clave `llegada`), y lo lee
   un script de `layout.tsx` antes de pintar, que pone `data-arrival` en la
   raíz: con eso el CSS esconde la portada desde el primer frame, igual que
@@ -195,7 +198,10 @@ portada: los tiene justo debajo.
   portada y se echó de menos.
 - **Con ancla se llega directo al mundo.** `/#contacto` no enseña portada:
   la esconde el CSS con `:has(:target)` antes de que React arranque, y
-  después la desmonta la página. Por eso **dentro de la portada no hay
+  después la desmonta la página. **Esa regla solo vale hasta que arranca**
+  (`data-booted`, que pone `useEntry`): `:target` no se entera de que el
+  código quite el ancla de la dirección, y quien entraba por `/#contacto` y
+  pedía la portada la recibía montada e invisible, sin nada que pulsar. Por eso **dentro de la portada no hay
   enlaces con ancla**: `:target` la escondería a ella misma. «Ver mi trabajo»
   desplaza por código. Los `id` de sus títulos van con prefijo `portada-`
   para no chocar con los marcadores de sección del mundo.
@@ -691,6 +697,13 @@ La velocidad va en anchos de pantalla por segundo, no en bloques: en un móvil
 el mundo es pequeño y a ritmo de bloques cruzarlo llevaba un minuto.
 
 ### Al volver a entrar
+
+**Quién manda, si el scroll o el ancla, depende de cómo se llega**
+(`resumeIndex`, en `geometry.ts`, con tests). Recargando o volviendo con
+«atrás», la posición: es donde estabas. Abriendo un enlace con ancla, el
+ancla: en una visita nueva el navegador desplaza por su cuenta hasta el
+marcador, que está donde caiga el mundo a medio montar, y `/#contacto` podía
+aterrizar en Experiencias según lo rápido que cargara.
 
 El navegador restaura el scroll por su cuenta y lo deja en el píxel exacto —si
 eso cae entre dos biomas, apareces en la franja de la frontera. `armResume`

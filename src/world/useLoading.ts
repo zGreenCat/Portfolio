@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-import { STATES, sheetSrc } from '@/components/characterSheets'
+import { WALKING_STATES, sheetSrc } from '@/components/characterSheets'
 
 import {
   HALF_RES_WIDTH,
@@ -109,7 +109,7 @@ export function useBackgroundFetch(active: boolean, half: boolean, spriteHalf: b
     // Las hojas que no bloquean la carga pero sí hacen falta luego: sin esto,
     // `sit` se descarga justo al llegar al acantilado y se nota.
     const rest = [
-      ...STATES.map((state) => sheetSrc(state, spriteHalf)),
+      ...WALKING_STATES.map((state) => sheetSrc(state, spriteHalf)),
       layerSrc('b2', 'stage', half),
       ...SECTIONS.flatMap((section) =>
         section.kinds.map((kind) => layerSrc(section.biome, kind, half)),

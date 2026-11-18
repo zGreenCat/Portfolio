@@ -10,6 +10,7 @@ import {
   type SetStateAction,
 } from 'react'
 
+import { sheetSrc } from '@/components/characterSheets'
 import { COVER_LEAVE_MS } from '@/components/Cover'
 
 import {
@@ -21,7 +22,7 @@ import {
   type Phase,
 } from './constants'
 import { ARRIVAL_KEY, readArrival, type Arrival } from './fallIn'
-import { landingAt, sectionsNear } from './geometry'
+import { landingAt, resumeIndex, sectionsNear } from './geometry'
 import { useWorldLoading } from './useLoading'
 import type { WorldRefs } from './useWorldRefs'
 
@@ -43,7 +44,7 @@ interface EntryDeps {
  * o fuera— y el reaterrizaje, y decide en qué fase arranca el mundo.
  */
 export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidden }: EntryDeps) {
-  const { chestAtRef, mountKeyRef, resumeRef, snapRef } = refs
+  const { chestAtRef, mountKeyRef, resumeRef, snapRef, teleportingRef } = refs
   /** La portada. Arranca puesta también en el servidor: su contenido tiene
    *  que ir en el HTML servido. */
   const [cover, setCover] = useState<CoverState>('on')
@@ -55,22 +56,17 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
 
   /**
    * Se calcula al terminar la carga, no antes: hay que leer el scroll ya
-   * restaurado por el navegador. La posición manda sobre el hash porque refleja
-   * dónde estabas de verdad; el hash solo entra si no hay scroll, que es el
-   * caso de un enlace compartido abierto en frío.
+   * restaurado por el navegador. Quién manda, si la posición o el ancla, lo
+   * decide `resumeIndex` según se recargue o se llegue de nuevas.
    */
   const resumeTarget = useCallback(() => {
-    const progress = worldFromScroll(window.scrollY)
-    if (progress > 0.01) {
-      let best = 0
-      SECTIONS.forEach((section, i) => {
-        if (Math.abs(section.at - progress) < Math.abs(SECTIONS[best].at - progress)) best = i
-      })
-      return best
-    }
-    const hash = window.location.hash.slice(1)
-    const byHash = SECTIONS.findIndex((section) => section.id === hash)
-    return byHash > 0 ? byHash : null
+    const [entry] = window.performance.getEntriesByType('navigation')
+    const kind = entry instanceof PerformanceNavigationTiming ? entry.type : 'navigate'
+    return resumeIndex(
+      worldFromScroll(window.scrollY),
+      window.location.hash.slice(1),
+      kind === 'reload' || kind === 'back_forward',
+    )
   }, [])
 
   /**
@@ -142,16 +138,20 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
     }
     if (arrival) {
       arrivalRef.current = arrival
+      // La hoja de caer no va con las demás —solo hace falta aquí—, así que
+      // se pide ya, en las dos medidas: cuál toca aún no se sabe.
+      for (const half of [true, false]) new Image().src = sheetSrc('fall', half)
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
       window.scrollTo({ top: 0, behavior: 'auto' })
       coverRef.current = 'off'
       setCover('off')
-      return
-    }
-    if (window.location.hash.length > 1 || window.scrollY > 0) {
+    } else if (window.location.hash.length > 1 || window.scrollY > 0) {
       coverRef.current = 'off'
       setCover('off')
     }
+    // Desde aquí la portada la lleva la página, no el CSS: ver la regla de
+    // `:has(:target)` en `Cover.module.css`.
+    root.dataset.booted = 'true'
   }, [])
 
   const enterWorld = useCallback(() => {
@@ -185,11 +185,22 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
   }, [])
 
   /** Ya aterrizó. Quien pidió la portada la recibe ahora, barriendo. */
+  const coverTimerRef = useRef(0)
   const landed = useCallback(() => {
     const arrival = arrivalRef.current
     arrivalRef.current = null
-    if (arrival === 'portada') window.setTimeout(() => openCover(true), COVER_AFTER_LANDING_MS)
+    if (arrival !== 'portada') return
+    coverTimerRef.current = window.setTimeout(() => {
+      // En ese medio segundo la barra ya responde: si pidió otra cosa, la
+      // portada no se le echa encima.
+      if (coverRef.current !== 'off' || teleportingRef.current) return
+      // Y el personaje del mundo no se pinta bajo ella: en vertical asomaba
+      // junto a la foto. Vuelve al entrar (`enterWorld`).
+      setHidden(true)
+      openCover(true)
+    }, COVER_AFTER_LANDING_MS)
   }, [openCover])
+  useEffect(() => () => window.clearTimeout(coverTimerRef.current), [])
 
   const progress = useWorldLoading(begin)
 

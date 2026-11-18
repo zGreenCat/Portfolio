@@ -60,8 +60,13 @@ export default function Lightbox({ items, index, onIndex, onClose }: LightboxPro
       const narrow = isNarrow()
       setWatch({
         narrow,
+        // En estrecho manda el ancho, pero sin pasar de lo que da el alto:
+        // con el móvil apaisado, el 60% del ancho era casi toda la pantalla.
         scale: narrow
-          ? (window.innerWidth * WATCH_NARROW_VW) / WATCH.cellWidth
+          ? Math.min(
+              (window.innerWidth * WATCH_NARROW_VW) / WATCH.cellWidth,
+              (window.innerHeight * WATCH_VH) / WATCH.cellHeight,
+            )
           : (window.innerHeight * WATCH_VH) / WATCH.cellHeight,
       })
     }

@@ -55,8 +55,14 @@
 
 /* Quien llega con el ancla de una sección del mundo (`/#contacto`) va directo
    al mundo. Esto la esconde antes de que React arranque; después la quita la
-   página. */
-:global(html):has(:target) .cover,
+   página.
+
+   Solo hasta que arranca (`data-booted`, que pone `useEntry`): `:target` no
+   se entera de que el código quite el ancla de la dirección, así que la
+   regla seguía valiendo para siempre. Quien entraba por `/#contacto` y pedía
+   la portada la recibía montada e invisible, con el mundo ya apartado: una
+   página en la que no se podía hacer nada. */
+:global(html:not([data-booted])):has(:target) .cover,
 :global(html[data-arrival]) .cover {
   display: none;
 }

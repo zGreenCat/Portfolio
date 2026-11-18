@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, type MouseEvent } from 'react'
+import { useCallback, useEffect, type MouseEvent } from 'react'
 
 import { ARRIVAL_KEY, type Arrival } from '@/world/fallIn'
 
@@ -35,7 +35,29 @@ export default function LostWays({ className, primaryClass, secondClass }: LostW
     }
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     scene.dataset.leaving = 'true'
-    window.setTimeout(() => window.location.assign('/'), still ? 0 : LEAP_MS)
+    // Al enlace tal cual, con su ancla si la lleva: sin almacenamiento,
+    // «Recorrer el mundo» tiene que seguir llevando al mundo.
+    const href = event.currentTarget.href
+    window.setTimeout(() => window.location.assign(href), still ? 0 : LEAP_MS)
+  }, [])
+
+  // Quien vuelve aquí con «atrás» puede recuperar la página tal como la
+  // dejó, a medio salto: los enlaces no responderían, y la llegada anotada
+  // haría caer del cielo a la siguiente visita. Se deshacen las dos cosas.
+  useEffect(() => {
+    const restore = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      document.querySelectorAll<HTMLElement>('[data-end][data-leaving]').forEach((scene) => {
+        delete scene.dataset.leaving
+      })
+      try {
+        window.sessionStorage.removeItem(ARRIVAL_KEY)
+      } catch {
+        // Sin almacenamiento no quedó nada anotado.
+      }
+    }
+    window.addEventListener('pageshow', restore)
+    return () => window.removeEventListener('pageshow', restore)
   }, [])
 
   return (
