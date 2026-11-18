@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import Character, {
   CELL_WIDTH,
@@ -9,12 +9,7 @@ import Character, {
   THROW_RELEASE,
   type CharacterState,
 } from '@/components/Character'
-import {
-  CELL_HEIGHT,
-  STATES,
-  loopsByItself,
-  sheetSrc,
-} from '@/components/characterSheets'
+import { loopsByItself } from '@/components/characterSheets'
 import Chat from '@/components/Chat'
 import { easeFor } from '@/components/smoothing'
 import EnderPearl from '@/components/EnderPearl'
@@ -28,16 +23,15 @@ import Cover, { COVER_LEAVE_MS } from '@/components/Cover'
 import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
 import type { WeatherState } from '@/components/Weather'
-import { BLOCK_PX_SOURCE, LAYER_HEIGHT, WORLD_UNIT } from '@/content/layers'
+import { BLOCK_PX_SOURCE, WORLD_UNIT } from '@/content/layers'
 import Weather from '@/components/Weather'
-import { isMuted, play, setMuted } from '@/lib/sounds'
+import { play } from '@/lib/sounds'
 import { ABOUT_PAGES, PROJECTS } from '@/content/portfolio'
-import Strip from '@/components/ParallaxLayer'
-import layerStyles from '@/components/ParallaxLayer.module.css'
+import { BackLayers, GroundLayer, StageProp, type LayerSpace } from '@/components/WorldLayers'
+import { SheetWarmer, WorldLoader, WorldNav } from '@/components/WorldChrome'
 import SpriteGrid from '@/components/SpriteGrid'
 
 import {
-  BAR_CELLS,
   CATCH_UP_BLOCKS,
   CHAR_FEET_VH,
   CHAR_HEIGHT_VH,
@@ -50,7 +44,6 @@ import {
   ENTRY_TO,
   GAIT_HOLD_SECONDS,
   HALF_RES_WIDTH,
-  Kind,
   LAYER_ASPECT,
   LAYER_SPEED,
   LITE_MS,
@@ -87,7 +80,6 @@ import {
   biomeAt,
   nearestSection,
   sectionsNear,
-  clearingPhase,
   fitBounds,
   layerSrc,
   panelOpenness,
@@ -136,7 +128,6 @@ export default function RecorridoPage() {
   const [bookOpen, setBookOpen] = useState(0)
   const [signsOpen, setSignsOpen] = useState(0)
   const [benchOpen, setBenchOpen] = useState(0)
-  const [muted, setMutedState] = useState(false)
   /** Si el sistema pide menos movimiento, la versión en texto deja de ser un
    *  enlace más de la barra y se señala: ya dijeron que no quieren esto. */
   const [reduced, setReduced] = useState(false)
@@ -252,7 +243,6 @@ export default function RecorridoPage() {
   const snapRef = useRef(false)
 
   useEffect(() => setSplash(SPLASHES[Math.floor(Math.random() * SPLASHES.length)]), [])
-  useEffect(() => setMutedState(isMuted()), [])
   useEffect(() => setReduced(window.matchMedia('(prefers-reduced-motion: reduce)').matches), [])
 
   /**
@@ -1010,33 +1000,8 @@ export default function RecorridoPage() {
   const handleGreetingEnd = useCallback(() => setPhase('entering'), [])
 
   const sky = skyAt(night)
-  const filled = Math.round(progress * BAR_CELLS)
   const titleClass = started ? styles.titlesOut : phase === 'ready' ? styles.titlesIn : ''
   const tileWidth = (worldPx || 1080) * LAYER_ASPECT
-  /** Cada capa conserva su alto propio: se recortaron por arriba hasta donde
-   *  empieza su contenido, así que la de los árboles sobresale de la caja del
-   *  mundo y la del suelo pelado no arrastra cielo vacío. */
-  const heightOf = (name: string) => ((worldPx || 1080) * (LAYER_HEIGHT[name] ?? WORLD_UNIT)) / WORLD_UNIT
-  /**
-   * Bordes del territorio de un bioma, en píxeles del contenedor de su capa.
-   *
-   * Lleva el término `-worldX*(1-speed)` para que la frontera caiga en la
-   * MISMA x de pantalla en todas las capas. Sin él, cada capa cortaba el bioma
-   * en un sitio distinto —el fondo mucho antes que el suelo— y se veía taiga
-   * detrás de bosque. La frontera es una línea vertical que se cruza andando,
-   * y detrás de ella el parallax sigue funcionando con normalidad.
-   */
-  const spanOf = (i: number, speed: number) => ({
-    spanFrom: BOUNDS[i].from === -Infinity ? -Infinity : BOUNDS[i].from * WORLD_LENGTH,
-    spanTo: BOUNDS[i].to === Infinity ? Infinity : BOUNDS[i].to * WORLD_LENGTH,
-    shift: worldAtRef.current * WORLD_LENGTH * (1 - speed),
-  })
-  /** Centra una tesela en la pantalla justo al llegar a su sección. Lo usan
-   *  los elementos que son un LUGAR y no una textura repetible. */
-  const centredAnchor = (at: number, speed: number, width: number) =>
-    at * WORLD_LENGTH * speed +
-    (typeof window === 'undefined' ? 0 : window.innerWidth / 2) -
-    width / 2
 
   /** Coloca el escenario para que su sitio en el estrado caiga bajo el
    *  personaje cuando el mundo está en `PODIUM_AT`. Con `viewW` y no con
@@ -1057,6 +1022,18 @@ export default function RecorridoPage() {
   const cliffAnchor =
     WORLD_LENGTH + (typeof window === 'undefined' ? 0 : window.innerWidth * (CLIFF_X / 100)) -
     CLIFF_EDGE * tileWidth
+
+  /** Lo que comparten las tres piezas de capas: qué biomas hay montados y a
+   *  qué medida se pintan. */
+  const space: LayerSpace = {
+    mounted,
+    worldPx: worldPx || 1080,
+    tileWidth,
+    viewW,
+    half: half || lite,
+    worldAt: worldAtRef.current,
+    cliffAnchor,
+  }
 
   return (
     <main
@@ -1099,66 +1076,7 @@ export default function RecorridoPage() {
       <div className={styles.stage} inert={cover !== 'off'}>
         <NightSky night={night} />
 
-        {(['far', 'mid', 'near'] as Kind[]).map((kind) => (
-          <Fragment key={kind}>
-          <div
-            ref={kind === 'far' ? farRef : kind === 'mid' ? midRef : nearRef}
-            className={`${layerStyles.box} ${styles[kind]}`}
-          >
-            {mounted
-              .filter((i) => (SECTIONS[i].kinds as readonly string[]).includes(kind))
-              .map((i) => SECTIONS[i])
-              .map((s) => (
-              <Strip
-                key={s.biome}
-                src={`/layers/${s.biome}_${kind}.webp`}
-                travel={WORLD_LENGTH * LAYER_SPEED[kind]}
-                tileWidth={tileWidth}
-                tileHeight={heightOf(`${s.biome}_${kind}`)}
-                speed={LAYER_SPEED[kind]}
-                viewport={viewW}
-                {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED[kind])}
-                half={half || lite}
-                extend={s.biome === 'b5' ? 2 : 0}
-                // La capa de árboles de los cerezos también se corre. Su
-                // recorte no cae siempre en el mismo punto de la tira —va a
-                // otro ritmo que el suelo y se desliza al andar—, así que se
-                // centra el claro en mitad de ese deslizamiento: cabe entero.
-                phase={
-                  s.biome === 'b4' && kind === 'near'
-                    ? clearingPhase(
-                        BOUNDS[SECTIONS.indexOf(s)].to * WORLD_LENGTH * LAYER_SPEED[kind] +
-                          (viewW * (1 - LAYER_SPEED[kind])) / 2,
-                        tileWidth,
-                      )
-                    : 0
-                }
-                anchor={
-                  s.biome === 'b5'
-                    ? cliffAnchor * LAYER_SPEED[kind]
-                    : 'anchored' in s && s.anchored.includes(kind)
-                      ? centredAnchor(s.at, LAYER_SPEED[kind], tileWidth)
-                      : undefined
-                }
-              />
-            ))}
-          </div>
-          {/* Niebla de distancia y tinte de tormenta, entre esta capa y la
-              siguiente. Cada uno con su fuerza y sus biomas. */}
-          <div
-            className={`${styles.scrim} ${
-              kind === 'far' ? styles.fogFar : kind === 'mid' ? styles.fogMid : styles.fogNear
-            }`}
-            aria-hidden="true"
-          />
-          <div
-            className={`${styles.scrim} ${
-              kind === 'far' ? styles.sandFar : kind === 'mid' ? styles.sandMid : styles.sandNear
-            }`}
-            aria-hidden="true"
-          />
-          </Fragment>
-        ))}
+        <BackLayers space={space} farRef={farRef} midRef={midRef} nearRef={nearRef} />
 
         {/* La noche del modo ligero. Va sobre el mundo y bajo el personaje. */}
         <div className={styles.nightVeil} aria-hidden="true" />
@@ -1179,54 +1097,10 @@ export default function RecorridoPage() {
           </div>
         ) : null}
 
-        <div ref={groundRef} className={`${layerStyles.box} ${styles.ground}`}>
-          {mounted.map((i) => SECTIONS[i]).map((s) => (
-            <Strip
-              key={s.biome}
-              src={`/layers/${s.biome}_ground.webp`}
-              travel={WORLD_LENGTH}
-              tileWidth={tileWidth}
-              tileHeight={heightOf(`${s.biome}_ground`)}
-              speed={LAYER_SPEED.ground}
-              viewport={viewW}
-              {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
-              half={half || lite}
-              // El suelo del acantilado acaba en el cantil: sus copias extra
-              // se encadenan por el terreno, no por la tesela entera.
-              extend={s.biome === 'b5' ? 4 : 0}
-              solid={s.biome === 'b5' ? CLIFF_EDGE : undefined}
-              anchor={s.biome === 'b5' ? cliffAnchor : undefined}
-              // Los cerezos, que acaban contra el acantilado: se corren para
-              // que esa frontera caiga en su claro y no parta un árbol.
-              phase={
-                s.biome === 'b4'
-                  ? clearingPhase(BOUNDS[SECTIONS.indexOf(s)].to * WORLD_LENGTH, tileWidth)
-                  : 0
-              }
-            />
-          ))}
-        </div>
+        <GroundLayer space={space} groundRef={groundRef} />
 
         {/* El escenario del podio: una sola copia, plantada en la taiga. */}
-        <div ref={propsRef} className={`${layerStyles.box} ${styles.props}`}>
-          {mounted
-            .map((i) => SECTIONS[i])
-            .filter((s) => s.id === 'proyectos')
-            .map((s) => (
-              <Strip
-                key="stage"
-                src="/layers/b2_stage.webp"
-                travel={WORLD_LENGTH}
-                tileWidth={tileWidth}
-                tileHeight={heightOf('b2_stage')}
-                speed={LAYER_SPEED.ground}
-                viewport={viewW}
-                {...spanOf(SECTIONS.indexOf(s), LAYER_SPEED.ground)}
-                half={half || lite}
-                anchor={stageAnchor}
-              />
-            ))}
-        </div>
+        <StageProp space={space} propsRef={propsRef} stageAnchor={stageAnchor} />
 
         <Inventory
           title="Proyectos"
@@ -1237,27 +1111,7 @@ export default function RecorridoPage() {
         <Podium openness={podiumOpen} />
         {meter ? <PerfMeter /> : null}
 
-        {/* Todas las hojas del personaje, pintadas ya: un píxel de cada una, a
-            la escala a la que se van a usar. Una hoja se decodifica la primera
-            vez que se pinta, y eso era un tirón justo al echar a andar, al
-            lanzar o al subir al podio. `decode()` no vale para fondos CSS. */}
-        {phase === 'ready' ? (
-          <div className={styles.warm} aria-hidden="true">
-            {STATES.map((state) => {
-              const sheet = SHEET_GEOMETRY[state]
-              const scale = charHeight / sheet.charHeight
-              return (
-                <span
-                  key={state}
-                  style={{
-                    backgroundImage: `url(${sheetSrc(state, spriteHalf)})`,
-                    backgroundSize: `${CELL_WIDTH * scale * sheet.frames}px ${CELL_HEIGHT * scale}px`,
-                  }}
-                />
-              )
-            })}
-          </div>
-        ) : null}
+        {phase === 'ready' ? <SheetWarmer charHeight={charHeight} half={spriteHalf} /> : null}
         <Book
           title="Sobre mí"
           pages={ABOUT_PAGES}
@@ -1349,77 +1203,18 @@ export default function RecorridoPage() {
           </div>
         ) : null}
 
-        <nav
-          className={`${styles.nav} ${phase === 'ready' && cover === 'off' ? styles.navIn : ''}`}
-          aria-label="Secciones"
-        >
-          <button
-            type="button"
-            className={`${styles.navButton} ${styles.navToggle}`}
-            onClick={() => {
-              play('button')
-              setMenuOpen((open) => !open)
-            }}
-            aria-expanded={menuOpen}
-            aria-controls="nav-items"
-          >
-            {menuOpen ? '✕ Cerrar' : '☰ Menú'}
-          </button>
+        <WorldNav
+          shown={phase === 'ready' && cover === 'off'}
+          menuOpen={menuOpen}
+          setMenuOpen={setMenuOpen}
+          compact={compact}
+          quiet={reduced}
+          active={active}
+          onNavigate={navigate}
+          onCover={tpToCover}
+        />
 
-          <div id="nav-items" className={styles.navItems} hidden={compact && !menuOpen}>
-            {SECTIONS.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                className={`${styles.navButton} ${active === section.id ? styles.navActive : ''}`}
-                onClick={() => navigate(section)}
-                aria-current={active === section.id ? 'true' : undefined}
-              >
-                {section.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              className={styles.navButton}
-              onClick={() => {
-                const next = !muted
-                setMuted(next)
-                setMutedState(next)
-                if (!next) play('button')
-              }}
-              aria-pressed={muted}
-              aria-label={muted ? 'Activar sonido' : 'Silenciar'}
-            >
-              {muted ? '🔇 Sonido' : '🔊 Sonido'}
-            </button>
-            <button
-              type="button"
-              className={`${styles.navButton} ${reduced ? styles.navQuiet : ''}`}
-              onClick={tpToCover}
-            >
-              Portada
-            </button>
-          </div>
-        </nav>
-
-        <div
-          className={`${styles.loader} ${phase !== 'loading' || cover !== 'off' ? styles.loaderDone : ''}`}
-        >
-          <span className={styles.loaderTitle}>Cargando mundo</span>
-          <div
-            className={styles.bar}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(progress * 100)}
-            aria-label="Cargando mundo"
-          >
-            {Array.from({ length: BAR_CELLS }, (_, index) => (
-              <span key={index} className={`${styles.cell} ${index < filled ? styles.cellOn : ''}`} />
-            ))}
-          </div>
-          <span className={styles.loaderHint}>Generando terreno</span>
-        </div>
+        <WorldLoader done={phase !== 'loading' || cover !== 'off'} progress={progress} />
       </div>
 
       <EnderPearl shot={shot} />
