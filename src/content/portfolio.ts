@@ -16,6 +16,33 @@ export const ABOUT_PAGES = [
   'Busco proyectos desafiantes donde la tecnología tenga un propósito claro.',
 ]
 
+/**
+ * El «sobre mí» en la portada, partido en dos. Arriba, antes de los
+ * proyectos, quién es en diez segundos; abajo, junto al contacto, cómo
+ * trabaja y qué busca, para quien ya se interesó. El párrafo que enumera
+ * proyectos se queda fuera: en la portada vienen justo debajo.
+ *
+ * Va por posición: si se reordena `ABOUT_PAGES`, revisar esto. Y si el primer
+ * párrafo deja de empezar por el título, falla en vez de repetirlo en silencio.
+ */
+const DEGREE = 'Ingeniero en Computación e Informática'
+
+/** El primer párrafo sin el título, que en la portada va en el arranque: una
+ *  pantalla más abajo se leería dos veces. */
+function withoutDegree(paragraph: string): string {
+  const lead = `${DEGREE}. `
+  if (!paragraph.startsWith(lead)) {
+    throw new Error(`COVER_ABOUT: el primer párrafo de ABOUT_PAGES ya no empieza por «${lead}»`)
+  }
+  return paragraph.slice(lead.length)
+}
+
+export const COVER_ABOUT = {
+  degree: DEGREE,
+  intro: [withoutDegree(ABOUT_PAGES[0]), ABOUT_PAGES[1]],
+  rest: ABOUT_PAGES.slice(3),
+}
+
 /** Ordenados por peso, no por cronología: lo primero es lo que más cuenta. */
 export const PROJECTS: Project[] = [
   {

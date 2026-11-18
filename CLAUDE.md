@@ -84,7 +84,15 @@ todo bloques. La pantalla va **partida en diagonal**: papel a la izquierda,
 mundo a la derecha, su nombre cruzando la costura —negro sobre el papel,
 blanco sobre el mundo— y él y su avatar justo en el corte, en la misma
 postura y con el mismo polerón. Al bajar, el contenido sube encima como un
-telón: proyectos, hackatones, cómo está hecho, sobre mí, stack y contacto.
+telón: una presentación corta, proyectos, hackatones, stack, cómo está hecho,
+sobre mí y contacto.
+
+El «sobre mí» va partido (`COVER_ABOUT`). Entero antes de los proyectos eran
+seis párrafos por delante de lo que el visitante vino a ver; entero al final,
+del arranque se saltaba al trabajo sin decir quién es. Arriba van los dos
+primeros párrafos, en letra grande y sin título; abajo, junto al contacto,
+cómo trabaja y qué busca. El párrafo que enumera proyectos no sale en la
+portada: los tiene justo debajo.
 
 - **El trabajo va en dos niveles: una línea en la lista y el resto en una
   ficha.** Los proyectos son un índice —una fila por proyecto, y la fila

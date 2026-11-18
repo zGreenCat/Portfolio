@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { ABOUT_PAGES, CONTACT, MADE, PLACE_LABEL, PROJECTS, RECIPES } from '@/content/portfolio'
+import { CONTACT, COVER_ABOUT, MADE, PLACE_LABEL, PROJECTS, RECIPES } from '@/content/portfolio'
 
 import WorkViewer from './WorkViewer'
 import { OTHER_EVENTS, PODIUM_WORKS, PROJECT_WORKS, WORKS } from './works'
@@ -231,7 +231,7 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
 
         <div className={styles.under}>
           <span className={styles.role}>Desarrollador full-stack</span>
-          <p className={styles.pitch}>Construyo software que resuelve problemas concretos.</p>
+          <p className={styles.pitch}>{COVER_ABOUT.degree}</p>
           <div className={styles.actions}>
             <button type="button" className={`${styles.button} ${styles.fill}`} onClick={toWork}>
               Ver mi trabajo ↓
@@ -282,6 +282,14 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
       </header>
 
       <div ref={sheetRef} className={styles.sheet}>
+        {/* Quién es, antes del trabajo: el puente entre el arranque y los
+            proyectos. Sin título; el texto grande se basta. */}
+        <section className={`${styles.section} ${styles.intro}`} aria-label="Presentación">
+          {COVER_ABOUT.intro.map((paragraph) => (
+            <p key={paragraph.slice(0, 32)}>{paragraph}</p>
+          ))}
+        </section>
+
         <section className={styles.section} aria-labelledby="portada-proyectos">
           <h2 id="portada-proyectos" className={styles.big}>
             Proyectos
@@ -375,6 +383,20 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
           ))}
         </section>
 
+        <section className={styles.section} aria-labelledby="portada-stack">
+          <div className={styles.head}>
+            <h2 id="portada-stack">Lo que he usado en esos proyectos.</h2>
+          </div>
+          <dl className={styles.stack}>
+            {RECIPES.map((recipe) => (
+              <div key={recipe.id}>
+                <dt>{recipe.result}</dt>
+                <dd>{techOf(recipe.grid).join(', ')}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
         <section className={`${styles.section} ${styles.made}`} aria-labelledby="portada-hecho">
           <div className={styles.head}>
             <h2 id="portada-hecho">El mundo también es ingeniería.</h2>
@@ -402,24 +424,10 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
             <h2 id="portada-sobre-mi">Del problema a algo que funciona de verdad.</h2>
           </div>
           <div className={styles.prose}>
-            {ABOUT_PAGES.map((paragraph) => (
+            {COVER_ABOUT.rest.map((paragraph) => (
               <p key={paragraph.slice(0, 32)}>{paragraph}</p>
             ))}
           </div>
-        </section>
-
-        <section className={styles.section} aria-labelledby="portada-stack">
-          <div className={styles.head}>
-            <h2 id="portada-stack">Lo que he usado en esos proyectos.</h2>
-          </div>
-          <dl className={styles.stack}>
-            {RECIPES.map((recipe) => (
-              <div key={recipe.id}>
-                <dt>{recipe.result}</dt>
-                <dd>{techOf(recipe.grid).join(', ')}</dd>
-              </div>
-            ))}
-          </dl>
         </section>
 
         <section className={`${styles.section} ${styles.contact}`} aria-labelledby="portada-contacto">
