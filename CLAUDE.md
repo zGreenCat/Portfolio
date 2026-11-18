@@ -18,9 +18,26 @@ No hay linter propio. `npm run build` sí pasa ESLint.
 importa los `.ts` tal cual. Por eso solo alcanzan a módulos sin React, sin
 navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`,
 `characterSheets.ts`, `coverSheet.ts`, `smoothing.ts`, `teleport.ts`,
-`walkSpeed.ts`): la lógica
+`walkSpeed.ts` y los de `src/world/` que no son hooks): la lógica
 que merezca test se saca a un módulo así. El aviso de `MODULE_TYPELESS` al
 correrlos es inofensivo; no añadir `"type": "module"` al `package.json`.
+
+**Un módulo que los tests importan y que importa a otro lo hace con ruta
+relativa y extensión** (`'./constants.ts'`): Node no resuelve el alias `@/` ni
+adivina la extensión. Por eso `tsconfig.json` lleva
+`allowImportingTsExtensions`. Los hooks y componentes, que los tests no
+tocan, siguen con `@/`.
+
+**Para comprobar que un cambio que solo mueve código no cambió nada:
+`scripts/dev/smoke.mjs`.** Recorre el mundo por puntos fijos en tres pantallas
+—escritorio, portátil al 125% y móvil— y anota dónde queda cada capa, cada
+cajón y el personaje, sentado y en el podio incluidos:
+`node scripts/dev/smoke.mjs antes.json`, hacer el cambio, y
+`node scripts/dev/smoke.mjs despues.json antes.json`. Tarda unos cuatro
+minutos y necesita el servidor de desarrollo. Compara con 12 px de margen:
+el mundo se congela al sentarse en el frame en que llega, y entre dos pasadas
+iguales baila unos píxeles. No mide lo que corre por tiempo (reposo, clima)
+ni bajar del podio andando.
 
 **Para probar sin navegador a mano: `scripts/dev/browse.mjs`.** Abre el
 sitio en Chromium sin ventana, a la ventana y densidad que se le pida,
@@ -119,8 +136,28 @@ telón: hackatones, proyectos, cómo está hecho, sobre mí, stack y contacto.
 
 ## Arquitectura del mundo
 
-Todo el recorrido vive en `src/app/page.tsx` (client component grande) con los
-paneles y piezas en `src/components/`.
+`src/app/page.tsx` es el estado, el bucle y el montaje. Lo demás está
+repartido, y lo que se calcula no vive en React:
+
+| Dónde | Qué |
+|---|---|
+| `src/world/constants.ts` | Medidas: secciones, velocidades, umbrales, cada uno con su porqué |
+| `src/world/geometry.ts` | Territorio de cada bioma, en cuál estás, apertura de paneles |
+| `src/world/gait.ts` | La marcha y la zancada |
+| `src/world/gestures.ts` | Sentarse y subir al podio, como pasos puros |
+| `src/world/podium.ts` | Tablas y saltos del podio |
+| `src/world/air.ts` | Qué clima cae y con cuánta fuerza |
+| `src/world/useLoading.ts` | Pantalla de carga y descarga en segundo plano |
+| `src/world/useTeleport.ts` | Perla, `/tp` y vuelta a la portada |
+| `src/components/WorldLayers.tsx` | Capas del fondo, suelo y escenario |
+| `src/components/WorldChrome.tsx` | Barra, pantalla de carga y calentado de hojas |
+
+Fue un solo componente de 2.200 líneas. Al partirlo se movió el código tal
+cual, un paso por commit, comparando el mundo con `smoke.mjs` tras cada uno.
+**El estado de los gestos sigue en refs de la página**: `gestures.ts` recibe
+el estado, devuelve el nuevo y dice qué tiene que atender el bucle (clavar el
+mundo, mover el scroll). Las reglas que siguen hablan de «el bucle»: es el
+efecto grande de `page.tsx`.
 
 ### El scroll es una posición, no una línea de tiempo
 
@@ -176,6 +213,10 @@ recorte duro partía árboles en dos, y ahí se notaba: son los cerezos más
 grandes y en primer plano. Tres piezas, las tres en función del tamaño de la
 tesela, que cambia con la pantalla:
 
+- **Solo si hay un claro entre las dos secciones.** Con teselas de escritorio
+  (unos 3.100 px a 1080 de alto) no cae ninguno entre Skills y Contacto, y la
+  frontera se queda a medio camino, donde puede partir un árbol. Se vio al
+  escribir los tests de `makeBounds`; está sin arreglar.
 - `makeBounds` pone esa frontera en un claro del suelo del acantilado (donde
   se juntan dos de sus copias por el extremo sin árbol), el más cercano a la
   mitad entre las dos secciones.
@@ -695,16 +736,21 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 
 Nada de esto está empezado. Queda escrito para que no se pierda entre sesiones.
 
-### Partir `page.tsx`
+### Terminar de partir `page.tsx`
 
-Pasa de 2.200 líneas en un solo componente, con una treintena de estados, y
-casi nada de su lógica tiene tests porque vive dentro de React. Acordado
-dejarlo para después de subir la portada, y no mezclarlo con ella. El orden
-pensado, sin cambiar comportamiento y verificando tras cada paso: constantes
-y geometría del mundo a un módulo sin React; la marcha a una función pura
-con tests; sentarse y el podio, cada uno a su hook; el teletransporte (perla,
-`/tp`, vuelta a la portada) a otro; la carga y el reaterrizaje a otro; el JSX
-de las capas a su componente. Quedaría el bucle y el montaje.
+Bajó de 2.240 líneas a unas 1.230 (ver *Arquitectura del mundo*). Lo que
+queda dentro y por qué:
+
+- **El bucle** (unas 330 líneas). Usa una treintena de refs. Sacarlo a un
+  hook pide antes agruparlas en un solo objeto; pasadas una a una sería peor
+  que tenerlo aquí.
+- **`placeWorld` y la entrada caminando**, que escriben al DOM con esas
+  mismas refs.
+- **El reaterrizaje** (`resumeTarget`, `landingFor`, `armResume`):
+  `landingFor` se puede hacer puro y probar.
+- **Los marcadores de sección y los paneles** del árbol, unas 150 líneas.
+
+El orden sensato: agrupar las refs, sacar el bucle, y lo demás cae solo.
 
 ### Easter egg: blackjack en el templo
 

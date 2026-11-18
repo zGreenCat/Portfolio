@@ -78,6 +78,7 @@ src/components/Cover.tsx    la portada, encima del mundo
 src/components/             personaje, paneles, perla, cielo, clima
 src/content/portfolio.ts    proyectos, sobre mí, skills, contacto
 src/content/layers.ts       generado — alto de cada capa y escala
+src/world/                  medidas y reglas del mundo, sin React, con tests
 scripts/import-layers.py    recorta y codifica los renders
 scripts/render/             Blender por script: personaje, escenario y cofre
 public/layers/              capas de mundo por bioma (b1…b5)
