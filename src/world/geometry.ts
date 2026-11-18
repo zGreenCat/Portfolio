@@ -128,3 +128,25 @@ export function nearestSection(at: number): (typeof SECTIONS)[number] {
     Math.abs(section.at - at) < Math.abs(best.at - at) ? section : best,
   )
 }
+
+/**
+ * Dónde aterriza quien se teletransporta a una sección. No es exactamente la
+ * sección: caer justo encima deja la siguiente frontera de bioma dentro del
+ * cuadro.
+ *
+ * La frontera aparece en pantalla en `edge - worldX`, medido desde el borde
+ * IZQUIERDO. Para dejarla fuera hay que retroceder un viewport entero, no el
+ * hueco que queda a la derecha del personaje. El retroceso está acotado por
+ * `PANEL_OPEN_AT`: más atrás de eso, llegarías con el cajón entreabierto.
+ *
+ * `chestAt` es dónde queda el cofre de Experiencias, que no está en el `at`
+ * de su sección: va delante del escenario, y ahí se abre su cajón.
+ */
+export function landingAt(index: number, chestAt: number, viewport: number): number {
+  const section = SECTIONS[index]
+  if (section.id === 'proyectos') return chestAt
+  const edge = BOUNDS[index].to
+  if (edge === Infinity) return section.at
+  const clear = edge - viewport / WORLD_LENGTH
+  return Math.max(section.at - PANEL_OPEN_AT, Math.min(section.at, clear))
+}

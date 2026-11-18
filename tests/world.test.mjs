@@ -17,6 +17,7 @@ import {
   biomeAt,
   clearingPhase,
   fitBounds,
+  landingAt,
   makeBounds,
   panelOpenness,
   quantize,
@@ -153,4 +154,32 @@ test('bajando hacia delante: se gira en el 1.º y sale por el 3.º a la alfombra
     const { frame } = podiumPose(at, true)
     assert.ok(frame >= 0 && frame < FRAME_COUNT.climb)
   }
+})
+
+test('se aterriza antes de la sección, con su frontera fuera de cuadro', () => {
+  fitBounds(1920, 3097)
+  const skills = SECTIONS.findIndex((section) => section.id === 'skills')
+  const at = landingAt(skills, 0.4, 1920)
+  assert.ok(at <= SECTIONS[skills].at, 'nunca pasada la sección')
+  assert.ok(at >= SECTIONS[skills].at - PANEL_OPEN_AT, 'ni tan atrás que el cajón llegue entreabierto')
+  // La frontera siguiente queda a más de una pantalla, o el retroceso tocó su tope.
+  const edge = BOUNDS[skills].to
+  assert.ok(
+    (edge - at) * WORLD_LENGTH >= 1920 - 1e-6 ||
+      Math.abs(at - (SECTIONS[skills].at - PANEL_OPEN_AT)) < 1e-9,
+  )
+})
+
+test('a Experiencias se llega junto al cofre, y al final del mundo, a su sitio', () => {
+  fitBounds(1920, 3097)
+  const chest = SECTIONS.findIndex((section) => section.id === 'proyectos')
+  assert.equal(landingAt(chest, 0.4321, 1920), 0.4321)
+  const last = SECTIONS.length - 1
+  assert.equal(landingAt(last, 0.4, 1920), SECTIONS[last].at)
+})
+
+test('en una pantalla estrecha no hace falta retroceder: se cae en la sección', () => {
+  fitBounds(400, 1082)
+  const about = SECTIONS.findIndex((section) => section.id === 'sobre-mi')
+  assert.equal(landingAt(about, 0.4, 400), SECTIONS[about].at)
 })

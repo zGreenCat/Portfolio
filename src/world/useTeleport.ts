@@ -28,6 +28,7 @@ interface TeleportDeps {
   coverRef: RefObject<'on' | 'leaving' | 'off'>
   teleportingRef: RefObject<boolean>
   warmAtRef: RefObject<number | null>
+  setHidden: Dispatch<SetStateAction<boolean>>
   setActive: Dispatch<SetStateAction<string>>
   setCharacterState: Dispatch<SetStateAction<CharacterState>>
   setMenuOpen: Dispatch<SetStateAction<boolean>>
@@ -53,6 +54,7 @@ export function useTeleport({
   sitRef,
   podiumRef,
   coverRef,
+  setHidden,
   teleportingRef,
   warmAtRef,
   setActive,
@@ -62,7 +64,6 @@ export function useTeleport({
   openCover,
 }: TeleportDeps) {
   const [shot, setShot] = useState<PearlThrow | null>(null)
-  const [hidden, setHidden] = useState(false)
   /** El chat, mientras se escribe un `/tp` y hasta que se va su respuesta. */
   const [chat, setChat] = useState<ChatRequest | null>(null)
   /** Adónde lleva el `/tp` que se está escribiendo: una sección, o la portada. */
@@ -264,8 +265,6 @@ export function useTeleport({
   return {
     shot,
     chat,
-    hidden,
-    setHidden,
     navigate,
     tpToCover,
     sendChat,
