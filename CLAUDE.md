@@ -197,6 +197,12 @@ portada: los tiene justo debajo.
   una línea del metal de cada puesto y la foto encima. La descripción completa
   va en la página aunque se vea recortada: es lo que leen buscadores y
   lectores de pantalla. Antes eran dos rejillas de tarjetas iguales.
+- **En cada fila el botón es solo el título**, un `h3`, con su área estirada
+  a la fila entera (`.rowOpen::after`). Era un botón que envolvía la fila:
+  el título no podía ser encabezado —dentro de un botón no cuenta, ni para
+  un lector de pantalla ni para un buscador— y su nombre accesible era la
+  descripción completa. Los escalones del podio siguen siendo botones
+  enteros.
 - **Proyectos y hackatones van separados**, a petición de Vicente: un hackatón
   es un logro y un proyecto es un trabajo. Hubo una maqueta que los juntaba en
   una sola lista. Solo se tocan donde coinciden: la ficha de un proyecto que
@@ -230,6 +236,9 @@ portada: los tiene justo debajo.
   enlaces con ancla**: `:target` la escondería a ella misma. «Ver mi trabajo»
   desplaza por código. Los `id` de sus títulos van con prefijo `portada-`
   para no chocar con los marcadores de sección del mundo.
+- **El foco cambia de sitio con la vista**: al apartarla va al `main` del
+  mundo y al volver a ponerla, a su `h1` (los dos con `tabIndex={-1}`). Lo
+  que lo tenía se desmonta o queda inerte, y caía en el `body`.
 - **Se vuelve a ella con `/tp portada`, siempre** (`tpToCover`, botón
   «Portada» de la barra): se deshace en el mundo y el segundo estallido cae
   sobre su avatar de la portada, que entra barriendo al revés (`arrives`).
@@ -833,7 +842,11 @@ otro lo dejaba el doble de grande y lleno de condiciones.
 
 Lo delicado lo comparten en `useOverlay`: el foco entra, da la vuelta y
 vuelve a quien abrió; Escape; las teclas en captura; y el scroll retenido con
-oyentes. Un bloque con `data-overlay-scroll` sí desplaza por dentro si su
+oyentes. Si el foco se sale —se desmonta el botón que lo tenía—, la
+siguiente tecla lo devuelve dentro. Y las teclas de desplazar mueven lo que
+lleve `data-overlay-scroll`: estaban bloqueadas del todo, y con zoom la ficha
+no se podía leer con teclado. Mientras el visor de la portada está abierto,
+la portada va `inert`. Un bloque con `data-overlay-scroll` sí desplaza por dentro si su
 contenido no cabe: la ficha, en móvil.
 
 En `WorkViewer`:

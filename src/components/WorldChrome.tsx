@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 
 import styles from '@/app/recorrido.module.css'
 import { isMuted, play, setMuted } from '@/lib/sounds'
@@ -44,15 +44,32 @@ export function WorldNav({
   const [muted, setMutedState] = useState(false)
   useEffect(() => setMutedState(isMuted()), [])
 
+  // Al elegir una sección el menú plegado se cierra, y con él desaparece el
+  // botón que tenía el foco: se devuelve al que lo abre.
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const itemsRef = useRef<HTMLDivElement>(null)
+  const wasOpen = useRef(menuOpen)
+  useEffect(() => {
+    const closed = wasOpen.current && !menuOpen
+    wasOpen.current = menuOpen
+    if (!closed || !compact) return
+    const lost = document.activeElement
+    if (lost === document.body || (lost && itemsRef.current?.contains(lost))) toggleRef.current?.focus()
+  }, [menuOpen, compact])
+
   return (
     <nav
       className={`${styles.nav} ${shown ? styles.navIn : ''}`}
       aria-label="Secciones"
+      // Invisible —durante la carga y el saludo— no se puede pulsar ni
+      // tabular: iba con opacidad cero y nada más.
+      inert={!shown}
       // Va antes que la portada en el HTML: sin esto un buscador podía armar
       // el fragmento del resultado con los botones de la barra.
       data-nosnippet=""
     >
       <button
+        ref={toggleRef}
         type="button"
         className={`${styles.navButton} ${styles.navToggle}`}
         onClick={() => {
@@ -65,7 +82,7 @@ export function WorldNav({
         {menuOpen ? '✕ Cerrar' : '☰ Menú'}
       </button>
 
-      <div id="nav-items" className={styles.navItems} hidden={compact && !menuOpen}>
+      <div ref={itemsRef} id="nav-items" className={styles.navItems} hidden={compact && !menuOpen}>
         {SECTIONS.map((section) => (
           <button
             key={section.id}

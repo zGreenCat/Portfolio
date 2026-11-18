@@ -1,3 +1,7 @@
+.page:focus {
+  outline: none;
+}
+
 .page {
   /* Altura del suelo, tomada de b1_ref: el personaje colocado por Mine-imator
      en la propia escena, la única referencia que no depende de interpretar el
@@ -19,6 +23,10 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  /* El alto visible, que es con el que se mide el mundo (`innerHeight`). En
+     un móvil `100vh` es el alto con la barra del navegador recogida, y aquí
+     no se recoge nunca: el suelo podía quedar debajo de ella. */
+  height: 100svh;
   /* `clip` y no `hidden`: con `hidden` la caja sigue siendo desplazable, y
      al abrir un enlace con `#contacto` o `#proyectos` el navegador la corría
      de lado para "enseñar" el marcador de esa sección. El mundo entero quedaba
@@ -587,7 +595,9 @@
   color: #e8e5dc;
   text-shadow: 2px 2px 0 rgb(0 0 0 / 0.6);
   padding: clamp(8px, 1.4vw, 11px) clamp(11px, 1.8vw, 18px);
-  background: #6f6f6f;
+  /* Piedra más oscura que la del juego: sobre #6f6f6f esta letra, que mide
+     10–12 px, daba 4,0:1; así da 6,4. La sombra no cuenta para el contraste. */
+  background: #505050;
   border: 3px solid #1d1f23;
   box-shadow:
     inset 3px 3px 0 rgb(255 255 255 / 0.28),
@@ -599,7 +609,7 @@
 
 .navButton:hover,
 .navButton:focus-visible {
-  background: #8a8f7e;
+  background: #62665a;
   outline: none;
 }
 
@@ -614,7 +624,7 @@
 }
 
 .navActive {
-  background: #4f7a3a;
+  background: #3d6a2c;
 }
 
 @media (max-width: 760px) {
@@ -713,8 +723,11 @@
 
 /* Solo aparece al tabular: la primera parada del teclado no puede ser un botón
    de la barra cuando la alternativa accesible está cinco botones más allá. */
+/* `fixed`: en `absolute` iba al principio del documento, y enfocarlo con el
+   mundo avanzado obligaba al navegador a desplazar hasta arriba para
+   enseñarlo, o sea, a devolver el mundo a Inicio. */
 .skip {
-  position: absolute;
+  position: fixed;
   left: -9999px;
   top: 0;
   z-index: 40;

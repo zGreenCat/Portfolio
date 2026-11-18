@@ -44,7 +44,7 @@ interface EntryDeps {
  * o fuera— y el reaterrizaje, y decide en qué fase arranca el mundo.
  */
 export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidden }: EntryDeps) {
-  const { chestAtRef, mountKeyRef, resumeRef, snapRef, teleportingRef } = refs
+  const { chestAtRef, mountKeyRef, resumeRef, rootRef, snapRef, teleportingRef } = refs
   /** La portada. Arranca puesta también en el servidor: su contenido tiene
    *  que ir en el HTML servido. */
   const [cover, setCover] = useState<CoverState>('on')
@@ -164,6 +164,9 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
       () => {
         coverRef.current = 'off'
         setCover('off')
+        // El tirador que tenía el foco se desmonta con la portada: sin esto
+        // caía en el `body`, y quien va con teclado empezaba de cero.
+        requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }))
         // La primera vez saluda, como siempre: asoma, saluda y entra andando.
         setPhase((now) => (now === 'waiting' ? 'greeting' : now))
       },
@@ -182,6 +185,10 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
     coverRef.current = 'on'
     setCoverArrives(arrives)
     setCover('on')
+    // Y al revés: el botón que la pidió queda bajo ella, inerte.
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('[data-cover-title]')?.focus({ preventScroll: true })
+    })
   }, [])
 
   /** Ya aterrizó. Quien pidió la portada la recibe ahora, barriendo. */

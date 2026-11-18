@@ -274,11 +274,15 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
     <div
       ref={boxRef}
       className={`${styles.cover} ${leaving || !settled ? styles.leaving : ''}`}
-      inert={leaving}
+      // Con el visor abierto tampoco: va en un portal, fuera de aquí, y un
+      // lector de pantalla seguía leyendo la portada de debajo.
+      inert={leaving || openId !== null}
     >
       <header className={styles.hero}>
         <div className={styles.paper} />
-        <h1 ref={nameRef} className={`${styles.name} ${styles.ink}`}>
+        {/* Enfocable por código: quien vuelve a la portada desde el mundo
+            aterriza aquí, no en el `body`. */}
+        <h1 ref={nameRef} className={`${styles.name} ${styles.ink}`} tabIndex={-1} data-cover-title="">
           Vicente Araya
         </h1>
         <span className={`${styles.name} ${styles.snow}`} aria-hidden="true">
@@ -417,8 +421,12 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
               buscadores y lectores de pantalla. */}
           <ol className={styles.index}>
             {PROJECT_WORKS.map((work) => (
-              <li key={work.id}>
-                <button type="button" className={styles.row} onClick={() => setOpenId(work.id)}>
+              // La fila entera se pulsa, pero el botón es solo el título, con
+              // su área estirada a toda la fila (`.rowOpen::after`). Era un
+              // botón que lo envolvía todo: el título no podía ser un
+              // encabezado —dentro de un botón no cuenta—, y su nombre para un
+              // lector de pantalla era la descripción entera.
+              <li key={work.id} className={styles.row}>
                   <span className={styles.thumb} data-work-thumb={work.id}>
                     {work.shots[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -426,7 +434,16 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
                     ) : null}
                   </span>
                   <span className={styles.rowName}>
-                    <span className={styles.rowTitle}>{work.title}</span>
+                    <h3 className={styles.rowTitle}>
+                      <button
+                        type="button"
+                        className={styles.rowOpen}
+                        aria-haspopup="dialog"
+                        onClick={() => setOpenId(work.id)}
+                      >
+                        {work.title}
+                      </button>
+                    </h3>
                     <span className={styles.gist}>{work.text}</span>
                   </span>
                   <span className={styles.meta}>
@@ -449,7 +466,6 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
                   <svg className={styles.arrow} viewBox="0 0 20 20" aria-hidden="true">
                     <path d="M4 10h12M11 5l5 5-5 5" />
                   </svg>
-                </button>
               </li>
             ))}
           </ol>

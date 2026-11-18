@@ -12,7 +12,8 @@
   --gold: #b88a12;
   --iron: #7d848a;
   --copper: #a85a34;
-  --gold-ink: #8f6a05;
+  /* 4,9:1 sobre el papel. Con #8f6a05 «1.er lugar» se quedaba en 4,3. */
+  --gold-ink: #856204;
   --iron-ink: #5f666c;
   --copper-ink: #96492a;
   --pic: #dfe2d3;
@@ -326,6 +327,21 @@
   transition: opacity 0.35s ease;
 }
 
+/* El tema y el tirador van sobre el mundo, no sobre el papel: el anillo
+   oliva de los demás controles daba 1,4:1 contra el cielo. Doble, claro y
+   oscuro, se ve sobre lo que haya detrás. */
+.cover .theme:focus-visible,
+.cover .enter:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--paper),
+    0 0 0 6px var(--ink);
+}
+
+.cover h1:focus {
+  outline: none;
+}
+
 .theme svg {
   width: 20px;
   height: 20px;
@@ -532,15 +548,38 @@
   grid-template-columns: 128px minmax(0, 1.5fr) minmax(0, 1fr) 20px;
   gap: 6px 24px;
   align-items: center;
+  position: relative;
   width: 100%;
   padding: 14px 0;
-  border: 0;
   border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* El botón es el título; su área, la fila entera. */
+.rowOpen {
+  padding: 0;
+  border: 0;
   background: none;
   font: inherit;
   color: inherit;
-  text-align: left;
+  text-align: inherit;
   cursor: pointer;
+}
+
+.rowOpen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.cover .rowOpen:focus-visible {
+  outline: none;
+}
+
+.rowOpen:focus-visible::after {
+  outline: 2px solid var(--olive);
+  outline-offset: -2px;
 }
 
 .thumb {
@@ -568,7 +607,9 @@
   min-width: 0;
 }
 
-.rowTitle {
+/* Con `.cover` delante: en las filas es un `h3`, y si no manda la regla de
+   los encabezados de la portada, que es más pequeña. */
+.cover .rowTitle {
   font-family: var(--font-display);
   font-size: 1.32rem;
   font-weight: 600;
@@ -616,19 +657,16 @@
 }
 
 .row:hover .rowTitle,
-.row:focus-visible .rowTitle {
+.row:focus-within .rowTitle {
   translate: 8px 0;
 }
 
 .row:hover .arrow,
-.row:focus-visible .arrow {
+.row:focus-within .arrow {
   translate: 4px 0;
   color: var(--olive);
 }
 
-.cover .row:focus-visible {
-  outline-offset: -2px;
-}
 
 /* ---------- hackatones: un podio ---------- */
 

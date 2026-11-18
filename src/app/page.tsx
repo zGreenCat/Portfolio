@@ -311,6 +311,8 @@ export default function RecorridoPage() {
   return (
     <main
       ref={rootRef}
+      // Enfocable por código: ahí cae el foco al apartar la portada.
+      tabIndex={-1}
       data-lite={lite ? 'true' : undefined}
       className={styles.page}
       style={
@@ -407,6 +409,10 @@ export default function RecorridoPage() {
               type="button"
               className={styles.podiumHit}
               aria-label="Subir al podio"
+              // Se monta con su bioma, que abarca medio recorrido: sin esto
+              // era enfocable desde Sobre mí hasta Skills, fuera de cuadro, y
+              // pulsarlo desde allí echaba a andar hasta el podio.
+              inert={active !== 'proyectos'}
               style={{
                 left: stageAnchor + (STAGE.anchorX + STAGE.from) * stageScale,
                 width: (STAGE.to - STAGE.from) * stageScale,
