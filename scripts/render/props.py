@@ -1,11 +1,18 @@
 """Renders the things planted in the world that are not blocks, from the
-game's own textures: the chest, closed and open, and the sign.
+game's own textures: the chest, closed and open, the sign, and the lamp post.
 
-Usage: blender -b -P props.py -- <chest|sign> <texture.png> <out_dir>
+Usage: blender -b -P props.py -- <chest|sign|lamp> <texture.png> <out_dir>
 
 A chest is a 14x14x14 model with a lid on a hinge and a latch, unwrapped on a
 64x64 sheet (entity/chest/normal.png). A sign is a board on a stick, on a
-32x32 one (block/oak_sign.png). Neither goes through world.py, which only
+32x32 one (block/oak_sign.png). The lamp is a post of planks with an arm and a
+lantern hanging from it; it takes two textures, so it is fed one 32x32 sheet
+with the lantern's first frame at the left and the planks at the right:
+
+  magick -size 32x32 xc:none \( lantern.png -crop 16x16+0+0 +repage \) \
+    -geometry +0+0 -composite oak_planks.png -geometry +16+0 -composite lamp_sheet.png
+
+None of them goes through world.py, which only
 knows cubes with one texture per face. They do share its camera and its light,
 so they sit in the world like everything else there.
 
@@ -30,7 +37,8 @@ FRONT, END = 0.9, 0.72
 # Side of the texture sheet, where the thing stands in blocks from the left
 # edge of the canvas, and the box it can reach, in texture pixels. The chest
 # stands left of the stage, lid up included; the sign, in the middle.
-SHEET, AT_X, REACH = {"chest": (64, 5.2, (16, 22, 24)), "sign": (32, 14.4, (24, 16, 26))}[KIND]
+SHEET, AT_X, REACH = {"chest": (64, 5.2, (16, 22, 24)), "sign": (32, 14.4, (24, 16, 26)),
+                      "lamp": (32, 14.4, (20, 16, 42))}[KIND]
 OVERSAMPLE = 2
 # The lid swings a quarter turn back, as in the game.
 OPEN = -90.0
@@ -135,6 +143,37 @@ def sign(_):
     return link("sign", verts, polys, uvs)
 
 
+def lamp(_):
+    """A post of planks two and a half blocks tall, an arm, and the game's
+    hanging lantern under its end: chain, cap and body, each mapped to the
+    part of the lantern's sheet the game uses for it."""
+    verts, polys, uvs = [], [], []
+    # The planks are at the right of the sheet. The post takes a strip four
+    # pixels wide of them, one block of height at a time.
+    for z0, z1 in ((0, 16), (16, 32), (32, 40)):
+        rows = (0, z1 - z0)
+        side = (16, 20, *rows)
+        box(verts, polys, uvs, (6, 6, z0), (10, 10, z1), faces={
+            "front": side, "back": side, "left": (20, 24, *rows), "right": (20, 24, *rows),
+            "top": (16, 20, 0, 4), "bottom": (16, 20, 0, 4)})
+    arm = (20, 28, 4, 6)
+    box(verts, polys, uvs, (10, 7, 36), (18, 9, 38), faces={
+        "front": arm, "back": arm, "left": (20, 22, 4, 6), "right": (20, 22, 4, 6),
+        "top": (20, 28, 6, 8), "bottom": (20, 28, 6, 8)})
+    cap = (1, 5, 0, 2)
+    chain = (2, 3, 0, 2)
+    box(verts, polys, uvs, (13.5, 7.5, 33), (14.5, 8.5, 36), faces={
+        "front": chain, "back": chain, "left": chain, "right": chain, "top": chain, "bottom": chain})
+    box(verts, polys, uvs, (12, 6, 31), (16, 10, 33), faces={
+        "front": cap, "back": cap, "left": cap, "right": cap,
+        "top": (1, 5, 10, 14), "bottom": (1, 5, 10, 14)})
+    body = (0, 6, 2, 9)
+    box(verts, polys, uvs, (11, 5, 24), (17, 11, 31), faces={
+        "front": body, "back": body, "left": body, "right": body,
+        "top": (0, 6, 9, 15), "bottom": (0, 6, 9, 15)})
+    return link("lamp", verts, polys, uvs)
+
+
 def chest(angle):
     verts, polys, uvs = [], [], []
     hinge = (15, 9)
@@ -216,7 +255,8 @@ for engine in ("BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"):
 MATERIAL = material()
 camera(scene)
 shots = {}
-SHOTS = {"chest": (chest, (("chest_closed", 0.0), ("chest_open", OPEN))), "sign": (sign, (("sign", 0.0),))}
+SHOTS = {"chest": (chest, (("chest_closed", 0.0), ("chest_open", OPEN))), "sign": (sign, (("sign", 0.0),)),
+         "lamp": (lamp, (("lamp", 0.0),))}
 build, takes = SHOTS[KIND]
 for name, angle in takes:
     obj = build(angle)

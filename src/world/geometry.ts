@@ -10,6 +10,7 @@ import {
   PANEL_CLOSE_AT,
   PANEL_OPEN_AT,
   SECTIONS,
+  SIT_AT,
   WORLD_LENGTH,
 } from './constants.ts'
 
@@ -145,8 +146,43 @@ export function nearestSection(at: number): (typeof SECTIONS)[number] {
 export function landingAt(index: number, chestAt: number, viewport: number): number {
   const section = SECTIONS[index]
   if (section.id === 'proyectos') return chestAt
+  if (section.id === 'contacto') return contactLanding(viewport)
   const edge = BOUNDS[index].to
   if (edge === Infinity) return section.at
   const clear = edge - viewport / WORLD_LENGTH
   return Math.max(section.at - PANEL_OPEN_AT, Math.min(section.at, clear))
+}
+
+/** Lo que separa los carteles del personaje sentado, en altos de personaje. */
+const SIGNS_GAP = 0.55
+/** Al llegar a Contacto, el sitio donde se sienta queda a esta fracción del
+ *  ancho de la pantalla por delante. */
+const CONTACT_AHEAD = 0.5
+
+/**
+ * Dónde acaba la fila de carteles de Contacto, en píxeles del suelo: su borde
+ * derecho, pegado a donde se sienta el personaje. La fila crece hacia la
+ * izquierda desde ahí.
+ *
+ * Estuvieron en el `at` de la sección, bajo el árbol. Para sentarse él camina
+ * hasta el cantil y el mundo se desplaza con él: en cualquier pantalla, con
+ * el personaje sentado los carteles quedaban fuera, a la izquierda, y en el
+ * final del recorrido no había ningún enlace a la vista.
+ */
+export function signsAnchor(viewport: number, charHeight: number): number {
+  return SIT_AT * WORLD_LENGTH + viewport * (CLIFF_X / 100) - charHeight * SIGNS_GAP
+}
+
+/**
+ * Dónde se aterriza al ir a Contacto: con los carteles y el cantil por
+ * delante, a media pantalla. No en el `at` de la sección: en un móvil los
+ * carteles, que van junto al cantil, quedaban una pantalla más allá. Con
+ * tope por detrás, para no llegar con los carteles a medio aparecer.
+ */
+export function contactLanding(viewport: number): number {
+  const section = SECTIONS[SECTIONS.length - 1]
+  return Math.max(
+    section.at - PANEL_OPEN_AT * 0.85,
+    SIT_AT - (viewport * CONTACT_AHEAD) / WORLD_LENGTH,
+  )
 }

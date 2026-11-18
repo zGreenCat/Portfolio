@@ -12,6 +12,8 @@ export type CharacterState =
   | 'climb'
   | 'cheer'
   | 'type'
+  | 'typeSit'
+  | 'typePodium'
 
 export const CELL_WIDTH = 460
 export const CELL_HEIGHT = 600
@@ -44,6 +46,17 @@ export const SHEETS = {
   cheer: { src: '/sprites/cheer.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
   // Tecleando en el chat: el reposo con la cabeza baja y las manos delante.
   type: { src: '/sprites/type.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
+  // Lo mismo donde no puede ponerse de pie para escribir: sentado en el
+  // cantil —sobre el último frame de `sit`, así que el cuerpo no se mueve al
+  // empezar— y en el primer puesto, de cara y con la medalla.
+  typeSit: { src: '/sprites/type_sit.webp', frames: 16, charHeight: 408, footY: 540, centerX: 232 },
+  typePodium: {
+    src: '/sprites/type_podium.webp',
+    frames: 16,
+    charHeight: 408,
+    footY: 540,
+    centerX: 232,
+  },
 } as const
 
 export const STATES = Object.keys(SHEETS) as CharacterState[]
@@ -61,6 +74,8 @@ export const FRAME_COUNT: Record<CharacterState, number> = {
   climb: SHEETS.climb.frames,
   cheer: SHEETS.cheer.frames,
   type: SHEETS.type.frames,
+  typeSit: SHEETS.typeSit.frames,
+  typePodium: SHEETS.typePodium.frames,
 }
 
 /**
@@ -69,7 +84,11 @@ export const FRAME_COUNT: Record<CharacterState, number> = {
  * hubiera dejado.
  */
 export const loopsByItself = (state: CharacterState) =>
-  state === 'idle' || state === 'cheer' || state === 'type'
+  state === 'idle' ||
+  state === 'cheer' ||
+  state === 'type' ||
+  state === 'typeSit' ||
+  state === 'typePodium'
 
 /**
  * La celda entera (600 px) solo hace falta si en pantalla mide, en píxeles

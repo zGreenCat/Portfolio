@@ -41,6 +41,7 @@ import {
   scrollFromWorld,
   worldFromScroll,
 } from '@/world/constants'
+import { signsAnchor } from '@/world/geometry'
 import { CHEST_GAP, CHEST_PX, MEDAL, PODIUM_AT, PODIUM_X, STAGE } from '@/world/podium'
 
 import { useBackgroundFetch } from '@/world/useLoading'
@@ -393,7 +394,7 @@ export default function RecorridoPage() {
                 id={section.id}
                 className={styles.marker}
                 style={{
-                  left: section.id === 'proyectos' ? chestLeft : section.at * WORLD_LENGTH,
+                  left: section.id === 'proyectos' ? chestLeft : signsAnchor(viewW, charHeight),
                 }}
               >
                 {section.id === 'contacto' ? (

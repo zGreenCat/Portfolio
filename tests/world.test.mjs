@@ -7,6 +7,7 @@ import {
   PANEL_OPEN_AT,
   SCROLL_LENGTH,
   SECTIONS,
+  SIT_AT,
   WORLD_LENGTH,
   atOf,
   scrollFromWorld,
@@ -16,11 +17,13 @@ import {
   BOUNDS,
   biomeAt,
   clearingPhase,
+  contactLanding,
   fitBounds,
   landingAt,
   makeBounds,
   panelOpenness,
   quantize,
+  signsAnchor,
 } from '../src/world/geometry.ts'
 import { PODIUM_WAY_DOWN, PODIUM_WAY_UP, STAGE, hopSpot, podiumPose } from '../src/world/podium.ts'
 
@@ -174,8 +177,29 @@ test('a Experiencias se llega junto al cofre, y al final del mundo, a su sitio',
   fitBounds(1920, 3097)
   const chest = SECTIONS.findIndex((section) => section.id === 'proyectos')
   assert.equal(landingAt(chest, 0.4321, 1920), 0.4321)
+})
+
+test('a Contacto se llega con los carteles y el cantil por delante, sin sentarse aún', () => {
   const last = SECTIONS.length - 1
-  assert.equal(landingAt(last, 0.4, 1920), SECTIONS[last].at)
+  for (const viewport of [400, 982, 1280, 1920, 2560]) {
+    const at = landingAt(last, 0.4, viewport)
+    assert.equal(at, contactLanding(viewport))
+    assert.ok(at < SIT_AT, `${viewport}: no aterriza ya sentado`)
+    // Los carteles se abren del todo dentro de esta distancia de su sección.
+    assert.ok(Math.abs(at - SECTIONS[last].at) <= PANEL_OPEN_AT, `${viewport}: llegan abiertos`)
+    // Y su ancla, el borde derecho de la fila, cae dentro de la pantalla.
+    const edge = signsAnchor(viewport, viewport * 0.15) - at * WORLD_LENGTH
+    assert.ok(edge > 0 && edge < viewport, `${viewport}: el ancla cae en x=${edge}`)
+  }
+})
+
+test('sentado, los carteles quedan a su izquierda y dentro de la pantalla', () => {
+  for (const [viewport, charHeight] of [[400, 76], [982, 147], [1280, 162], [1920, 218]]) {
+    const edge = signsAnchor(viewport, charHeight) - SIT_AT * WORLD_LENGTH
+    const seat = viewport * 0.48
+    assert.ok(edge < seat, `${viewport}: a la izquierda de donde se sienta`)
+    assert.ok(edge > 0, `${viewport}: dentro de la pantalla`)
+  }
 })
 
 test('en una pantalla estrecha no hace falta retroceder: se cae en la sección', () => {

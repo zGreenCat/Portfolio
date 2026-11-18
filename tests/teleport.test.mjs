@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { CHAT_CHANCE, pickTeleport, slug, tpCommand, tpReply } from '../src/components/teleport.ts'
+import { CHAT_CHANCE, pickTeleport, slug, tpCommand, tpReply, typingSheet } from '../src/components/teleport.ts'
 
 test('sentado o en el podio, siempre el comando', () => {
   for (const roll of [0, 0.5, 0.999]) assert.equal(pickTeleport({ settled: true, roll }), 'chat')
@@ -28,4 +28,12 @@ test('el destino se escribe como en un comando: sin tildes, mayúsculas ni espac
 
 test('la respuesta nombra el sitio como se lee en la barra', () => {
   assert.equal(tpReply('Sobre mí'), 'Vicente fue teletransportado a Sobre mí')
+})
+
+test('teclea con la hoja de su postura, y a medio gesto se queda como está', () => {
+  assert.equal(typingSheet(0, 0), 'type')
+  assert.equal(typingSheet(1, 0), 'typeSit')
+  assert.equal(typingSheet(0, 1), 'typePodium')
+  assert.equal(typingSheet(0.4, 0), null, 'sentándose')
+  assert.equal(typingSheet(0, 0.7), null, 'subiendo')
 })

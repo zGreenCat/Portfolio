@@ -6,7 +6,13 @@ import { flushSync } from 'react-dom'
 import { CELL_WIDTH, FRAME_COUNT, SHEET_GEOMETRY, THROW_RELEASE, type CharacterState } from '@/components/Character'
 import type { ChatRequest } from '@/components/Chat'
 import type { PearlThrow } from '@/components/EnderPearl'
-import { pickTeleport, tpCommand, tpReply, type Teleport } from '@/components/teleport'
+import {
+  pickTeleport,
+  tpCommand,
+  tpReply,
+  typingSheet,
+  type Teleport,
+} from '@/components/teleport'
 import { play } from '@/lib/sounds'
 
 import { ENTRY_TO, PEARL_OF_CHARACTER, SECTIONS, THROW_MS, scrollFromWorld } from './constants'
@@ -172,11 +178,12 @@ export function useTeleport({
     teleportingRef.current = true
     warmAtRef.current = at
     chatTargetRef.current = { at, id: section.id }
-    // Sentado o en el podio se queda como está: no hay hoja de teclear para
-    // esas posturas, y levantarlo para escribir sería otro gesto.
-    if (!settled) {
-      stateRef.current = 'type'
-      setCharacterState('type')
+    // Teclea como esté: de pie, sentado o en el podio. Levantarlo para
+    // escribir sería otro gesto.
+    const sheet = typingSheet(sitRef.current, podiumRef.current)
+    if (sheet) {
+      stateRef.current = sheet
+      setCharacterState(sheet)
     }
     setChat({ key: performance.now(), command: tpCommand(section.label), reply: tpReply(section.label) })
   }, [])
@@ -192,9 +199,10 @@ export function useTeleport({
     setMenuOpen(false)
     teleportingRef.current = true
     chatTargetRef.current = 'cover'
-    if (sitRef.current === 0 && podiumRef.current === 0) {
-      stateRef.current = 'type'
-      setCharacterState('type')
+    const sheet = typingSheet(sitRef.current, podiumRef.current)
+    if (sheet) {
+      stateRef.current = sheet
+      setCharacterState(sheet)
     }
     setChat({ key: performance.now(), command: tpCommand('Portada'), reply: tpReply('Portada') })
   }, [])

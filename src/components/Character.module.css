@@ -20,8 +20,11 @@
   animation: sheetCycle 2s steps(16) infinite;
 }
 
-/* Teclear también: dieciséis frames, cuatro golpes por mano. */
-.character[data-state='type'] {
+/* Teclear también: dieciséis frames, cuatro golpes por mano. Las tres
+   posturas comparten el tecleo, así que van con la misma animación. */
+.character[data-state='type'],
+.character[data-state='typeSit'],
+.character[data-state='typePodium'] {
   animation: sheetCycle 1.5s steps(16) infinite;
 }
 

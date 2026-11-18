@@ -36,6 +36,8 @@ const labels: Record<CharacterState, string> = {
   climb: 'Personaje subiendo al podio',
   cheer: 'Personaje celebrando en el podio con su medalla',
   type: 'Personaje escribiendo en el chat',
+  typeSit: 'Personaje escribiendo en el chat, sentado en el borde del acantilado',
+  typePodium: 'Personaje escribiendo en el chat, en el primer puesto del podio',
 }
 
 /**

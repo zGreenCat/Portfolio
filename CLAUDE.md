@@ -435,10 +435,26 @@ proporción al personaje** —un bloque de ancho y algo más de uno de alto, con
 los casi dos que mide él—, así que su tamaño sale del alto de la ventana
 (`vh`), no del ancho: atados al ancho le llegaban por los hombros. En vertical
 el personaje es demasiado pequeño para seguirlo: se quedan en su mínimo
-legible y se les acorta el poste. Se oscurecen de noche menos que el terreno,
-para poder leerlos. En un móvil se reparten **dos a cada lado del
-personaje**, que aterriza al 41% del ancho: los cuatro seguidos llenaban la
-pantalla y él quedaba detrás de uno.
+legible y se les acorta el poste.
+
+**Van junto al cantil, a la izquierda de donde se sienta, con un farol.**
+Estuvieron en el `at` de la sección, bajo el árbol grande, y tenían dos
+problemas: de noche eran lo más oscuro del cuadro, y al sentarse —él camina
+hasta el borde y el mundo se desplaza— quedaban fuera de la pantalla en
+cualquier equipo. En el final del recorrido no había ningún enlace a la
+vista.
+
+- Su ancla es el borde derecho de la fila (`signsAnchor`, en `geometry.ts`),
+  pegado al sitio donde se sienta; la fila crece hacia la izquierda.
+- **A Contacto se aterriza a media pantalla del cantil** (`contactLanding`),
+  no en el `at` de la sección: en un móvil los carteles quedaban una pantalla
+  más allá de donde caía.
+- **El farol** es un poste de tablas con el farol del juego colgando
+  (`props.py lamp`), a la misma escala que los carteles. Su halo crece con la
+  noche y va por encima de ellos; por eso ya casi no se oscurecen.
+- **En un móvil van de dos en dos, apilados**, como se apilan en el juego:
+  a la izquierda del asiento solo caben dos. Los de arriba son solo la tabla.
+  El farol asoma por detrás.
 
 Los eventos están en `EVENTS` (`src/content/portfolio.ts`). Tres tienen puesto
 y suben; el que no, va aparte como logro del juego.
@@ -507,9 +523,14 @@ partículas donde está y se rehace en destino. Responde como el juego:
   en el acantilado o subido al podio, **siempre el comando**: la perla se
   lanza de pie y de perfil, y desde ahí el gesto no casaba con nada. De pie,
   la perla dos de cada tres veces. `?tp=1` y `?tp=0` fuerzan uno u otro.
-- **De pie teclea** (hoja `type`: el reposo con la cabeza baja y las manos
-  delante, hecha sobre `poses/idle.json`). Sentado o en el podio se queda
-  como está: no hay hoja de teclear para esas posturas.
+- **Teclea como esté** (`typingSheet`). De pie, la hoja `type`: el reposo con
+  la cabeza baja y las manos delante, hecha sobre `poses/idle.json`. Sentado
+  en el cantil, `typeSit`, sobre el último frame de `sit` para que el cuerpo
+  no se mueva al empezar. En el primer puesto, `typePodium`, de cara y con la
+  medalla. Las tres salen de `gen_type.py` y comparten el tecleo. Hubo un
+  tiempo en que sentado y en el podio se quedaba quieto, y se leía como que
+  el comando no hacía nada. A medio gesto —sentándose, subiendo— no cambia
+  de hoja: es un instante y no hay pose que case.
 - **No hay vuelo que tape el corte.** Lo tapa que entre los dos estallidos no
   hay personaje (`blink` en `EnderPearl`): desaparece a los 110 ms de enviar
   y reaparece a los 320.
@@ -717,7 +738,7 @@ significa nada. La noche no se pierde: pasa a un velo del tamaño de la pantalla
 
 ### Sprites por script (`scripts/render/`)
 
-Las once hojas del personaje salen de aquí, no de Mine-imator: un generador o
+Las trece hojas del personaje salen de aquí, no de Mine-imator: un generador o
 un archivo de `poses/` da las poses y `rig.py` las renderiza con Blender sin
 ventana. **`scripts/render/render_all.sh` las rehace todas** desde
 `public/skin.png` en minuto y medio, con sus `@half`.

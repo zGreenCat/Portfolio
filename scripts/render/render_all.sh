@@ -49,6 +49,10 @@ python3 $HERE/gen_sit.py "$WORK/sit.json" && strip sit "$WORK/sit.json"
 python3 $HERE/gen_podium.py climb "$WORK/climb.json" && strip climb "$WORK/climb.json"
 python3 $HERE/gen_podium.py cheer "$WORK/cheer.json" && strip cheer "$WORK/cheer.json"
 python3 $HERE/gen_type.py "$WORK/type.json" && strip type "$WORK/type.json"
+# Typing a /tp where he cannot stand up to do it: seated on the cliff and on
+# the podium.
+python3 $HERE/gen_type.py "$WORK/type_sit.json" sit && strip type_sit "$WORK/type_sit.json"
+python3 $HERE/gen_type.py "$WORK/type_podium.json" podium && strip type_podium "$WORK/type_podium.json"
 
 # The greeting: rendered 960x720 and cut to its bottom 570, which is the cell.
 python3 $HERE/gen_peek.py "$WORK/peek_wave.json" 1.5

@@ -474,7 +474,7 @@ se suman a los del canvas y se ve cargado.
 ## Herramientas
 
 - **Mine-imator** — rápido, alfa nativo. La opción por defecto.
-- **`scripts/render/render_all.sh`** — rehace las once hojas del personaje y
+- **`scripts/render/render_all.sh`** — rehace las trece hojas del personaje y
   sus `@half` desde `public/skin.png`. La última, `duo`, es el avatar de la
   portada: imprime la medida de su celda, que hay que copiar a `coverSheet.ts`
   si cambia. Es lo que hay que lanzar tras tocar la
@@ -527,10 +527,15 @@ se suman a los del canvas y se ve cargado.
 
   **`props.py` renderiza lo plantado que no es un bloque**, con la cámara y
   la luz de `world.py`: el cofre (`chest`, cerrado y abierto, modelo de
-  14×14×14 con tapa y pestillo sobre `entity/chest/normal.png`) y el cartel
-  (`sign`, tabla y poste sobre `block/oak_sign.png`). Escribe PNG recortados
-  al mismo ancho y al mismo pie; de ahí salen `public/textures/chest_*.webp`
-  y `sign.webp`, sin pérdida:
+  14×14×14 con tapa y pestillo sobre `entity/chest/normal.png`), el cartel
+  (`sign`, tabla y poste sobre `block/oak_sign.png`) y el farol (`lamp`, un
+  poste de tablas de dos bloques y medio con su brazo y el farol colgante del
+  juego). Escribe PNG recortados al mismo ancho y al mismo pie; de ahí salen
+  `public/textures/chest_*.webp`, `sign.webp` y `lamp.webp`, sin pérdida.
+
+  El farol lleva dos texturas y `props.py` solo admite una, así que se le da
+  una hoja de 32×32 con el primer frame de `lantern.png` a la izquierda y
+  `oak_planks.png` a la derecha; el comando está en la cabecera del script.
 
   ```bash
   blender -b -P scripts/render/props.py -- sign <texturas>/oak_sign.png /tmp/out

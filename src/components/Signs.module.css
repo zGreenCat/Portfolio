@@ -1,15 +1,43 @@
-/* Clavados en el suelo del mundo, que en vertical no llega abajo del todo. */
+/* Clavados en el suelo del mundo, que en vertical no llega abajo del todo.
+   El ancla es su borde derecho: la fila crece hacia la izquierda. */
 .row {
   position: absolute;
   bottom: var(--char-feet);
+  translate: -100% 0;
   display: flex;
   align-items: flex-end;
   gap: clamp(6px, 1.5vw, 24px);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  /* Están al final del recorrido, donde ya es de noche. Sin esto lucían como
-     a mediodía sobre un mundo a oscuras. Se oscurecen menos que el terreno:
-     hay que poder leerlos. */
-  filter: brightness(calc(1 - var(--night, 0) * 0.32));
+  /* Están al final del recorrido, donde ya es de noche. Se oscurecen muy
+     poco: tienen un farol al lado, y hay que poder leerlos. */
+  filter: brightness(calc(1 - var(--night, 0) * 0.1));
+}
+
+/* El poste con el farol: 201×668, a la misma escala que el cartel (399 de
+   ancho por sus 24 píxeles de textura; este mide 12). */
+.lamp {
+  position: relative;
+  flex: none;
+  width: calc(clamp(72px, 11vh, 132px) * 201 / 399);
+  aspect-ratio: 201 / 668;
+  background: url('/textures/lamp.webp') center / 100% 100% no-repeat;
+}
+
+/* Su luz: un halo cálido centrado en el farol, que crece con la noche. Va
+   por encima de los carteles y los aclara; no recibe el ratón. */
+.lamp::after {
+  content: '';
+  position: absolute;
+  left: 67%;
+  top: 31%;
+  width: 1100%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 196 104 / 0.5), rgb(255 170 70 / 0.16) 45%, rgb(255 160 60 / 0));
+  mix-blend-mode: screen;
+  opacity: calc(0.15 + var(--night, 0) * 0.85);
+  pointer-events: none;
 }
 
 /* El cartel entero es la imagen: 399×435, tabla arriba y poste abajo.
@@ -74,21 +102,37 @@
   }
 }
 
-/* En un móvil los cuatro llenan el ancho y el personaje, que aterriza al 41%,
-   quedaba detrás de uno con solo el gorro asomando. Se reparten dos a cada
-   lado suyo: el ancho sale de lo que hay a su izquierda, y el tercero deja el
-   hueco donde él se planta. */
+/* En un móvil, a la izquierda de donde se sienta solo caben dos carteles.
+   Van de dos en dos, unos sobre otros, como se apilan en el juego: los de
+   arriba son solo la tabla, y los de abajo llevan el poste. El farol asoma
+   por detrás, entre las dos columnas. */
 @media (orientation: portrait) and (max-width: 520px) {
   .row {
-    gap: 6px;
+    --sign: calc((41vw - 22px) / 2);
+    flex-wrap: wrap;
+    gap: 0 6px;
+    width: calc(var(--sign) * 2 + 6px);
   }
 
   .sign {
-    width: calc((41vw - 22px) / 2);
+    width: var(--sign);
   }
 
-  .sign:nth-child(3) {
-    margin-left: 32px;
+  .sign:nth-child(-n + 2) {
+    aspect-ratio: 399 / 201;
+  }
+
+  .sign:nth-child(-n + 2) .board {
+    height: 100%;
+  }
+
+  .lamp {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    z-index: -1;
+    width: calc(var(--sign) * 0.74);
+    translate: -30% 0;
   }
 }
 

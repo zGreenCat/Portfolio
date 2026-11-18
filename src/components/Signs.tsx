@@ -19,6 +19,10 @@ interface SignsProps {
  * La tabla y el poste son el cartel de roble del juego, renderizado con su
  * textura (`scripts/render/props.py`); aquí solo se le escribe encima. Fueron
  * dos cajas de color en CSS y no se leían como carteles.
+ *
+ * Van junto al cantil, a la izquierda de donde se sienta el personaje, y la
+ * fila crece hacia la izquierda desde su ancla (`signsAnchor`). Con ellos, un
+ * farol: allí ya es de noche y eran lo más oscuro del cuadro.
  */
 export default function Signs({ openness }: SignsProps) {
   if (openness <= 0.01) return null
@@ -46,6 +50,9 @@ export default function Signs({ openness }: SignsProps) {
           <span className={styles.board}>{item.label}</span>
         </a>
       ))}
+      {/* El farol: un poste de tablas con el farol del juego colgando, y la
+          luz que les da a los carteles. Va el último, del lado del cantil. */}
+      <span className={styles.lamp} aria-hidden="true" />
     </div>
   )
 }

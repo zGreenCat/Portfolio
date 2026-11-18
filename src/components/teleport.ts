@@ -43,3 +43,18 @@ export const tpCommand = (label: string) => `/tp ${slug(label)}`
 
 /** La respuesta del juego, tal como la da al teletransportar a alguien. */
 export const tpReply = (label: string) => `Vicente fue teletransportado a ${label}`
+
+/**
+ * Con qué hoja teclea el comando, según cómo esté. De pie, sentado en el
+ * cantil y arriba en el podio tienen cada uno la suya. A medio gesto
+ * —sentándose, subiendo— no hay hoja que case: devuelve `null` y se queda
+ * como está, que es un instante.
+ *
+ * `sit` y `podium` son cuánto lleva de cada gesto, de 0 a 1.
+ */
+export function typingSheet(sit: number, podium: number): 'type' | 'typeSit' | 'typePodium' | null {
+  if (sit === 0 && podium === 0) return 'type'
+  if (sit >= 1) return 'typeSit'
+  if (podium >= 1) return 'typePodium'
+  return null
+}
