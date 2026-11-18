@@ -15,6 +15,7 @@ export type CharacterState =
   | 'typeSit'
   | 'typePodium'
   | 'fly'
+  | 'fall'
 
 export const CELL_WIDTH = 460
 export const CELL_HEIGHT = 600
@@ -61,6 +62,10 @@ export const SHEETS = {
   // Despegar con élitros y un cohete: diez poses de despegue y diez de planeo.
   // Va dibujada en el sitio; lo que se desplaza lo pone la página.
   fly: { src: '/sprites/fly.webp', frames: 20, charHeight: 408, footY: 540, centerX: 232 },
+  // Caer del cielo, el golpe y quedarse mirando: la hoja de la 404, que el
+  // mundo usa para recibir a quien vuelve de allí. Sus tramos, en
+  // `lostSheet.ts`.
+  fall: { src: '/sprites/fall.webp', frames: 30, charHeight: 408, footY: 540, centerX: 232 },
 } as const
 
 export const STATES = Object.keys(SHEETS) as CharacterState[]
@@ -81,6 +86,7 @@ export const FRAME_COUNT: Record<CharacterState, number> = {
   typeSit: SHEETS.typeSit.frames,
   typePodium: SHEETS.typePodium.frames,
   fly: SHEETS.fly.frames,
+  fall: SHEETS.fall.frames,
 }
 
 /**

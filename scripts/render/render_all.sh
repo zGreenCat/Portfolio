@@ -55,6 +55,8 @@ python3 $HERE/gen_type.py "$WORK/type_sit.json" sit && strip type_sit "$WORK/typ
 python3 $HERE/gen_type.py "$WORK/type_podium.json" podium && strip type_podium "$WORK/type_podium.json"
 # Taking off with the elytra and a rocket, when a sign leads out of the site.
 python3 $HERE/gen_fly.py "$WORK/fly.json" && strip fly "$WORK/fly.json"
+# The 404 page: falling into the End, landing, and looking around.
+python3 $HERE/gen_fall.py "$WORK/fall.json" && strip fall "$WORK/fall.json"
 
 # The greeting: rendered 960x720 and cut to its bottom 570, which is the cell.
 python3 $HERE/gen_peek.py "$WORK/peek_wave.json" 1.5

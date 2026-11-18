@@ -1,0 +1,273 @@
+/* El End: el sitio que queda fuera del mapa. Siempre oscuro, con el tema
+   claro también: aquí no hay día. */
+.end {
+  --void: #0d0714;
+  --drop: 1.25s;
+  --wait: 0.35s;
+  position: fixed;
+  inset: 0;
+  overflow: clip;
+  background: var(--void);
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  color: #f1ecf7;
+}
+
+/* El cielo del End no es negro: es estática, un grano grueso y morado que
+   lo cubre todo. Una tesela de ruido propia —no es la textura del juego—,
+   repetida y con cada píxel a la vista, en dos capas de distinto tamaño que
+   se deslizan despacio y a distinto ritmo: quieta era un fondo de pantalla.
+   Encima, dos manchas de luz para que no sea parejo. */
+.end::before,
+.end::after {
+  content: '';
+  position: absolute;
+  inset: -256px;
+  background: url('/end/sky.webp') 0 0 / 256px 256px;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.end::before {
+  opacity: 0.9;
+  animation: drift 90s linear infinite;
+}
+
+.end::after {
+  background-size: 512px 512px;
+  mix-blend-mode: screen;
+  opacity: 0.4;
+  animation: drift 150s linear infinite reverse;
+  mask-image: radial-gradient(120vmax 90vmax at 65% 25%, #000, transparent 75%);
+}
+
+@keyframes drift {
+  to {
+    translate: 256px 256px;
+  }
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(90vmax 60vmax at 70% 20%, rgb(98 52 150 / 0.3), transparent 70%),
+    radial-gradient(70vmax 50vmax at 12% 78%, rgb(52 26 96 / 0.34), transparent 70%),
+    radial-gradient(140vmax 100vmax at 50% 50%, transparent 55%, rgb(5 2 9 / 0.75));
+  pointer-events: none;
+}
+
+/* Las islas de lejos: pequeñas, apagadas, y quietas. */
+.far {
+  position: absolute;
+  left: 50%;
+  top: 34svh;
+  width: max(92vw, 620px);
+  max-width: none;
+  height: auto;
+  translate: -50% 0;
+  /* Siluetas moradas, no piedra gris: con solo bajarles la opacidad la
+     piedra clara quedaba de un gris sucio sobre el vacío. */
+  opacity: 0.5;
+  filter: brightness(0.3) sepia(1) hue-rotate(215deg) saturate(1.6);
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+/* La isla se coloca por donde él pisa: ese punto va al centro del ancho,
+   quepa la isla o no. En un móvil se sale por la derecha, y está bien: lo
+   que importa es dónde cae. */
+.scene {
+  position: absolute;
+  left: 50%;
+  top: 62svh;
+  width: clamp(600px, 60vw, 1150px);
+  aspect-ratio: var(--island-ratio);
+  translate: calc(-1 * var(--land-x)) calc(-1 * var(--land-y));
+  animation: thud 0.42s ease-out calc(var(--wait) + var(--drop)) backwards;
+}
+
+.island {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* Tres animaciones sobre la misma hoja, una tras otra: la que va después en
+   la lista manda mientras corre. Cae agitando los brazos, el golpe lo dobla
+   y se levanta, y se queda mirando a los lados. La caída en sí es el
+   `translate`: la hoja va dibujada en el sitio. */
+.hero {
+  position: absolute;
+  left: var(--hero-left);
+  top: var(--hero-top);
+  width: var(--hero-width);
+  aspect-ratio: var(--hero-ratio);
+  background-image: var(--sheet-half);
+  background-size: calc(var(--frames) * 100%) 100%;
+  background-position-x: var(--look-from);
+  background-repeat: no-repeat;
+  animation:
+    drop var(--drop) cubic-bezier(0.5, 0, 0.9, 0.5) var(--wait) backwards,
+    flail 0.42s steps(6, jump-none) infinite,
+    hit 0.62s steps(8, jump-none) calc(var(--wait) + var(--drop)) forwards,
+    lost 3.2s steps(16, jump-none) calc(var(--wait) + var(--drop) + 0.62s) infinite;
+}
+
+/* Al elegir una salida se tira de la isla: un salto hacia el borde y al
+   vacío. Lo que dura está también en `LostWays.tsx`. Los porcentajes son de
+   su propia celda; la isla acaba a unas tres celdas y media a su izquierda. */
+.end[data-leaving] .hero {
+  animation:
+    leap 0.95s linear forwards,
+    flail 0.42s steps(6, jump-none) infinite;
+  scale: -1 1;
+}
+
+@keyframes leap {
+  from {
+    translate: 0 0;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  32% {
+    translate: -210% -62%;
+    animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.5);
+  }
+  to {
+    translate: -470% 130svh;
+  }
+}
+
+@media (min-width: 900px) and (min-resolution: 1.5dppx) {
+  .hero {
+    background-image: var(--sheet);
+  }
+}
+
+@keyframes drop {
+  from {
+    translate: 0 -110svh;
+  }
+}
+
+@keyframes flail {
+  from {
+    background-position-x: var(--fall-from);
+  }
+  to {
+    background-position-x: var(--fall-to);
+  }
+}
+
+@keyframes hit {
+  from {
+    background-position-x: var(--land-from);
+  }
+  to {
+    background-position-x: var(--land-to);
+  }
+}
+
+@keyframes lost {
+  from {
+    background-position-x: var(--look-from);
+  }
+  to {
+    background-position-x: var(--look-to);
+  }
+}
+
+/* La isla cede un poco con el golpe. */
+@keyframes thud {
+  from {
+    margin-top: 0;
+  }
+  30% {
+    margin-top: 9px;
+  }
+  to {
+    margin-top: 0;
+  }
+}
+
+.text {
+  position: absolute;
+  inset: clamp(28px, 7svh, 72px) 16px auto;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.code {
+  margin: 0;
+  font-size: clamp(5rem, 17vw, 12rem);
+  font-weight: 700;
+  line-height: 0.86;
+  letter-spacing: -0.03em;
+  text-shadow: 0 8px 40px rgb(13 7 20 / 0.9);
+}
+
+.lead {
+  margin: 0;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  color: #cbbfdc;
+  text-shadow: 0 2px 16px var(--void);
+}
+
+.ways {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.primary,
+.second {
+  padding: 11px 18px;
+  border-radius: 3px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.primary {
+  background: #f1ecf7;
+  color: #1a1024;
+}
+
+.primary:hover {
+  background: #fff;
+}
+
+.second {
+  background: rgb(13 7 20 / 0.55);
+  box-shadow: inset 0 0 0 1px rgb(241 236 247 / 0.42);
+  color: #f1ecf7;
+}
+
+.second:hover {
+  box-shadow: inset 0 0 0 1px #f1ecf7;
+}
+
+.primary:focus-visible,
+.second:focus-visible {
+  outline: 2px solid #c9a6ff;
+  outline-offset: 3px;
+}
+
+/* Sin movimiento: ya está ahí, de pie. */
+@media (prefers-reduced-motion: reduce) {
+  .scene,
+  .hero,
+  .end[data-leaving] .hero,
+  .end::before,
+  .end::after {
+    animation: none;
+  }
+}

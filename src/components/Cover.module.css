@@ -56,7 +56,8 @@
 /* Quien llega con el ancla de una sección del mundo (`/#contacto`) va directo
    al mundo. Esto la esconde antes de que React arranque; después la quita la
    página. */
-:global(html):has(:target) .cover {
+:global(html):has(:target) .cover,
+:global(html[data-arrival]) .cover {
   display: none;
 }
 

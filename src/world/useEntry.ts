@@ -20,9 +20,13 @@ import {
   type CoverState,
   type Phase,
 } from './constants'
+import { ARRIVAL_KEY, readArrival, type Arrival } from './fallIn'
 import { landingAt, sectionsNear } from './geometry'
 import { useWorldLoading } from './useLoading'
 import type { WorldRefs } from './useWorldRefs'
+
+/** Lo que se le deja ver de pie en el mundo antes de que entre la portada. */
+const COVER_AFTER_LANDING_MS = 450
 
 interface EntryDeps {
   refs: WorldRefs
@@ -46,6 +50,8 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
   const coverRef = useRef<CoverState>('on')
   /** Vuelve con un `/tp`: entra barriendo, al revés de como se aparta. */
   const [coverArrives, setCoverArrives] = useState(false)
+  /** Viene de la 404: llega cayendo, y con la portada después si la pidió. */
+  const arrivalRef = useRef<Arrival | null>(null)
 
   /**
    * Se calcula al terminar la carga, no antes: hay que leer el scroll ya
@@ -114,12 +120,34 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
       setPhase('waiting')
       return
     }
+    if (arrivalRef.current) {
+      setPhase('falling')
+      return
+    }
     setPhase(armResume() ? 'entering' : 'greeting')
   }, [armResume])
 
   // Con el ancla de una sección o con el scroll restaurado se llega al mundo,
   // sin portada. El CSS ya la esconde cuando hay ancla; esto la desmonta.
+  // Y volviendo de la 404, que lo deja anotado: se lee una vez y se borra,
+  // para que recargar después sea una visita normal. Cae en Inicio.
   useLayoutEffect(() => {
+    const root = document.documentElement
+    const arrival = readArrival(root.dataset.arrival)
+    delete root.dataset.arrival
+    try {
+      window.sessionStorage.removeItem(ARRIVAL_KEY)
+    } catch {
+      // Sin almacenamiento no hubo nada que anotar.
+    }
+    if (arrival) {
+      arrivalRef.current = arrival
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+      window.scrollTo({ top: 0, behavior: 'auto' })
+      coverRef.current = 'off'
+      setCover('off')
+      return
+    }
     if (window.location.hash.length > 1 || window.scrollY > 0) {
       coverRef.current = 'off'
       setCover('off')
@@ -156,6 +184,13 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
     setCover('on')
   }, [])
 
+  /** Ya aterrizó. Quien pidió la portada la recibe ahora, barriendo. */
+  const landed = useCallback(() => {
+    const arrival = arrivalRef.current
+    arrivalRef.current = null
+    if (arrival === 'portada') window.setTimeout(() => openCover(true), COVER_AFTER_LANDING_MS)
+  }, [openCover])
+
   const progress = useWorldLoading(begin)
 
   useEffect(() => {
@@ -171,5 +206,5 @@ export function useEntry({ refs, phase, setPhase, setMounted, setActive, setHidd
     }
   }, [phase, cover])
 
-  return { cover, coverRef, coverArrives, landingFor, enterWorld, openCover, progress }
+  return { cover, coverRef, coverArrives, landingFor, enterWorld, openCover, landed, progress }
 }

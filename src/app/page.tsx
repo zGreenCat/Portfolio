@@ -53,6 +53,7 @@ import { useViewport } from '@/world/useViewport'
 import { useSprite } from '@/world/useSprite'
 import { usePlacement } from '@/world/usePlacement'
 import { useEntry } from '@/world/useEntry'
+import { useFallIn } from '@/world/useFallIn'
 import { useFlight } from '@/world/useFlight'
 import type { Phase } from '@/world/constants'
 
@@ -145,7 +146,7 @@ export default function RecorridoPage() {
 
   /** El personaje sin pintar: en mitad de un teletransporte, o bajo la portada. */
   const [hidden, setHidden] = useState(false)
-  const { cover, coverRef, coverArrives, landingFor, enterWorld, openCover, progress } = useEntry({
+  const { cover, coverRef, coverArrives, landingFor, enterWorld, openCover, landed, progress } = useEntry({
     refs,
     phase,
     setPhase,
@@ -167,6 +168,9 @@ export default function RecorridoPage() {
     setCharacterState,
   })
 
+
+  // --- llegar cayendo, al volver de la 404 ---
+  useFallIn({ refs, phase, setPhase, writeFrame, setCharacterState, onLanded: landed })
 
   // --- irse volando a un enlace de fuera ---
   const { flyTo, sparksRef } = useFlight({ refs, writeFrame, setCharacterState })
@@ -347,7 +351,7 @@ export default function RecorridoPage() {
         {/* La noche del modo ligero. Va sobre el mundo y bajo el personaje. */}
         <div className={styles.nightVeil} aria-hidden="true" />
 
-        {phase === 'entering' || phase === 'ready' ? (
+        {phase === 'entering' || phase === 'falling' || phase === 'ready' ? (
           <div
             ref={actorRef}
             className={`${styles.actor} ${hidden ? styles.actorGone : ''}`}

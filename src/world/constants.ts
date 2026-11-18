@@ -72,6 +72,7 @@ export const STRIDE: Record<CharacterState, number> = {
   typeSit: 1,
   typePodium: 1,
   fly: 1,
+  fall: 1,
 }
 /** Umbrales de marcha, en bloques por segundo. `walk` cubre 1,25 bloques en
  *  25 frames: por encima de ~2 b/s su ciclo se dispara, así que ahí ya corre. */
@@ -323,6 +324,6 @@ export const SPLASHES = [
 ]
 
 /** `waiting`: cargado, con la portada todavía puesta y el mundo quieto detrás. */
-export type Phase = 'loading' | 'waiting' | 'greeting' | 'entering' | 'ready'
+export type Phase = 'loading' | 'waiting' | 'greeting' | 'entering' | 'falling' | 'ready'
 /** La portada: puesta, apartándose o fuera. */
 export type CoverState = 'on' | 'leaving' | 'off'

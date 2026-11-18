@@ -48,6 +48,11 @@ export const metadata: Metadata = {
 const THEME_BOOT =
   "try{if(localStorage.getItem('tema')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}"
 
+/** Quien vuelve de la 404 llega cayendo, sin portada. La clave y los valores
+ *  son los de `src/world/fallIn.ts`; la página lo lee al montar y lo borra. */
+const ARRIVAL_BOOT =
+  "try{var a=sessionStorage.getItem('llegada');if((a==='mundo'||a==='portada')&&location.pathname==='/')document.documentElement.dataset.arrival=a}catch(e){}"
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -60,6 +65,9 @@ export default function RootLayout({
             oscuro veía un instante el claro al recargar. La página lo
             vuelve a leer al montar; esto solo adelanta los colores. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        {/* Y la llegada desde la 404, para que la portada no asome un
+            instante antes de que la página la quite. */}
+        <script dangerouslySetInnerHTML={{ __html: ARRIVAL_BOOT }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
     </html>

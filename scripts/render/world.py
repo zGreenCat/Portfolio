@@ -27,6 +27,9 @@ boxes smaller than a block, in fractions of the cell they sit in (they may run
 past it). Stairs, carpets, posts, cloth: anything that is not a full cube. The
 texture is cut to the box, as the game does, so a half-height box shows half.
 
+"depth_shade": light lost per block of depth, 0 by default. For a scene of a
+single material, which flat light leaves without any depth.
+
 `surface_row` is where import-layers.py will find the surface: the first row
 that is ground from edge to edge. That is the far edge of the ground's top, not
 the near one, so the scene says how many blocks deep its ground is and the
@@ -119,10 +122,28 @@ def material(texture):
     dark.inputs[1].default_value = -(FRONT - END)
     nt.links.new(side.outputs[0], dark.inputs[0])
     nt.links.new(lit.outputs[0], dark.inputs[2])
+    light = dark.outputs[0]
+    # Optional: what is further back is darker. A scene of one material, lit
+    # flat, has no depth at all without it: a hill behind the edge is the
+    # same colour as the edge.
+    if DEPTH_SHADE > 0:
+        where = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(geo.outputs["Position"], where.inputs[0])
+        fade = nt.nodes.new("ShaderNodeMath")
+        fade.operation = "MULTIPLY_ADD"
+        fade.use_clamp = True
+        fade.inputs[1].default_value = -DEPTH_SHADE
+        fade.inputs[2].default_value = 1.0
+        nt.links.new(where.outputs["Y"], fade.inputs[0])
+        far = nt.nodes.new("ShaderNodeMath")
+        far.operation = "MULTIPLY"
+        nt.links.new(dark.outputs[0], far.inputs[0])
+        nt.links.new(fade.outputs[0], far.inputs[1])
+        light = far.outputs[0]
     shaded = nt.nodes.new("ShaderNodeVectorMath")
     shaded.operation = "SCALE"
     nt.links.new(colour, shaded.inputs[0])
-    nt.links.new(dark.outputs[0], shaded.inputs["Scale"])
+    nt.links.new(light, shaded.inputs["Scale"])
     emit = nt.nodes.new("ShaderNodeEmission")
     clear = nt.nodes.new("ShaderNodeBsdfTransparent")
     blend = nt.nodes.new("ShaderNodeMixShader")
@@ -137,6 +158,8 @@ def material(texture):
 
 
 FRONT, END = 0.9, 0.72
+# Light lost per block of depth; a scene asks for it with "depth_shade".
+DEPTH_SHADE = 0.0
 GRASS_LINEAR = tuple(c ** 2.2 for c in GRASS)
 
 
@@ -248,6 +271,7 @@ for engine in ("BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"):
         continue
 with open(SCENE) as fh:
     data = json.load(fh)
+DEPTH_SHADE = float(data.get("depth_shade", 0.0))
 faces = build(data)
 camera(scene, data.get("surface_row", 2791), data.get("ground_depth", 0))
 bpy.context.view_layer.update()

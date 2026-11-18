@@ -524,6 +524,11 @@ se suman a los del canvas y se ve cargado.
   texturas del juego y la cámara de arriba: 133 px por bloque y la superficie
   en la fila que se le pida. `gen_podium_world.py` escribe la escena del
   escenario. Las texturas no están en el repo.
+  `gen_end_world.py` escribe la isla del End de la 404 (`public/end/`), con
+  `depth_shade` para que la piedra, de una sola textura, tenga relieve. Sus
+  imágenes se recortan a lo pintado (`-trim`) y no pasan por
+  `import-layers.py`: son una pieza anclada, no una capa que se repite.
+  `gen_fall.py` escribe la hoja `fall`: caer, el golpe y quedarse mirando.
 
   **`props.py` renderiza lo plantado que no es un bloque**, con la cámara y
   la luz de `world.py`: el cofre (`chest`, cerrado y abierto, modelo de

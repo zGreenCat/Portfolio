@@ -98,6 +98,45 @@ Alias: `@/*` → `./src/*`.
 |------|--------|
 | `/` | La portada, y detrás el mundo recorrible. Client component. |
 | `/simple` | Redirige a `/` (`next.config.ts`). Fue la versión en texto. |
+| cualquier otra | La 404 (`not-found.tsx`): el personaje cae al End. |
+
+**La 404 es el End**, el sitio que queda fuera del mapa: una isla de piedra
+del End flotando en el vacío, el personaje cae desde arriba, el golpe lo
+dobla, se levanta y se queda mirando a los lados. Idea de Vicente; se
+barajaron redirigir a la portada —engaña a quien llega y a los buscadores— y
+la pantalla de muerte del juego. Responde 404 de verdad.
+
+- **Caída, golpe y espera son CSS**: tres animaciones encadenadas sobre la
+  misma hoja (`fall`, de `gen_fall.py`); la que va después en la lista manda
+  mientras corre. La caída en sí es un `translate`; la hoja va dibujada en
+  el sitio, como en el podio. Lo único con JavaScript es la salida.
+- **Se va como llegó: tirándose de la isla** (`LostWays.tsx`), y el mundo lo
+  recibe cayendo del cielo en Inicio, sin saludo ni entrada andando (fase
+  `falling`, `useFallIn.ts`, y `fallIn.ts` con tests). Con «Volver a la
+  portada», tras aterrizar entra la portada barriendo. Idea de Vicente. Entre
+  una página y otra hay una carga entera y se ve la pantalla de carga del
+  mundo: se dejó así a propósito, es la de cambiar de dimensión.
+- **Adónde va queda anotado en `sessionStorage`** (clave `llegada`), y lo lee
+  un script de `layout.tsx` antes de pintar, que pone `data-arrival` en la
+  raíz: con eso el CSS esconde la portada desde el primer frame, igual que
+  con un ancla. `useEntry` lo lee al montar y lo borra, así que recargar es
+  una visita normal. La clave está en el script y en `fallIn.ts`: lo vigila
+  `npm test`. Sin JavaScript o con tecla modificadora, son dos enlaces.
+- **El cielo es estática**, como en el juego: una tesela de ruido morado
+  (`public/end/sky.webp`, generada, no es la textura del juego) en dos capas
+  que se deslizan despacio. Negro liso no era el End.
+- **La isla es pequeña a propósito** (quince bloques, `gen_end_world.py`). La
+  primera medía el doble, llenaba el pie de la página de lado a lado y se
+  leía como suelo, no como isla.
+- **Se coloca por donde él pisa** (`ISLAND.land`, en `lostSheet.ts`): ese
+  punto va al centro del ancho, quepa la isla o no. Lo imprime `world.py`
+  (`ANCHOR land`) y hay que restarle el recorte; si se vuelve a renderizar la
+  isla, cambian `width`, `height` y `land`. `SEGMENTS` está en el generador y
+  en `lostSheet.ts` y tienen que coincidir: lo vigila `npm test`.
+- **`world.py` oscurece con la profundidad si la escena lo pide**
+  (`depth_shade`). La piedra del End es una sola textura clara: con la luz
+  plana de siempre la isla era un recorte sin relieve.
+- Siempre oscura, con el tema claro también.
 
 **El contenido va en el HTML servido gracias a la portada.** En el mundo los
 paneles se montan al acercarse caminando, así que por sí solo no sirve ningún
@@ -224,6 +263,7 @@ repartido, y lo que se calcula no vive en React:
 | `src/world/usePlacement.ts` | `placeWorld` y la entrada caminando |
 | `src/world/useSprite.ts` | `writeFrame`, el reposo y el lanzamiento |
 | `src/world/useEntry.ts` | Portada, carga y reaterrizaje: en qué fase arranca el mundo |
+| `src/world/useFallIn.ts` | Llegar cayendo, al volver de la 404 |
 | `src/world/useLoading.ts` | Pantalla de carga y descarga en segundo plano |
 | `src/world/useTeleport.ts` | Perla, `/tp` y vuelta a la portada |
 | `src/components/WorldLayers.tsx` | Capas del fondo, suelo y escenario |
