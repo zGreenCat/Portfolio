@@ -613,11 +613,22 @@ probarlos contra los archivos (`npm test`).
 
 ### Precarga en dos tiempos
 
-La pantalla de carga solo espera `b1` y los sprites. Al terminar, los bytes de
+La pantalla de carga solo espera `b1` y los sprites. **Al apartar la portada**
+—no antes—, los bytes de
 las demás capas se descargan en segundo plano (`fetch`, sin descomprimir), y el
 bucle **descomprime por adelantado** el bioma que viene con `PREWARM_RADIUS`,
 reteniendo la imagen para que montarla no cueste. Bajar todo en la carga son
 ~400 MB descomprimidos: iOS mata la pestaña.
+
+**Quien solo lee la portada no baja el mundo.** Lo bajaba entero: la descarga
+en segundo plano arrancaba al acabar la carga, con la portada puesta, y además
+el HTML servido pedía las capas de `b1` enteras (`half` partía de `false`)
+para cambiarlas por las medias al arrancar. Medido quedándose en la portada:
+de 7,2 MB a 2,0 en un 1080p y en un móvil; de 9,4 a 3,9 en un portátil de
+alta densidad, que sí acaba usando las enteras y ahora baja las dos de `b1`.
+`half` parte de `true` por eso: es lo que pinta el servidor, y lo que acaba
+viendo casi todo el mundo. Las capas van con `fetchPriority="low"` y la foto
+con `high`: sin eso React precargaba el mundo por delante de ella.
 
 ### Navegación por perla de ender
 

@@ -179,9 +179,19 @@ export default function Weather({ stateRef, worldDeltaRef }: WeatherProps) {
       }
     }
 
+    /** El lienzo ya está vacío y no hay nada que pintar. */
+    let idle = false
+
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
+      // Sin clima —Inicio, o la portada encima— no se toca el lienzo: limpiar
+      // uno a pantalla completa lo ensucia, y eran sesenta composiciones por
+      // segundo para no enseñar nada.
+      if (idle && particles.length === 0 && stateRef.current.kind === null) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
       ctx.clearRect(0, 0, width, height)
 
       const { kind: active, power: strength } = stateRef.current
@@ -250,6 +260,7 @@ export default function Weather({ stateRef, worldDeltaRef }: WeatherProps) {
         particles.forEach(draw)
       }
       ctx.globalAlpha = 1
+      idle = particles.length === 0 && stateRef.current.kind === null
 
       raf = requestAnimationFrame(tick)
     }

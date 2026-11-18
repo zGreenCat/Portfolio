@@ -225,7 +225,10 @@ export default function RecorridoPage() {
   })
 
 
-  useBackgroundFetch(phase !== 'loading', half, spriteHalf)
+  // El resto del mundo se descarga al ir a entrar, no con la portada puesta:
+  // quien solo la lee bajaba las capas y las hojas enteras, varios megas,
+  // para no verlas. Al apartarla quedan sus 700 ms y el saludo de margen.
+  useBackgroundFetch(phase !== 'loading' && cover !== 'on', half, spriteHalf)
 
   const {
     shot,

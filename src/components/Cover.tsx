@@ -319,6 +319,7 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
             src="/vicente.webp"
             width={877}
             height={1100}
+            fetchPriority="high"
             alt="Vicente Araya, de brazos cruzados, sonriendo"
           />
           <div

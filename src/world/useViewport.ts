@@ -29,7 +29,13 @@ export function useViewport() {
   const [pageHeight, setPageHeight] = useState(SCROLL_LENGTH)
   const [worldPx, setWorldPx] = useState(0)
   const [viewW, setViewW] = useState(1920)
-  const [half, setHalf] = useState(false)
+  /** De partida, las medias: es lo que acaba viendo casi todo el mundo —un
+   *  móvil, y también un 1080p a 1×—, y lo que vale aquí es lo que pinta el
+   *  servidor. Partía de las enteras, y el HTML servido pedía las cuatro capas
+   *  de 3840 px del primer bioma para cambiarlas por las medias al arrancar:
+   *  1,7 MB de más y 88 MB decodificados en un teléfono. Ahora solo las
+   *  pantallas grandes bajan las dos. */
+  const [half, setHalf] = useState(true)
   /** Lo mismo para las hojas del personaje, que se deciden aparte: dependen
    *  de lo que mide él en pantalla, no la tesela. */
   const [spriteHalf, setSpriteHalf] = useState(false)

@@ -155,6 +155,9 @@ export default function Strip({
           src={file}
           alt=""
           decoding="async"
+          // Con la portada puesta, el mundo de detrás no es lo que se mira:
+          // sin esto React las precarga por delante de la foto.
+          fetchPriority="low"
           className={styles.tile}
           style={{
             transform: index % 2 !== parity ? 'scaleX(-1)' : undefined,
