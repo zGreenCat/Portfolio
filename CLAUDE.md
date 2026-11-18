@@ -760,7 +760,7 @@ Hecho casi todo (ver *Arquitectura del mundo*). Quedan dos cosas menores:
 - **Los marcadores de sección y los paneles** siguen en el árbol de la
   página, unas 150 líneas de JSX. Saldrían a un componente; no se hizo
   porque la página ya se lee entera.
-- **`useWorldLoop` son 430 líneas en un solo efecto.** Lo que calcula ya está
+- **`useWorldLoop` son casi 500 líneas, con un solo efecto.** Lo que calcula ya está
   fuera y probado; lo que queda es el orden y las escrituras al DOM. Se
   podría trocear por tramos (encuadre, paneles, precalentado), con cuidado:
   comparten variables del cierre (`current`, `target`, `cycle`).
