@@ -71,7 +71,12 @@ servidores de nombres a Vercel.
   sitio; estuvo, y sigue en el historial de git anterior al 2026-11-18. El
   dominio lleva SPF y DMARC en `quarantine`, no `reject`: si algún día se
   envía desde el dominio, con `reject` rebotarían sus propios correos hasta
-  ajustarlo. El CV en PDF es un archivo aparte y hay que actualizarlo a mano.
+  ajustarlo.
+- **El CV en PDF sí lleva su correo personal y su teléfono**, a propósito:
+  Vicente considera `hola@` la dirección comercial del sitio y quiere la
+  personal en el CV. Es un archivo aparte (`public/cv-vicente-araya.pdf`),
+  exportado de un Word suyo en Drive; se reemplaza conservando el nombre,
+  que es el que ya circula en enlaces.
 
 ## Stack
 
@@ -942,6 +947,15 @@ Hecho casi todo (ver *Arquitectura del mundo*). Quedan dos cosas menores:
   comparten variables del cierre (`current`, `target`, `cycle`).
 - El reaterrizaje al recargar (`armResume`) no lo cubre `smoke.mjs`: su
   navegador no recarga la página.
+
+### Cambiar uno de los dos biomas de cerezos
+
+Skills (`b4`) y Contacto (`b5`) son los dos de cerezos. Los demás biomas
+cambian de tipo en cada frontera, y ahí un corte duro se lee como en el juego;
+entre estos dos, al ser el mismo paisaje, el corte se ve como un fallo. En
+escritorio además puede partir un árbol (ver *Capas y biomas*). Idea de
+Vicente: que uno de los dos sea otro bioma, en vez de seguir afinando la
+frontera. Pide renders nuevos de las capas de ese bioma.
 
 ### Easter egg: blackjack en el templo
 
