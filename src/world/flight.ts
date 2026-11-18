@@ -47,3 +47,16 @@ export function flightOffset(u: number, ahead: number, above: number): { x: numb
   const t = Math.min(1, Math.max(0, u))
   return { x: t * t * ahead, y: -(0.45 * t + 0.55 * t * t) * above }
 }
+
+/** Lo que tarda en ponerse de pie si estaba sentado en el cantil. */
+export const STAND_MS = 900
+
+/**
+ * La pose de la hoja de sentarse a los `ms` de empezar a levantarse: la hoja
+ * al revés, de la última —sentado— a la primera, que es de pie y es donde
+ * arranca el despegue.
+ */
+export function standFrame(ms: number, sitFrames: number): number {
+  const done = Math.min(1, Math.max(0, ms / STAND_MS))
+  return Math.round((1 - done) * (sitFrames - 1))
+}

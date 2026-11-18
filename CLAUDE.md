@@ -614,8 +614,11 @@ página navega al enlace.
   vigila `npm test`.
 - Quien vuelve con «atrás» puede recuperar la página con el personaje fuera
   de la pantalla: `pageshow` lo devuelve a su sitio.
-- **Sin resolver:** si está sentado en el cantil al pulsar, salta de la pose
-  sentada a la de pie sin transición.
+- **Sentado en el cantil, primero se pone de pie**: la hoja de sentarse al
+  revés (`standFrame`), y luego despega. Es el caso normal —los carteles
+  quedan junto al asiento— y sin esto saltaba de sentado a de pie de golpe.
+  Mientras se levanta, `stateRef` ya dice `fly` para que el bucle no le
+  escriba el frame, y el nodo sigue enseñando la hoja `sit`.
 
 ### En pantallas táctiles se anda con botones (`WalkPad.tsx`)
 

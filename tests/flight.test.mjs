@@ -8,10 +8,12 @@ import {
   FLIGHT_MS,
   GLIDE_FRAMES,
   PREP_MS,
+  STAND_MS,
   TAKE_OFF_FRAMES,
   flightFrame,
   flightOffset,
   flightProgress,
+  standFrame,
 } from '../src/world/flight.ts'
 
 test('la hoja de vuelo tiene las poses que el gesto cuenta', () => {
@@ -62,4 +64,17 @@ test('sube y avanza sin volver atrás, y sube antes de lo que avanza', () => {
   }
   const early = flightOffset(0.3, 900, 900)
   assert.ok(-early.y > early.x)
+})
+
+test('sentado, se levanta con la hoja de sentarse al revés y acaba de pie', () => {
+  const frames = SHEETS.sit.frames
+  assert.equal(standFrame(0, frames), frames - 1, 'empieza sentado')
+  assert.equal(standFrame(STAND_MS, frames), 0, 'acaba de pie, donde arranca el despegue')
+  assert.equal(standFrame(STAND_MS * 3, frames), 0)
+  let before = frames
+  for (let ms = 0; ms <= STAND_MS; ms += 15) {
+    const frame = standFrame(ms, frames)
+    assert.ok(frame <= before && frame >= 0, 'solo se levanta')
+    before = frame
+  }
 })

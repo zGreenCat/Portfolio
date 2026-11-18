@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 
-import { CELL_WIDTH, type CharacterState } from '@/components/Character'
+import { CELL_WIDTH, FRAME_COUNT, type CharacterState } from '@/components/Character'
 import { play } from '@/lib/sounds'
 
 import {
@@ -10,10 +10,12 @@ import {
   FIRE_FRAME,
   FLIGHT_MS,
   PREP_MS,
+  STAND_MS,
   TRAIL_AT,
   flightFrame,
   flightOffset,
   flightProgress,
+  standFrame,
 } from './flight'
 import type { WorldRefs } from './useWorldRefs'
 
@@ -51,7 +53,7 @@ const SPARK_GRAVITY = 260
  * es otra propiedad y no se pisa.
  */
 export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
-  const { spriteRef, stateRef, facingRef, teleportingRef } = refs
+  const { spriteRef, stateRef, facingRef, teleportingRef, sitRef } = refs
   const sparksRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const flyingRef = useRef(false)
@@ -100,8 +102,14 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
       facingRef.current = 1
       sprite.style.transform = ''
       sprite.dataset.driven = 'true'
+      // Para el bucle ya está volando, y deja de escribirle el frame. Lo que
+      // enseña el nodo lo decide el estado de React, más abajo.
       stateRef.current = 'fly'
-      setCharacterState('fly')
+      // Sentado en el cantil —que es donde quedan los carteles— primero se
+      // pone de pie: la hoja de sentarse, al revés. Saltar de sentado a la
+      // primera pose del despegue era un corte.
+      const seated = sitRef.current > 0 && sprite.dataset.state === 'sit'
+      if (!seated) setCharacterState('fly')
 
       const density = window.devicePixelRatio || 1
       canvas.width = window.innerWidth * density
@@ -117,10 +125,22 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
       let sparks: Spark[] = []
       let lit = false
       let owed = 0
-      const start = performance.now()
-      let last = start
+      const begun = performance.now()
+      const start = begun + (seated ? STAND_MS : 0)
+      let last = begun
+      let stood = !seated
 
       const step = (now: number) => {
+        if (!stood) {
+          if (now < start) {
+            writeFrame(standFrame(now - begun, FRAME_COUNT.sit))
+            rafRef.current = requestAnimationFrame(step)
+            return
+          }
+          stood = true
+          last = now
+          setCharacterState('fly')
+        }
         const ms = Math.max(0, now - start)
         const dt = Math.min(0.05, (now - last) / 1000)
         last = now
@@ -190,7 +210,7 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
       rafRef.current = requestAnimationFrame(step)
       return true
     },
-    [facingRef, setCharacterState, spriteRef, stateRef, teleportingRef, writeFrame],
+    [facingRef, setCharacterState, sitRef, spriteRef, stateRef, teleportingRef, writeFrame],
   )
 
   return { flyTo, sparksRef }
