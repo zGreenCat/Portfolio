@@ -2,16 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import {
-  ABOUT_PAGES,
-  CONTACT,
-  EVENTS,
-  MADE,
-  PROJECTS,
-  RECIPES,
-} from '@/content/portfolio'
+import { ABOUT_PAGES, CONTACT, MADE, PLACE_LABEL, PROJECTS, RECIPES } from '@/content/portfolio'
 
-import Lightbox, { type LightboxItem } from './Lightbox'
+import WorkViewer from './WorkViewer'
+import { OTHER_EVENTS, PODIUM_WORKS, PROJECT_WORKS, WORKS } from './works'
 import { DUO, framePosition, gazeFrame, wantsHalfDuo } from './coverSheet'
 import { easeFor, wheelPixels } from './smoothing'
 import styles from './Cover.module.css'
@@ -26,11 +20,9 @@ const BLINK_SPAN_MS = 2800
 /** Cuánto se acerca la hoja a donde la manda la rueda, por frame a 60 Hz. */
 const SCROLL_EASE = 0.16
 
-const PLACE_MARK: Record<1 | 2 | 3, string> = { 1: '1.º', 2: '2.º', 3: '3.º' }
 const PLACE_CLASS: Record<1 | 2 | 3, string> = { 1: styles.gold, 2: styles.iron, 3: styles.copper }
+const STEP_CLASS: Record<1 | 2 | 3, string> = { 1: styles.first, 2: styles.second, 3: styles.third }
 
-const podiums = EVENTS.filter((event) => event.place !== null)
-const others = EVENTS.filter((event) => event.place === null)
 const demos = PROJECTS.filter((project) => project.url).length
 
 const techOf = (grid: (string | null)[]) => grid.filter((cell): cell is string => cell !== null)
@@ -79,9 +71,17 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
       cancelAnimationFrame(second)
     }
   }, [settled])
-  const [viewer, setViewer] = useState<{ items: LightboxItem[]; index: number } | null>(null)
+  /** La ficha abierta en el visor, o ninguna. */
+  const [openId, setOpenId] = useState<string | null>(null)
   const viewerOpenRef = useRef(false)
-  viewerOpenRef.current = viewer !== null
+  viewerOpenRef.current = openId !== null
+  const closeViewer = useCallback(() => setOpenId(null), [])
+  /** El nodo de la lista del que sale, y al que vuelve, la imagen de una ficha. */
+  const thumbOf = useCallback(
+    (id: string) =>
+      boxRef.current?.querySelector<HTMLElement>(`[data-work-thumb="${CSS.escape(id)}"]`) ?? null,
+    [],
+  )
   /** Corta el suavizado de la rueda cuando otra cosa va a mover la hoja. */
   const stopScrollRef = useRef<(() => void) | null>(null)
 
@@ -216,13 +216,6 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
     sheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
-  // Un proyecto puede no tener captura: se queda en texto y no entra al visor.
-  const projectShots: (LightboxItem & { id: string })[] = PROJECTS.flatMap((project) =>
-    project.shot
-      ? [{ id: project.id, src: project.shot, alt: `Captura de ${project.name}`, caption: project.name }]
-      : [],
-  )
-
   return (
     <div
       ref={boxRef}
@@ -252,7 +245,7 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
         <dl className={styles.tally}>
           <div>
             <dt>podios</dt>
-            <dd>{podiums.length}</dd>
+            <dd>{PODIUM_WORKS.length}</dd>
           </div>
           <div>
             <dt>proyectos</dt>
@@ -289,106 +282,101 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
       </header>
 
       <div ref={sheetRef} className={styles.sheet}>
-        <section className={styles.section} aria-labelledby="portada-hackatones">
-          <div className={styles.head}>
-            <span className={styles.label}>Hackatones</span>
-            <h2 id="portada-hackatones">Tres podios en hackatones.</h2>
-          </div>
-          <ol className={styles.podium}>
-            {podiums.map((event) => {
-              const photos = event.photos ?? []
-              const cover = photos[0]
-              return (
-                <li key={event.id} className={styles.place}>
-                  {cover ? (
-                    <button
-                      type="button"
-                      className={styles.shot}
-                      onClick={() =>
-                        setViewer({
-                          items: photos.map((photo) => ({
-                            ...photo,
-                            caption: `${event.name} ${event.year}`,
-                          })),
-                          index: 0,
-                        })
-                      }
-                      aria-label={`Ver las ${photos.length} fotos de ${event.name} ${event.year}`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={cover.src} alt={cover.alt} loading="lazy" />
-                    </button>
-                  ) : null}
-                  <p className={`${styles.rank} ${event.place ? PLACE_CLASS[event.place] : ''}`}>
-                    <b>{event.place ? PLACE_MARK[event.place] : ''}</b>
-                    <span>
-                      {event.name} · {event.year}
-                    </span>
-                  </p>
-                  <p className={styles.muted}>{event.summary}</p>
-                </li>
-              )
-            })}
-          </ol>
-          {others.map((event) => (
-            <p key={event.id} className={styles.also}>
-              <b>También:</b> {event.name} {event.year}. {event.summary}
-            </p>
-          ))}
-        </section>
-
         <section className={styles.section} aria-labelledby="portada-proyectos">
-          <div className={styles.head}>
-            <span className={styles.label}>Proyectos</span>
-            <h2 id="portada-proyectos">Para clientes reales y productos propios.</h2>
-          </div>
-          <ol className={styles.projects}>
-            {PROJECTS.map((project) => (
-              <li key={project.id} className={styles.project}>
-                {project.shot ? (
-                  <button
-                    type="button"
-                    className={styles.shot}
-                    onClick={() =>
-                      setViewer({
-                        items: projectShots,
-                        index: projectShots.findIndex((shot) => shot.id === project.id),
-                      })
-                    }
-                    aria-label={`Ver en grande la captura de ${project.name}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={project.shot} alt={`Captura de ${project.name}`} loading="lazy" />
-                  </button>
-                ) : null}
-                <h3>{project.name}</h3>
-                <p className={styles.summary}>{project.summary}</p>
-                <p className={styles.muted}>{project.description}</p>
-                <ul className={styles.tags}>
-                  {project.tags.map((tag) => (
-                    <li key={tag}>{tag}</li>
-                  ))}
-                </ul>
-                {project.url ? (
-                  <a
-                    className={styles.go}
-                    href={project.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                  >
-                    Abrir proyecto ↗
-                  </a>
-                ) : (
-                  <span className={`${styles.go} ${styles.off}`}>Sin demo pública</span>
-                )}
+          <h2 id="portada-proyectos" className={styles.big}>
+            Proyectos
+          </h2>
+          {/* Cada fila es un botón entero: abre la ficha. La descripción va
+              completa en la página aunque se vea una línea; es lo que leen
+              buscadores y lectores de pantalla. */}
+          <ol className={styles.index}>
+            {PROJECT_WORKS.map((work) => (
+              <li key={work.id}>
+                <button type="button" className={styles.row} onClick={() => setOpenId(work.id)}>
+                  <span className={styles.thumb} data-work-thumb={work.id}>
+                    {work.shots[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={work.shots[0].src} alt="" loading="lazy" />
+                    ) : null}
+                  </span>
+                  <span className={styles.rowName}>
+                    <span className={styles.rowTitle}>{work.title}</span>
+                    <span className={styles.gist}>{work.text}</span>
+                  </span>
+                  <span className={styles.meta}>
+                    <b>{work.what}</b>
+                    <span>
+                      {work.place ? (
+                        <>
+                          <span className={`${styles.placeInline} ${PLACE_CLASS[work.place]}`}>
+                            {PLACE_LABEL[work.place]}
+                          </span>
+                          {work.event ? `, ${work.event}` : ''}
+                        </>
+                      ) : work.event ? (
+                        `Hecho en el ${work.event}`
+                      ) : (
+                        work.who
+                      )}
+                    </span>
+                  </span>
+                  <svg className={styles.arrow} viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M4 10h12M11 5l5 5-5 5" />
+                  </svg>
+                </button>
               </li>
             ))}
           </ol>
         </section>
 
+        <section className={styles.section} aria-labelledby="portada-hackatones">
+          <h2 id="portada-hackatones" className={styles.big}>
+            Tres podios en hackatones
+          </h2>
+          {/* Tres alturas, el primero al centro. El orden lo da `podiumOrder`. */}
+          <ol className={styles.podium}>
+            {PODIUM_WORKS.map((work) =>
+              work.place ? (
+                <li key={work.id} className={STEP_CLASS[work.place]}>
+                  <button
+                    type="button"
+                    className={`${styles.step} ${PLACE_CLASS[work.place]}`}
+                    onClick={() => setOpenId(work.id)}
+                  >
+                    <span className={styles.thumb} data-work-thumb={work.id}>
+                      {work.shots[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={work.shots[0].src} alt={work.shots[0].alt} loading="lazy" />
+                      ) : null}
+                    </span>
+                    <span className={styles.base}>
+                      <span className={styles.placeBig}>{PLACE_LABEL[work.place]}</span>
+                      <span className={styles.rowTitle}>{work.title}</span>
+                      <span className={styles.gistOpen}>{work.text}</span>
+                    </span>
+                  </button>
+                </li>
+              ) : null,
+            )}
+          </ol>
+          {OTHER_EVENTS.map((event) => (
+            <p key={event.label} className={styles.also}>
+              También participé en el {event.label}.{' '}
+              {event.projectWork ? (
+                <button
+                  type="button"
+                  className={styles.textLink}
+                  onClick={() => setOpenId(event.projectWork)}
+                >
+                  Ver el proyecto que salió de ahí
+                </button>
+              ) : null}
+            </p>
+          ))}
+        </section>
+
         <section className={`${styles.section} ${styles.made}`} aria-labelledby="portada-hecho">
           <div className={styles.head}>
-            <span className={styles.label}>Cómo está hecho</span>
             <h2 id="portada-hecho">El mundo también es ingeniería.</h2>
             <p className={styles.muted}>
               El mundo que hay detrás de esta página lo construí entero: el motor de capas, las
@@ -411,7 +399,6 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
 
         <section className={styles.section} aria-labelledby="portada-sobre-mi">
           <div className={styles.head}>
-            <span className={styles.label}>Sobre mí</span>
             <h2 id="portada-sobre-mi">Del problema a algo que funciona de verdad.</h2>
           </div>
           <div className={styles.prose}>
@@ -423,7 +410,6 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
 
         <section className={styles.section} aria-labelledby="portada-stack">
           <div className={styles.head}>
-            <span className={styles.label}>Con qué trabajo</span>
             <h2 id="portada-stack">Lo que he usado en esos proyectos.</h2>
           </div>
           <dl className={styles.stack}>
@@ -456,12 +442,13 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
         </section>
       </div>
 
-      {viewer ? (
-        <Lightbox
-          items={viewer.items}
-          index={viewer.index}
-          onIndex={(index) => setViewer({ items: viewer.items, index })}
-          onClose={() => setViewer(null)}
+      {openId ? (
+        <WorkViewer
+          works={WORKS}
+          id={openId}
+          onChange={setOpenId}
+          onClose={closeViewer}
+          thumbOf={thumbOf}
         />
       ) : null}
     </div>

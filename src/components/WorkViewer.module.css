@@ -1,0 +1,388 @@
+/* El visor de la portada. Va en un portal al `body`, así que no hereda los
+   colores de la portada: lleva los suyos. Por encima de todo, como el visor
+   del mundo. */
+.viewer {
+  --paper: #eef0e8;
+  --ink: #1a1d15;
+  --muted: #565c4b;
+  --line: #cdd1c0;
+  --fill: #746a1a;
+  --on-fill: #fbfaf0;
+  --pic: #dfe2d3;
+  --gold-ink: #8f6a05;
+  --iron-ink: #5f666c;
+  --copper-ink: #96492a;
+  --out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.viewer ::selection {
+  background: var(--fill);
+  color: var(--on-fill);
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  background: rgb(16 18 12 / 0.96);
+  cursor: zoom-out;
+  animation: veil-in 0.3s ease both;
+}
+
+.leaving .veil {
+  animation: veil-out 0.35s ease both;
+}
+
+@keyframes veil-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes veil-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.layout {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) min(400px, 36vw);
+  gap: clamp(16px, 3vw, 40px);
+  align-items: center;
+  padding: clamp(56px, 8vh, 80px) clamp(16px, 4vw, 56px) clamp(20px, 5vh, 48px);
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+/* Toma la forma exacta de la imagen (lo escribe el componente): la miniatura
+   que viaja llega a esta caja, y con otra proporción daría un salto. */
+.frame {
+  flex: none;
+}
+
+/* El fondo del marco solo está con la imagen asentada. Mientras viaja —al
+   abrir y al cerrar— quien se ve es la copia: con el marco pintado quedaba un
+   rectángulo grande y vacío mientras la captura se achicaba hacia su fila. */
+.settled .frame {
+  background: var(--pic);
+}
+
+.leaving .frame img {
+  transition: none;
+}
+
+.frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.settled .frame img {
+  opacity: 1;
+}
+
+.strip {
+  display: flex;
+  gap: 8px;
+  height: 52px;
+}
+
+.strip button {
+  width: 78px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  background: none;
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.strip button:hover,
+.strip button[aria-current='true'] {
+  opacity: 1;
+}
+
+.strip button[aria-current='true'] {
+  box-shadow: 0 0 0 2px var(--on-fill);
+}
+
+.strip img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* La ficha, la tira y los botones esperan a que la imagen llegue. */
+.strip,
+.card,
+.tools {
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    translate 0.5s var(--out);
+}
+
+.card {
+  translate: 28px 0;
+}
+
+.settled .strip,
+.settled .card,
+.settled .tools {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.settled .card {
+  transition-delay: 0.08s;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-self: center;
+  max-height: 100%;
+  padding: clamp(22px, 2.6vw, 34px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+}
+
+.card h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.card p {
+  margin: 0;
+}
+
+.lede {
+  color: var(--muted);
+}
+
+.place {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.gold {
+  color: var(--gold-ink);
+}
+
+.iron {
+  color: var(--iron-ink);
+}
+
+.copper {
+  color: var(--copper-ink);
+}
+
+.tech {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border: 1px solid var(--fill);
+  border-radius: 3px;
+  background: var(--fill);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--on-fill);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:hover {
+  filter: brightness(1.12);
+}
+
+.quiet {
+  border-color: var(--ink);
+  background: none;
+  color: var(--ink);
+}
+
+.button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.none {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.card :focus-visible {
+  outline: 2px solid var(--fill);
+  outline-offset: 3px;
+}
+
+.tools {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.count {
+  padding-right: 6px;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  color: #fbfaf0;
+}
+
+.tool {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: rgb(251 250 240 / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(251 250 240 / 0.24);
+  color: #fbfaf0;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.tool:hover {
+  background: rgb(251 250 240 / 0.2);
+}
+
+.tool:focus-visible,
+.strip button:focus-visible {
+  outline: 2px solid #fbfaf0;
+  outline-offset: 2px;
+}
+
+.tool svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* La imagen que viaja: una copia suelta, de la caja de la lista a la del
+   visor. Es global a propósito: se crea a mano y cuelga del `body`. */
+.ghost {
+  position: fixed;
+  z-index: 61;
+  margin: 0;
+  object-fit: cover;
+  pointer-events: none;
+  transition:
+    left 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    top 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Al pasar de una ficha a otra, un fundido corto y sin espera. */
+.swap .frame img,
+.swap .card {
+  opacity: 0;
+  transition-duration: 0.14s;
+  transition-delay: 0s;
+}
+
+/* En estrecho la ficha va debajo de la imagen y desplaza por dentro. */
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+    padding: 68px 0 0;
+  }
+
+  .figure {
+    height: auto;
+    padding: 0 12px;
+  }
+
+  .card {
+    align-self: stretch;
+    height: 100%;
+    max-height: none;
+    padding-bottom: max(26px, env(safe-area-inset-bottom, 0px));
+    translate: 0 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .veil,
+  .leaving .veil {
+    animation: none;
+  }
+
+  .strip,
+  .card,
+  .tools,
+  .frame img {
+    transition: none;
+  }
+
+  .card {
+    translate: 0 0;
+  }
+}

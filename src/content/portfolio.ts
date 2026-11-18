@@ -93,7 +93,9 @@ export interface EventEntry {
    * evento va solo con texto. El `alt` describe la escena y no nombra a nadie:
    * salen compañeros de equipo.
    */
-  photos?: { src: string; alt: string }[]
+  /** `ratio` (ancho entre alto) solo en las que no son 3:2, que es lo que
+   *  da la cámara: el visor de la portada necesita la forma antes de cargar. */
+  photos?: { src: string; alt: string; ratio?: number }[]
 }
 
 /** La miniatura de la portada de un evento, para el cajón del podio. */
@@ -145,6 +147,7 @@ export const EVENTS: EventEntry[] = [
       {
         src: '/events/hackadisc-2024-3.webp',
         alt: 'El dashboard construido para Pignus, con sus estadísticas por empresa',
+        ratio: 1280 / 684,
       },
     ],
   },

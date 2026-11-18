@@ -149,8 +149,7 @@
   gap: 14px;
 }
 
-.role,
-.label {
+.role {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.78rem;
   letter-spacing: 0.14em;
@@ -346,139 +345,236 @@
   color: var(--muted);
 }
 
-/* Lo que se pulsa para ver en grande. */
-.shot {
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 1px solid var(--line);
-  background: none;
-  cursor: zoom-in;
+/* Los títulos de las dos secciones de trabajo van más grandes: son lo que
+   el visitante vino a ver. Sin rótulo encima; el título se basta. */
+.cover .big {
+  max-width: 16ch;
+  font-size: clamp(2.1rem, 6vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
 }
 
-.shot img {
+.gold {
+  --metal: #8f6a05;
+}
+
+.iron {
+  --metal: #5f666c;
+}
+
+.copper {
+  --metal: #96492a;
+}
+
+/* ---------- proyectos: un índice ---------- */
+
+/* Una fila por proyecto, y la fila entera abre su ficha. En la lista va una
+   línea de cada uno; el resto está en el visor. */
+.cover .index {
+  border-top: 2px solid var(--ink);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1.5fr) minmax(0, 1fr) 20px;
+  gap: 6px 24px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.thumb {
+  display: block;
+  overflow: hidden;
+  background: #dfe2d3;
+}
+
+.thumb img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-/* Hackatones: el puesto es el dato, así que va grande y en su metal. */
-.podium {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
+.row .thumb {
+  aspect-ratio: 16 / 9;
 }
 
-.place {
+.rowName,
+.meta {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px;
   min-width: 0;
 }
 
-.place .shot {
-  aspect-ratio: 4 / 3;
-}
-
-.rank {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.rank b {
+.rowTitle {
   font-family: var(--font-display);
-  font-size: 2.6rem;
-  font-weight: 700;
-  line-height: 1;
+  font-size: 1.32rem;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  transition: translate 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.rank span {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.76rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.gist {
+  overflow: hidden;
+  font-size: 0.95rem;
   color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.gold b {
-  color: var(--gold);
-}
-
-.iron b {
-  color: var(--iron);
-}
-
-.copper b {
-  color: var(--copper);
-}
-
-.also {
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+.meta {
   font-size: 0.95rem;
   color: var(--muted);
 }
 
-.also b {
-  font-weight: 600;
+.meta b {
+  font-weight: 500;
   color: var(--ink);
 }
 
-.projects {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 32px 24px;
+.placeInline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--metal);
 }
 
-.project {
+.arrow {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--muted);
+  transition:
+    translate 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.2s ease;
+}
+
+.row:hover .rowTitle,
+.row:focus-visible .rowTitle {
+  translate: 8px 0;
+}
+
+.row:hover .arrow,
+.row:focus-visible .arrow {
+  translate: 4px 0;
+  color: var(--olive);
+}
+
+.cover .row:focus-visible {
+  outline-offset: -2px;
+}
+
+/* ---------- hackatones: un podio ---------- */
+
+/* Tres alturas, el primero al centro. Plano: una línea del metal de cada
+   puesto y la foto encima, sin bloques de color ni sombras. */
+.cover .podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 20px;
+  align-items: end;
+}
+
+.step {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.project .shot {
-  aspect-ratio: 16 / 9;
-  margin-bottom: 6px;
+.step .thumb {
+  aspect-ratio: 3 / 2;
 }
 
-.summary {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--olive);
+.step .thumb img {
+  transition: scale 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.cover .tags {
+.step:hover .thumb img,
+.step:focus-visible .thumb img {
+  scale: 1.03;
+}
+
+.base {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 12px;
+  border-top: 3px solid var(--metal);
 }
 
-.tags li {
-  padding: 3px 9px;
-  border: 1px solid var(--line);
-  border-radius: 99px;
-  font-size: 0.78rem;
+.placeBig {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--metal);
+}
+
+.first .placeBig {
+  font-size: 3rem;
+}
+
+.gistOpen {
+  font-size: 0.95rem;
   color: var(--muted);
 }
 
-.go {
-  margin-top: auto;
-  padding-top: 6px;
-  font-size: 0.92rem;
+.first .base {
+  min-height: 176px;
+}
+
+.second .base {
+  min-height: 136px;
+}
+
+.third .base {
+  min-height: 104px;
+}
+
+.also {
+  max-width: 70ch;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.textLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   font-weight: 600;
   color: var(--olive);
-  text-underline-offset: 3px;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
 }
 
-.off {
-  font-weight: 400;
-  color: var(--muted);
+.textLink:hover {
+  text-decoration-thickness: 2px;
 }
 
 .facts {
@@ -585,6 +681,35 @@
     display: none;
   }
 
+  .row {
+    grid-template-columns: 92px minmax(0, 1fr) 18px;
+  }
+
+  .row .meta {
+    grid-column: 2;
+  }
+
+  .row .arrow {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  .cover .podium {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  /* Apilados, el primero va primero. */
+  .first {
+    order: -1;
+  }
+
+  .first .base,
+  .second .base,
+  .third .base {
+    min-height: 0;
+  }
+
   /* El ancho manda: los dos juntos miden 1,3 veces su alto. */
   .pair {
     height: min(50vh, 72vw);
@@ -614,5 +739,11 @@
 
   .avatar {
     animation: none;
+  }
+
+  .rowTitle,
+  .arrow,
+  .step .thumb img {
+    transition: none;
   }
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import SpriteGrid from './SpriteGrid'
+import { useOverlay } from './useOverlay'
 import { WATCH } from './watchSheet'
 import styles from './Lightbox.module.css'
 
@@ -33,9 +34,6 @@ interface LightboxProps {
   onClose: () => void
 }
 
-/** Teclas con las que el navegador desplaza el documento. */
-const SCROLL_KEYS = new Set([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown'])
-
 /**
  * Una imagen en grande, sobre el mundo oscurecido.
  *
@@ -43,10 +41,8 @@ const SCROLL_KEYS = new Set([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp'
  * `position: fixed` dentro de un ancestro transformado se coloca respecto a
  * él, no a la ventana.
  *
- * El scroll se retiene con oyentes, no con `overflow: hidden` en el `body`:
- * quitar la barra ensancha la página y el mundo entero da un salto de lado.
- * Y hay que retenerlo: el scroll es la posición del mundo, y moverlo con el
- * visor abierto cerraría el cajón de debajo sin que se viera.
+ * El foco, las teclas y el scroll retenido los lleva `useOverlay`, que
+ * comparte con el visor de la portada.
  */
 export default function Lightbox({ items, index, onIndex, onClose }: LightboxProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -67,48 +63,18 @@ export default function Lightbox({ items, index, onIndex, onClose }: LightboxPro
     return () => window.removeEventListener('resize', fit)
   }, [])
 
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    closeRef.current?.focus()
-    return () => opener?.focus()
-  }, [])
-
-  useEffect(() => {
-    const step = (delta: number) => onIndex((index + delta + total) % total)
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-      else if (event.key === 'ArrowRight' && total > 1) step(1)
-      else if (event.key === 'ArrowLeft' && total > 1) step(-1)
-      else if (event.key === 'Tab') {
-        // El foco da la vuelta dentro del visor: detrás está todo tapado.
-        const stops = boxRef.current?.querySelectorAll<HTMLElement>('button')
-        if (!stops || stops.length === 0) return
-        const first = stops[0]
-        const last = stops[stops.length - 1]
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault()
-          last.focus()
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault()
-          first.focus()
-        }
-        return
-      } else if (!SCROLL_KEYS.has(event.key)) return
-      event.preventDefault()
-      event.stopPropagation()
-    }
-    const hold = (event: Event) => event.preventDefault()
-    // En captura: las flechas también mueven el carrusel de debajo, y aquí
-    // tienen que mover solo el visor.
-    window.addEventListener('keydown', onKey, true)
-    window.addEventListener('wheel', hold, { passive: false })
-    window.addEventListener('touchmove', hold, { passive: false })
-    return () => {
-      window.removeEventListener('keydown', onKey, true)
-      window.removeEventListener('wheel', hold)
-      window.removeEventListener('touchmove', hold)
-    }
-  }, [index, total, onIndex, onClose])
+  useOverlay({
+    boxRef,
+    focusRef: closeRef,
+    onClose,
+    onKey: (key) => {
+      if (total <= 1) return false
+      if (key === 'ArrowRight') onIndex((index + 1) % total)
+      else if (key === 'ArrowLeft') onIndex((index - 1 + total) % total)
+      else return false
+      return true
+    },
+  })
 
   const item = items[index]
   if (!item) return null

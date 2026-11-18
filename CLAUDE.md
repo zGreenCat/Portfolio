@@ -17,7 +17,7 @@ No hay linter propio. `npm run build` sí pasa ESLint.
 **Los tests van en `tests/*.test.mjs` y no llevan framework**: `node --test`
 importa los `.ts` tal cual. Por eso solo alcanzan a módulos sin React, sin
 navegador y sin el alias `@/` (`watchSheet.ts`, `spriteFrames.ts`,
-`characterSheets.ts`, `coverSheet.ts`, `smoothing.ts`, `teleport.ts`,
+`characterSheets.ts`, `coverSheet.ts`, `works.ts`, `smoothing.ts`, `teleport.ts`,
 `walkSpeed.ts` y los de `src/world/` que no son hooks): la lógica
 que merezca test se saca a un módulo así. El aviso de `MODULE_TYPELESS` al
 correrlos es inofensivo; no añadir `"type": "module"` al `package.json`.
@@ -84,8 +84,22 @@ todo bloques. La pantalla va **partida en diagonal**: papel a la izquierda,
 mundo a la derecha, su nombre cruzando la costura —negro sobre el papel,
 blanco sobre el mundo— y él y su avatar justo en el corte, en la misma
 postura y con el mismo polerón. Al bajar, el contenido sube encima como un
-telón: hackatones, proyectos, cómo está hecho, sobre mí, stack y contacto.
+telón: proyectos, hackatones, cómo está hecho, sobre mí, stack y contacto.
 
+- **El trabajo va en dos niveles: una línea en la lista y el resto en una
+  ficha.** Los proyectos son un índice —una fila por proyecto, y la fila
+  entera abre su ficha— y los hackatones un podio plano, 2.º, 1.º, 3.º, con
+  una línea del metal de cada puesto y la foto encima. La descripción completa
+  va en la página aunque se vea recortada: es lo que leen buscadores y
+  lectores de pantalla. Antes eran dos rejillas de tarjetas iguales.
+- **Proyectos y hackatones van separados**, a petición de Vicente: un hackatón
+  es un logro y un proyecto es un trabajo. Hubo una maqueta que los juntaba en
+  una sola lista. Solo se tocan donde coinciden: la ficha de un proyecto que
+  salió de un podio enlaza con él, y al revés (`jump` en `works.ts`). Dentro
+  del visor las flechas no salen de su sección.
+- **Sin rótulo pequeño encima de los títulos.** Los llevó toda la portada
+  («HACKATONES», «PROYECTOS»…) y se quitaron: es un tic de plantilla, y el
+  título se basta.
 - **Es una hoja encima del mundo real, no otra página.** Lo que se ve por la
   diagonal es el mundo de verdad, montado detrás y quieto. Con dos rutas, el
   mundo de la portada sería una copia que habría que calzar al píxel con el
@@ -571,7 +585,36 @@ Los proyectos son un carrusel con una captura por diapositiva
 (`public/projects/<id>.webp`, carga diferida). Si falta una, la diapositiva se
 queda en texto sin dejar un hueco roto.
 
-### El visor (`Lightbox.tsx`)
+### Dos visores, una base (`useOverlay.ts`)
+
+El del mundo (`Lightbox`) agranda una imagen y nada más: el cajón ya cuenta
+el proyecto. El de la portada (`WorkViewer`) lleva además la ficha —título,
+para quién, descripción completa, tecnologías, demo— porque ahí la lista solo
+enseña una línea. No es uno con opciones: el de la portada tiene ficha, tira
+de imágenes, la imagen que viaja y navegación por sección, y meterlo en el
+otro lo dejaba el doble de grande y lleno de condiciones.
+
+Lo delicado lo comparten en `useOverlay`: el foco entra, da la vuelta y
+vuelve a quien abrió; Escape; las teclas en captura; y el scroll retenido con
+oyentes. Un bloque con `data-overlay-scroll` sí desplaza por dentro si su
+contenido no cabe: la ficha, en móvil.
+
+En `WorkViewer`:
+
+- **Lo único que se mueve es la imagen.** Sale de su sitio en la lista, crece
+  hasta el marco y al cerrar vuelve a la fila de lo que se estaba mirando.
+  Es una copia suelta que cuelga del `body`, medida a mano de caja a caja; no
+  usa las transiciones de vista del navegador, que no están en todos.
+- **El marco toma la forma exacta de la imagen** (`fitFrame`): la copia llega
+  a esa caja, y con otra proporción daría un salto al asentarse. Por eso cada
+  imagen declara su `ratio`: capturas 16:9, fotos 3:2, y la que no lo es lo
+  dice en `portfolio.ts`. Lo comprueba `npm test` contra los archivos.
+- **Qué fichas hay, su orden y adónde llevan las flechas** está en
+  `works.ts`, sin React y con tests.
+- **Sin personaje acompañante.** En el mundo vienes caminando con él; aquí el
+  tono es otro.
+
+### El visor del mundo (`Lightbox.tsx`)
 
 La captura se pulsa y se abre en grande. Comparte índice con el carrusel: lo
 que se pasa en el visor es el proyecto en el que estás al cerrarlo. Está hecho
