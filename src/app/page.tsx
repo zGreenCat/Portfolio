@@ -53,6 +53,7 @@ import { useViewport } from '@/world/useViewport'
 import { useSprite } from '@/world/useSprite'
 import { usePlacement } from '@/world/usePlacement'
 import { useEntry } from '@/world/useEntry'
+import { useFlight } from '@/world/useFlight'
 import type { Phase } from '@/world/constants'
 
 import styles from './recorrido.module.css'
@@ -166,6 +167,9 @@ export default function RecorridoPage() {
     setCharacterState,
   })
 
+
+  // --- irse volando a un enlace de fuera ---
+  const { flyTo, sparksRef } = useFlight({ refs, writeFrame, setCharacterState })
 
   // --- tema: claro u oscuro. En el mundo es la hora del día. ---
   const [theme, setTheme] = useState<Theme>('light')
@@ -427,7 +431,7 @@ export default function RecorridoPage() {
                 }}
               >
                 {section.id === 'contacto' ? (
-                  <Signs openness={signsOpen} />
+                  <Signs openness={signsOpen} onFly={flyTo} />
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -482,6 +486,7 @@ export default function RecorridoPage() {
       </div>
 
       <EnderPearl shot={shot} />
+      <canvas ref={sparksRef} className={styles.sparks} aria-hidden="true" />
       <Chat request={chat} onSend={sendChat} onDone={closeChat} />
       {phase === 'ready' && cover === 'off' ? (
         <WalkPad

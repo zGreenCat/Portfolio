@@ -14,6 +14,7 @@ export type CharacterState =
   | 'type'
   | 'typeSit'
   | 'typePodium'
+  | 'fly'
 
 export const CELL_WIDTH = 460
 export const CELL_HEIGHT = 600
@@ -57,6 +58,9 @@ export const SHEETS = {
     footY: 540,
     centerX: 232,
   },
+  // Despegar con élitros y un cohete: diez poses de despegue y diez de planeo.
+  // Va dibujada en el sitio; lo que se desplaza lo pone la página.
+  fly: { src: '/sprites/fly.webp', frames: 20, charHeight: 408, footY: 540, centerX: 232 },
 } as const
 
 export const STATES = Object.keys(SHEETS) as CharacterState[]
@@ -76,6 +80,7 @@ export const FRAME_COUNT: Record<CharacterState, number> = {
   type: SHEETS.type.frames,
   typeSit: SHEETS.typeSit.frames,
   typePodium: SHEETS.typePodium.frames,
+  fly: SHEETS.fly.frames,
 }
 
 /**

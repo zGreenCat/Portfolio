@@ -474,7 +474,7 @@ se suman a los del canvas y se ve cargado.
 ## Herramientas
 
 - **Mine-imator** — rápido, alfa nativo. La opción por defecto.
-- **`scripts/render/render_all.sh`** — rehace las trece hojas del personaje y
+- **`scripts/render/render_all.sh`** — rehace las catorce hojas del personaje y
   sus `@half` desde `public/skin.png`. La última, `duo`, es el avatar de la
   portada: imprime la medida de su celda, que hay que copiar a `coverSheet.ts`
   si cambia. Es lo que hay que lanzar tras tocar la

@@ -254,6 +254,91 @@ def medal(parent):
     return obj
 
 
+# Elytra: the wings of the game, on his back. Drawn here, not taken from the
+# game's texture: a lilac-grey membrane, a darker leading edge and two veins.
+# A pose shows them with "elytra": 1 and opens them with "wings" (0 folded
+# against the back .. 1 spread to glide).
+WING_COLOURS = {"membrane": (0.60, 0.58, 0.72), "edge": (0.34, 0.32, 0.47), "vein": (0.47, 0.45, 0.60)}
+# The outline of one wing hanging from its hinge: across (away from the
+# spine) and down, in skin units. The game's is 10 wide and 20 long.
+WING_OUTLINE = [(-1.0, 0.0), (9.0, 0.0), (10.0, -6.0), (8.5, -13.0), (5.0, -20.0), (1.5, -20.0), (-1.0, -11.0)]
+WING_EDGE = [(-1.0, 0.0), (9.0, 0.0), (10.0, -6.0), (8.5, -13.0), (5.0, -20.0), (4.0, -19.4), (7.2, -12.6), (8.6, -6.0), (7.9, -1.6), (-1.0, -1.6)]
+WING_VEINS = [[(2.4, -1.6), (3.2, -1.6), (2.6, -18.6), (1.9, -18.4)], [(5.2, -1.6), (6.0, -1.6), (5.0, -15.4), (4.3, -15.0)]]
+# How high on the back they hinge, above the waist.
+WING_HINGE = 1.0
+WING_FOLDED = (14.0, 12.0)   # out to the side and back, in degrees
+WING_SPREAD = (46.0, 0.0)
+
+
+def wing(name, parent, side):
+    """One wing on a hinge at the shoulder blade. `side` is -1 for his right."""
+    # At the middle of the back, not at the shoulders: up there they stood
+    # behind his head.
+    hinge = pivot(name, parent, (-2.35, side * 0.6, WING_HINGE))
+    verts, polys, slots = [], [], []
+    names = list(WING_COLOURS)
+
+    def slab(colour, outline, x0, x1):
+        base = len(verts)
+        count = len(outline)
+        verts.extend([(x0, side * y, z) for y, z in outline] + [(x1, side * y, z) for y, z in outline])
+        for ring in (range(count), range(count, 2 * count)):
+            polys.append(tuple(base + k for k in ring))
+            slots.append(names.index(colour))
+        for k in range(count):
+            polys.append((base + k, base + (k + 1) % count, base + count + (k + 1) % count, base + count + k))
+            slots.append(names.index(colour))
+
+    slab("membrane", WING_OUTLINE, -0.5, 0.0)
+    slab("edge", WING_EDGE, -0.62, 0.12)
+    for vein in WING_VEINS:
+        slab("vein", vein, -0.58, 0.08)
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], polys)
+    for colour in names:
+        mesh.materials.append(flat("wing_" + colour, WING_COLOURS[colour]))
+    for poly, slot in zip(mesh.polygons, slots):
+        poly.material_index = slot
+    obj = bpy.data.objects.new(name + "_mesh", mesh)
+    obj.parent = hinge
+    bpy.context.collection.objects.link(obj)
+    return hinge, obj
+
+
+# The firework rocket he lights to take off, in his right hand: a red paper
+# tube with a pale cap and a stick. A pose shows it with "rocket": 1.
+ROCKET_COLOURS = {"paper": (0.80, 0.17, 0.15), "band": (0.93, 0.90, 0.80), "stick": (0.55, 0.40, 0.24)}
+# Each piece: colour, then the box it fills in the forearm's own space, where
+# the hand is at z = -6 and forward is +x.
+ROCKET_PIECES = [
+    ("stick", (1.05, -0.3, -13.4), (1.65, 0.3, -8.6)),
+    ("paper", (0.3, -1.05, -9.6), (2.4, 1.05, -3.8)),
+    ("band", (0.2, -1.15, -7.6), (2.5, 1.15, -6.4)),
+    ("band", (0.6, -0.75, -3.8), (2.1, 0.75, -2.7)),
+]
+
+
+def rocket(parent):
+    verts, polys, slots = [], [], []
+    names = list(ROCKET_COLOURS)
+    for colour, (x0, y0, z0), (x1, y1, z1) in ROCKET_PIECES:
+        base = len(verts)
+        verts.extend([(x, y, z) for z in (z0, z1) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))])
+        for face in ((0, 1, 2, 3), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)):
+            polys.append(tuple(base + k for k in face))
+            slots.append(names.index(colour))
+    mesh = bpy.data.meshes.new("rocket")
+    mesh.from_pydata(verts, [], polys)
+    for colour in names:
+        mesh.materials.append(flat("rocket_" + colour, ROCKET_COLOURS[colour]))
+    for poly, slot in zip(mesh.polygons, slots):
+        poly.material_index = slot
+    obj = bpy.data.objects.new("rocket", mesh)
+    obj.parent = parent
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
 def pin(name, parent, mat, loc, uv, radius=2.0, half=2.0, sides=20):
     """A cylinder along Y at a limb joint, coloured from the middle of the limb."""
     ring = [(radius * math.cos(2 * math.pi * k / sides), radius * math.sin(2 * math.pi * k / sides)) for k in range(sides)]
@@ -348,6 +433,9 @@ def build(mat):
     }
     build.medal = medal(j["chest"])
     build.medal.hide_render = True
+    build.rocket = rocket(j["arm_r_bend"])
+    build.rocket.hide_render = True
+    build.wings = [(*wing("wing_r", j["chest"], -1), -1), (*wing("wing_l", j["chest"], 1), 1)]
     return j
 
 
@@ -377,6 +465,15 @@ def apply(j, pose):
     apply_mitres(j)
     bend_trunks(j)
     build.medal.hide_render = not pose.get("medal")
+    build.rocket.hide_render = not pose.get("rocket")
+    spread = max(0.0, min(1.0, pose.get("wings", 0)))
+    out = WING_FOLDED[0] + (WING_SPREAD[0] - WING_FOLDED[0]) * spread
+    back = WING_FOLDED[1] + (WING_SPREAD[1] - WING_FOLDED[1]) * spread
+    for hinge, mesh, side in build.wings:
+        # Hanging down from the hinge: a turn about X swings the tip out to
+        # its side, one about Y carries it back.
+        hinge.rotation_euler = (math.radians(side * out), math.radians(back), 0)
+        mesh.hide_render = not pose.get("elytra")
     gaze = max(-1.0, min(1.0, pose.get("eyes", 0)))
     blink = max(0.0, min(1.0, pose.get("blink", 0)))
     eyes = build.eyes

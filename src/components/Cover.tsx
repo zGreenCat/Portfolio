@@ -118,6 +118,10 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
         return
       }
       const frame = hero.getBoundingClientRect()
+      // Quien llega con el ancla de una sección tiene la portada escondida
+      // por CSS (`:has(:target)`) hasta que la página la desmonta: en ese
+      // instante no mide nada, y no hay tirador que colocar.
+      if (frame.width === 0 || frame.height === 0) return
       // La caja del nombre ocupa toda la pantalla: lo que mide es su texto.
       const range = document.createRange()
       range.selectNodeContents(name)

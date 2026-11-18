@@ -581,6 +581,42 @@ partículas donde está y se rehace en destino. Responde como el juego:
   la barra se escribe sola; el día que escriba el visitante se cambia por un
   campo de texto y lo demás vale.
 
+### Irse volando a un enlace de fuera (`useFlight.ts`)
+
+Al pulsar el cartel de GitHub o el de LinkedIn el personaje saca un cohete,
+abre los élitros, lo enciende y sale volando; al salir de la pantalla, la
+página navega al enlace.
+
+- **Navega en esta pestaña y al terminar el gesto**, no al pulsar. Lo eligió
+  Vicente entre tres salidas. En una pestaña nueva el navegador se lleva al
+  visitante en el acto y el vuelo no se ve; abrirla después del gesto es una
+  ventana emergente, que se bloquea. Con una tecla modificadora el enlace se
+  abre como siempre, y con movimiento reducido también.
+- **Solo esos dos carteles.** El correo abre el programa de correo y el CV se
+  descarga: no hay adónde volar.
+- **La hoja (`fly`, de `gen_fly.py`) va dibujada en el sitio** y lo que se
+  desplaza lo pone la página (`flight.ts`, con tests), como en el podio. El
+  sprite se mueve con `translate`: el bucle le escribe el `transform` al
+  contenedor en cada frame y esa es otra propiedad.
+- **Va como un teletransporte** (`teleportingRef`): el bucle no le elige
+  marcha ni lo gira, y no le escribe el frame de la zancada.
+- **En el aire gira unos 20° hacia la cámara.** De perfil puro las alas
+  quedan de canto: dos rayas.
+- **Las alas se abren de lado y quedan tendidas a lo largo de la espalda**,
+  desde la cintura. Abiertas hacia atrás se levantaban por encima de él: con
+  el cuerpo inclinado, «atrás» es «arriba» en la pantalla. Costó tres
+  intentos; el primero solo bajaba el punto del que salían.
+- Los élitros y el cohete están dibujados en `rig.py`, no salen de texturas
+  del juego: una pose los enseña con `elytra`, `wings` (0 plegadas … 1
+  abiertas) y `rocket`.
+- **`FIRE` está en el generador y en `flight.ts` y tienen que coincidir**: es
+  la pose en la que el cohete deja la mano y la página suelta las chispas. Lo
+  vigila `npm test`.
+- Quien vuelve con «atrás» puede recuperar la página con el personaje fuera
+  de la pantalla: `pageshow` lo devuelve a su sitio.
+- **Sin resolver:** si está sentado en el cantil al pulsar, salta de la pose
+  sentada a la de pie sin transición.
+
 ### En pantallas táctiles se anda con botones (`WalkPad.tsx`)
 
 Donde el puntero es un dedo (`pointer: coarse`) el scroll no se suelta nunca
@@ -778,7 +814,7 @@ significa nada. La noche no se pierde: pasa a un velo del tamaño de la pantalla
 
 ### Sprites por script (`scripts/render/`)
 
-Las trece hojas del personaje salen de aquí, no de Mine-imator: un generador o
+Las catorce hojas del personaje salen de aquí, no de Mine-imator: un generador o
 un archivo de `poses/` da las poses y `rig.py` las renderiza con Blender sin
 ventana. **`scripts/render/render_all.sh` las rehace todas** desde
 `public/skin.png` en minuto y medio, con sus `@half`.

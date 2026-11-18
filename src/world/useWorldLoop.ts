@@ -325,7 +325,7 @@ export function useWorldLoop({
         writeFrame(Math.min(FRAME_COUNT.sit - 1, Math.floor(sitAt * FRAME_COUNT.sit)))
       } else if (active === 'climb') {
         writeFrame(podiumNow.frame)
-      } else if (!loopsByItself(active) && active !== 'throw') {
+      } else if (!loopsByItself(active) && active !== 'throw' && active !== 'fly') {
         // En reposo manda el bucle CSS: escribirle el frame lo dejaría clavado.
         // El lanzamiento lleva su propio reloj: escribirle aquí el frame de la
         // zancada, que parado no avanza, lo pisaba y el gesto no se movía.

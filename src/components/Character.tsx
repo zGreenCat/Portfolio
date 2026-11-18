@@ -38,6 +38,7 @@ const labels: Record<CharacterState, string> = {
   type: 'Personaje escribiendo en el chat',
   typeSit: 'Personaje escribiendo en el chat, sentado en el borde del acantilado',
   typePodium: 'Personaje escribiendo en el chat, en el primer puesto del podio',
+  fly: 'Personaje despegando con élitros y un cohete',
 }
 
 /**

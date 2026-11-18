@@ -792,3 +792,14 @@
   display: block;
   opacity: calc(var(--night, 0) * 0.62);
 }
+
+/* Las chispas del cohete. A pantalla completa, con ancho y alto escritos: un
+   canvas es un elemento reemplazado e `inset: 0` no lo estira. */
+.sparks {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30;
+  pointer-events: none;
+}

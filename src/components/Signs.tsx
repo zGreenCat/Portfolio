@@ -7,7 +7,15 @@ import styles from './Signs.module.css'
 interface SignsProps {
   /** 0 = invisible. Lo gobierna la distancia, como los demás paneles. */
   openness: number
+  /** Irse volando a un enlace que lleva fuera. Devuelve false si no puede
+   *  —hay otro gesto en curso, o se pidió menos movimiento— y entonces el
+   *  enlace se abre como siempre. */
+  onFly: (href: string) => boolean
 }
+
+/** Los carteles que llevan a otro sitio: a esos se va volando. El correo abre
+ *  el programa de correo y el CV se descarga; no hay adónde volar. */
+const FLIES = new Set(['github', 'linkedin'])
 
 /**
  * Carteles de contacto clavados en el suelo del acantilado.
@@ -24,7 +32,7 @@ interface SignsProps {
  * fila crece hacia la izquierda desde su ancla (`signsAnchor`). Con ellos, un
  * farol: allí ya es de noche y eran lo más oscuro del cuadro.
  */
-export default function Signs({ openness }: SignsProps) {
+export default function Signs({ openness, onFly }: SignsProps) {
   if (openness <= 0.01) return null
 
   const style: CSSProperties = {
@@ -46,6 +54,12 @@ export default function Signs({ openness }: SignsProps) {
           {...('download' in item && item.download
             ? { download: '' }
             : { target: '_blank', rel: 'noreferrer' })}
+          onClick={(event) => {
+            // Con una tecla modificadora, o con otro botón, manda el
+            // navegador: quien quiere una pestaña nueva la tiene.
+            if (!FLIES.has(item.id) || event.metaKey || event.ctrlKey || event.shiftKey) return
+            if (onFly(item.href)) event.preventDefault()
+          }}
         >
           <span className={styles.board}>{item.label}</span>
         </a>
