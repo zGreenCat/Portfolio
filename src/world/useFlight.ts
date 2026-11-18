@@ -39,6 +39,10 @@ interface Spark {
 const BURST = 46
 const TRAIL_PER_SECOND = 280
 const SPARK_GRAVITY = 260
+/** Lo que se espera a que la página se vaya antes de darlo por perdido. Con
+ *  holgura: en una red lenta el destino tarda en cargar y esta sigue a la
+ *  vista mientras tanto. */
+const STRANDED_MS = 4000
 
 /**
  * Irse volando a un enlace de fuera: el gesto, las chispas del cohete y, al
@@ -57,11 +61,17 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
   const sparksRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const flyingRef = useRef(false)
+  /** Ya salió volando y se pidió la navegación: desde aquí, si la página
+   *  sigue viva o vuelve a verse, hay que devolverlo. */
+  const leftRef = useRef(false)
+  const backTimerRef = useRef(0)
 
   /** Deja al personaje como estaba antes de volar. */
   const land = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
+    window.clearTimeout(backTimerRef.current)
     flyingRef.current = false
+    leftRef.current = false
     teleportingRef.current = false
     const sprite = spriteRef.current
     if (sprite) {
@@ -74,16 +84,28 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
     setCharacterState('idle')
   }, [setCharacterState, spriteRef, stateRef, teleportingRef])
 
-  // Quien vuelve con «atrás» recupera la página tal como la dejó: con el
-  // personaje fuera de la pantalla. Se le devuelve a su sitio.
+  // Quien vuelve recupera la página tal como la dejó: con el personaje fuera
+  // de la pantalla, las chispas congeladas y el mundo sin responder. Se le
+  // devuelve a su sitio.
+  //
+  // No basta con `pageshow` y su `persisted`, que es el «atrás» de un
+  // navegador de escritorio. En un móvil el enlace de LinkedIn o de GitHub lo
+  // abre su aplicación: esta página no llega a irse, solo deja de verse, y al
+  // volver no hay `pageshow` que valga. Así se quedaba para siempre. Por eso
+  // también cuenta volver a ser visible, y recuperar el foco.
   useEffect(() => {
-    const onShow = (event: PageTransitionEvent) => {
-      if (event.persisted && flyingRef.current) land()
+    const back = () => {
+      if (leftRef.current && document.visibilityState === 'visible') land()
     }
-    window.addEventListener('pageshow', onShow)
+    window.addEventListener('pageshow', back)
+    window.addEventListener('focus', back)
+    document.addEventListener('visibilitychange', back)
     return () => {
-      window.removeEventListener('pageshow', onShow)
+      window.removeEventListener('pageshow', back)
+      window.removeEventListener('focus', back)
+      document.removeEventListener('visibilitychange', back)
       cancelAnimationFrame(rafRef.current)
+      window.clearTimeout(backTimerRef.current)
     }
   }, [land])
 
@@ -212,7 +234,13 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
           return
         }
         sprite.style.opacity = '0'
+        leftRef.current = true
         window.location.assign(href)
+        // Y si la página no llega ni a ocultarse —el enlace no fue a ningún
+        // sitio, o lo abrió otra cosa sin taparla—, vuelve solo.
+        backTimerRef.current = window.setTimeout(() => {
+          if (leftRef.current && document.visibilityState === 'visible') land()
+        }, STRANDED_MS)
       }
       rafRef.current = requestAnimationFrame(step)
       return true

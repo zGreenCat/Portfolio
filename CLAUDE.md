@@ -721,8 +721,13 @@ página navega al enlace.
 - **`FIRE` está en el generador y en `flight.ts` y tienen que coincidir**: es
   la pose en la que el cohete deja la mano y la página suelta las chispas. Lo
   vigila `npm test`.
-- Quien vuelve con «atrás» puede recuperar la página con el personaje fuera
-  de la pantalla: `pageshow` lo devuelve a su sitio.
+- **Quien vuelve tiene que encontrarlo en su sitio**, y «volver» no es solo
+  el «atrás» de un navegador. En un móvil el enlace de LinkedIn o de GitHub
+  lo abre su aplicación: la página no llega a irse, solo deja de verse, y no
+  hay `pageshow` al regresar. Se quedaba con el personaje fuera, las chispas
+  congeladas y el mundo sin responder —`teleportingRef` seguía puesto—. Lo
+  devuelven `pageshow`, volver a ser visible, recuperar el foco y, si la
+  página ni se oculta, un plazo (`STRANDED_MS`).
 - **Sentado en el cantil, primero se pone de pie**: la hoja de sentarse al
   revés (`standFrame`), y luego despega. Es el caso normal —los carteles
   quedan junto al asiento— y sin esto saltaba de sentado a de pie de golpe.
