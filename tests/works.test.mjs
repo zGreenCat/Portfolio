@@ -7,13 +7,14 @@ import {
   PODIUM_WORKS,
   PROJECT_WORKS,
   WORKS,
+  byYear,
   fitFrame,
   plainName,
   position,
   sibling,
   splitSummary,
 } from '../src/components/works.ts'
-import { EVENTS, PROJECTS } from '../src/content/portfolio.ts'
+import { EVENTS, EXPERIENCE, PROJECTS, SITE_PROJECT } from '../src/content/portfolio.ts'
 
 const root = new URL('..', import.meta.url)
 
@@ -44,9 +45,10 @@ test('el nombre pierde la coletilla del resultado, y solo eso', () => {
 })
 
 test('hay una ficha por proyecto, en su orden, y ninguna dice su puesto en el título', () => {
+  // Los de siempre y, el último, este sitio, que solo sale en la portada.
   assert.deepEqual(
     PROJECT_WORKS.map((work) => work.id),
-    PROJECTS.map((project) => `project:${project.id}`),
+    [...PROJECTS.map((project) => `project:${project.id}`), `project:${SITE_PROJECT.id}`],
   )
   for (const work of PROJECT_WORKS) assert.ok(!/lugar/i.test(work.title), work.title)
 })
@@ -130,4 +132,28 @@ test('el marco llena la caja por el lado que manda y conserva la forma', () => {
 test('sin sitio no hay marco, en vez de uno negativo', () => {
   assert.deepEqual(fitFrame(1.5, 0, 300), { width: 0, height: 0 })
   assert.deepEqual(fitFrame(1.5, 300, -20), { width: 0, height: 0 })
+})
+
+test('este sitio va como un proyecto más, con su código y sin demo', () => {
+  const self = PROJECT_WORKS[PROJECT_WORKS.length - 1]
+  assert.equal(self.title, SITE_PROJECT.name)
+  assert.equal(self.repo, SITE_PROJECT.repo)
+  assert.equal(self.url, undefined)
+  assert.equal(PROJECTS.some((project) => project.id === SITE_PROJECT.id), false, 'no entra al cofre del mundo')
+})
+
+test('la trayectoria va del año más reciente al más antiguo, un grupo por año', () => {
+  const groups = byYear(EXPERIENCE)
+  const years = groups.map((group) => group.year)
+  assert.deepEqual(years, [...years].sort((a, b) => b - a))
+  assert.equal(new Set(years).size, years.length, 'ningún año sale dos veces')
+  assert.equal(groups.reduce((count, group) => count + group.jobs.length, 0), EXPERIENCE.length)
+})
+
+test('cada cargo tiene lo que la línea de tiempo enseña, y «hoy» solo si sigue', () => {
+  for (const job of EXPERIENCE) {
+    for (const field of ['role', 'place', 'when', 'text']) assert.ok(job[field].length > 0, `${job.id}: ${field}`)
+    assert.equal(job.when.endsWith('hoy'), job.current, job.id)
+  }
+  assert.ok(EXPERIENCE.some((job) => job.current))
 })

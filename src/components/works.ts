@@ -6,11 +6,7 @@
  * proyecto es un trabajo— y solo se tocan donde coinciden: la ficha de un
  * proyecto que salió de un hackatón enlaza con él, y al revés.
  */
-import {
-  EVENTS,
-  PROJECTS,
-  type EventEntry,
-} from '../content/portfolio.ts'
+import { EVENTS, PROJECTS, SITE_PROJECT, type EventEntry } from '../content/portfolio.ts'
 
 export type WorkGroup = 'project' | 'event'
 
@@ -31,6 +27,8 @@ export interface Work {
   text: string
   tech: string[]
   url?: string
+  /** El repositorio, cuando lo que se enseña es el código y no una demo. */
+  repo?: string
   place: 1 | 2 | 3 | null
   /** El hackatón del que salió o que es: «HackaDisc 2025». */
   event?: string
@@ -43,7 +41,7 @@ export interface Work {
 export const SHOT_RATIO = 16 / 9
 export const PHOTO_RATIO = 3 / 2
 
-type ProjectLike = (typeof PROJECTS)[number]
+type ProjectLike = (typeof PROJECTS)[number] & { repo?: string }
 
 /** «Gestión académica con IA · UCN» → qué es y para quién. */
 export function splitSummary(summary: string): { what: string; who: string } {
@@ -75,6 +73,7 @@ export function buildWorks(projects: readonly ProjectLike[], events: readonly Ev
       text: project.description,
       tech: project.tags,
       url: project.url,
+      repo: project.repo,
       place: from?.place ?? null,
       event: from ? eventLabel(from) : undefined,
       shots: project.shot
@@ -108,7 +107,10 @@ export function buildWorks(projects: readonly ProjectLike[], events: readonly Ev
   return [...projectWorks, ...eventWorks]
 }
 
-export const WORKS = buildWorks(PROJECTS, EVENTS)
+/** Los proyectos de la portada: los de siempre y, el último, este sitio. */
+export const COVER_PROJECTS: ProjectLike[] = [...PROJECTS, { ...SITE_PROJECT, tags: [...SITE_PROJECT.tags] }]
+
+export const WORKS = buildWorks(COVER_PROJECTS, EVENTS)
 
 export const PROJECT_WORKS = WORKS.filter((work) => work.group === 'project')
 
@@ -159,4 +161,15 @@ export function fitFrame(
   if (!(ratio > 0) || !(maxWidth > 0) || !(maxHeight > 0)) return { width: 0, height: 0 }
   const width = Math.min(maxWidth, maxHeight * ratio)
   return { width, height: width / ratio }
+}
+
+/** La trayectoria agrupada por año, sin perder el orden que traía. */
+export function byYear<T extends { year: number }>(jobs: readonly T[]): { year: number; jobs: T[] }[] {
+  const groups: { year: number; jobs: T[] }[] = []
+  for (const job of jobs) {
+    const last = groups[groups.length - 1]
+    if (last && last.year === job.year) last.jobs.push(job)
+    else groups.push({ year: job.year, jobs: [job] })
+  }
+  return groups
 }

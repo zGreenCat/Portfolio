@@ -716,25 +716,89 @@
   text-decoration-thickness: 2px;
 }
 
-.facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 28px;
+/* ---------- experiencia: una línea de tiempo ---------- */
+
+/* Una línea fina a la izquierda, un círculo por año y el año en grande. Las
+   referencias de Vicente tenían eso en común: aire, un filete y un dato
+   enorme que se lee de lejos. */
+.cover .timeline {
+  position: relative;
+  padding-left: 44px;
 }
 
-.facts li {
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 14px;
+  bottom: 8px;
+  width: 1px;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.timeline > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 7.2em minmax(0, 1fr);
+  gap: 6px 28px;
+  align-items: start;
+  padding-bottom: 36px;
+}
+
+.timeline > li:last-child {
+  padding-bottom: 4px;
+}
+
+.timeline > li::before {
+  content: '';
+  position: absolute;
+  left: -44px;
+  top: 9px;
+  width: 19px;
+  height: 19px;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+/* Relleno donde hay algo que sigue hoy. */
+.timeline > .yearNow::before {
+  border-color: var(--olive-fill);
+  background: var(--olive-fill);
+}
+
+.year {
+  font-family: var(--font-display);
+  font-size: 2.9rem;
+  font-weight: 700;
+  line-height: 0.86;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cover .jobs {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 16px;
-  border-top: 2px solid var(--ink);
+  gap: 18px;
+  max-width: 58ch;
 }
 
-.facts b {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  line-height: 1;
+.jobs li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.when,
+.whenNow {
+  font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.whenNow {
+  font-weight: 600;
+  color: var(--olive);
 }
 
 .prose {
@@ -818,6 +882,10 @@
 
   .tally {
     display: none;
+  }
+
+  .timeline > li {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* Arriba el nombre ocupa todo el ancho: va a la derecha de los botones. */

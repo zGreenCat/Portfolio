@@ -300,27 +300,118 @@ export const TECH_KIND: Record<string, 'front' | 'back' | 'ia' | 'infra'> = {
 }
 
 /**
- * «Cómo está hecho», en la portada: tres decisiones del mundo recorrible con
- * su cifra. Son afirmaciones medidas —el porqué de cada una está en
- * `CLAUDE.md`—, así que si cambia el número de allí, cambia aquí.
+ * Este sitio, como un proyecto más de la portada. Fue una sección propia
+ * («El mundo también es ingeniería») con tres cifras grandes: hablaba de la
+ * página y no de Vicente, y repetía la entrada al mundo. Va solo en la
+ * portada: en el mundo el cofre enseña los proyectos de `PROJECTS`.
+ *
+ * Las afirmaciones salen de mediciones anotadas en `CLAUDE.md`.
  */
-export const MADE = [
+export const SITE_PROJECT = {
+  id: 'portfolio',
+  shot: '/projects/portfolio.webp',
+  name: 'Este portfolio',
+  summary: 'Sitio personal · Código abierto',
+  description:
+    'Una portada para leer en un minuto y, detrás, un mundo de cinco biomas que se recorre caminando. El scroll es una posición y no una línea de tiempo, así que nada se desincroniza al volver atrás. Las animaciones del personaje se renderizan con Blender desde código. En un portátil con gráfica integrada lo llevé de 39 a 60 fps midiendo dónde se iba el tiempo.',
+  tags: ['Next.js', 'React', 'TypeScript', 'Blender'],
+  repo: 'https://github.com/zGreenCat/Portfolio',
+} as const
+
+export interface Job {
+  id: string
+  role: string
+  /** Empresa o proyecto, y para quién si hace falta. */
+  place: string
+  /** El año en que empezó: bajo ese año va en la línea de tiempo. */
+  year: number
+  /** Los meses, como se leen: «Oct – hoy». */
+  when: string
+  /** Sigue hoy. */
+  current: boolean
+  text: string
+}
+
+/**
+ * La trayectoria, para la línea de tiempo de la portada. Del más reciente al
+ * más antiguo. Sale del CV de Vicente (`public/cv-vicente-araya.pdf`): los
+ * cargos van acortados y cada línea es un resumen; el detalle está allí. Si
+ * cambia el CV, cambia esto.
+ */
+export const EXPERIENCE: Job[] = [
   {
-    id: 'render',
-    figure: '82 s',
-    title: 'Animaciones por script',
-    text: 'Las hojas del personaje se renderizan con Blender sin ventana, desde código. Cambiar la skin o una pose es editar un número y volver a lanzarlo.',
+    id: 'ats-jogglar',
+    role: 'Frontend e integración de IA',
+    place: 'Plataforma ATS para Jogglar · EKI',
+    year: 2026,
+    when: 'Nov – hoy',
+    current: true,
+    text: 'Frontend en Next.js y procesamiento de currículums con OCR y modelos de lenguaje, en un equipo de cuatro.',
   },
   {
-    id: 'fps',
-    figure: '39 → 60 fps',
-    title: 'Medido en un portátil real',
-    text: 'En una gráfica integrada iba a tirones. Medí dónde se iba el tiempo, serví las imágenes al tamaño al que se ven y dejé las animaciones decodificadas de antemano.',
+    id: 'thermosolutions',
+    role: 'Ingeniero en IA y arquitectura cloud',
+    place: 'Thermosolutions',
+    year: 2026,
+    when: 'Oct – hoy',
+    current: true,
+    text: 'Integro IA en productos para la minería: un asistente de flota con RAG, el resumen por voz de las bitácoras de turno y el despliegue en AWS.',
   },
   {
-    id: 'scroll',
-    figure: '1 número',
-    title: 'El scroll es una posición',
-    text: 'Nada se dispara por eventos: el mundo entero es función de dónde estás. Volver sobre tus pasos no deja nada desincronizado.',
+    id: 'incidente-seguridad',
+    role: 'Consultor en ciberseguridad',
+    place: 'EKI',
+    year: 2026,
+    when: 'Jul',
+    current: false,
+    text: 'Respuesta a un incidente en un sitio WordPress: 1.651 publicaciones maliciosas eliminadas y el vector de entrada cerrado.',
   },
-] as const
+  {
+    id: 'portal-coloso',
+    role: 'Full-stack y líder técnico',
+    place: 'Portal Coloso · UCN',
+    year: 2026,
+    when: 'Abr – Jul',
+    current: false,
+    text: 'Gestión académica con IA para la Facultad de Ingeniería. Hoy en producción en la universidad.',
+  },
+  {
+    id: 'smartpack',
+    role: 'Cofundador y líder de equipo',
+    place: 'SmartPack · EKI',
+    year: 2025,
+    when: 'Oct – hoy',
+    current: true,
+    text: 'Inventario y logística de bodegas: la web en Next.js, la app en Expo y el API en NestJS.',
+  },
+  {
+    id: 'shinsekai',
+    role: 'Desarrollador full-stack',
+    place: 'Shinsekai',
+    year: 2025,
+    when: 'Jul – Sep',
+    current: false,
+    text: 'El punto de venta de El Rincón Chilenito: modelo de datos, APIs y frontend.',
+  },
+  {
+    id: 'ayudantia',
+    role: 'Ayudante de Ingeniería de Software',
+    place: 'Universidad Católica del Norte',
+    year: 2025,
+    when: 'Mar – Ago',
+    current: false,
+    text: 'Apoyo a la docencia práctica del curso.',
+  },
+  {
+    id: 'technovation',
+    role: 'Mentor voluntario',
+    place: 'Technovation Girls Chile',
+    year: 2024,
+    when: 'Mar – Jul',
+    current: false,
+    text: 'Guié a un equipo de niñas en la creación de una app, del requerimiento al pitch.',
+  },
+]
+
+export const EDUCATION =
+  'Ingeniería en Computación e Informática, Universidad Católica del Norte. Titulado en 2026.'

@@ -2,10 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { CONTACT, COVER_ABOUT, MADE, PLACE_LABEL, PROJECTS, RECIPES } from '@/content/portfolio'
+import {
+  CONTACT,
+  COVER_ABOUT,
+  EDUCATION,
+  EXPERIENCE,
+  PLACE_LABEL,
+  PROJECTS,
+  RECIPES,
+} from '@/content/portfolio'
 
 import WorkViewer from './WorkViewer'
-import { OTHER_EVENTS, PODIUM_WORKS, PROJECT_WORKS, WORKS } from './works'
+import { OTHER_EVENTS, PODIUM_WORKS, PROJECT_WORKS, WORKS, byYear } from './works'
 import { DUO, framePosition, gazeFrame, knobSpot, wantsHalfDuo } from './coverSheet'
 import { easeFor, wheelPixels } from './smoothing'
 import type { Theme } from '@/world/daylight'
@@ -25,6 +33,7 @@ const PLACE_CLASS: Record<1 | 2 | 3, string> = { 1: styles.gold, 2: styles.iron,
 const STEP_CLASS: Record<1 | 2 | 3, string> = { 1: styles.first, 2: styles.second, 3: styles.third }
 
 const demos = PROJECTS.filter((project) => project.url).length
+const YEARS = byYear(EXPERIENCE)
 
 const techOf = (grid: (string | null)[]) => grid.filter((cell): cell is string => cell !== null)
 
@@ -295,7 +304,7 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
           </div>
           <div>
             <dt>proyectos</dt>
-            <dd>{PROJECTS.length}</dd>
+            <dd>{PROJECT_WORKS.length}</dd>
           </div>
           <div>
             <dt>demos</dt>
@@ -357,6 +366,37 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
           {COVER_ABOUT.intro.map((paragraph) => (
             <p key={paragraph.slice(0, 32)}>{paragraph}</p>
           ))}
+        </section>
+
+        {/* La trayectoria, como en un CV: una línea fina, el año en grande y
+            debajo lo que empezó ese año. El círculo relleno es donde está hoy. */}
+        <section className={styles.section} aria-labelledby="portada-experiencia">
+          <h2 id="portada-experiencia" className={styles.big}>
+            Experiencia
+          </h2>
+          <ol className={styles.timeline}>
+            {YEARS.map((group) => (
+              <li
+                key={group.year}
+                className={group.jobs.some((job) => job.current) ? styles.yearNow : undefined}
+              >
+                <span className={styles.year}>{group.year}</span>
+                <ol className={styles.jobs}>
+                  {group.jobs.map((job) => (
+                    <li key={job.id}>
+                      <span className={job.current ? styles.whenNow : styles.when}>{job.when}</span>
+                      <h3>{job.role}</h3>
+                      <span className={styles.muted}>{job.place}</span>
+                      <p>{job.text}</p>
+                    </li>
+                  ))}
+                </ol>
+              </li>
+            ))}
+          </ol>
+          <p className={styles.also}>
+            <b>Formación:</b> {EDUCATION}
+          </p>
         </section>
 
         <section className={styles.section} aria-labelledby="portada-proyectos">
@@ -464,28 +504,6 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
               </div>
             ))}
           </dl>
-        </section>
-
-        <section className={`${styles.section} ${styles.made}`} aria-labelledby="portada-hecho">
-          <div className={styles.head}>
-            <h2 id="portada-hecho">El mundo también es ingeniería.</h2>
-            <p className={styles.muted}>
-              El mundo que hay detrás de esta página lo construí entero: el motor de capas, las
-              animaciones y la skin. Tres decisiones de ese proyecto.
-            </p>
-            <button type="button" className={styles.button} onClick={enter}>
-              Recorrer el mundo ▶
-            </button>
-          </div>
-          <ul className={styles.facts}>
-            {MADE.map((item) => (
-              <li key={item.id}>
-                <b>{item.figure}</b>
-                <h3>{item.title}</h3>
-                <p className={styles.muted}>{item.text}</p>
-              </li>
-            ))}
-          </ul>
         </section>
 
         <section className={styles.section} aria-labelledby="portada-sobre-mi">

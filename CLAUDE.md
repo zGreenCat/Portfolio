@@ -114,7 +114,7 @@ todo bloques. La pantalla va **partida en diagonal**: papel a la izquierda,
 mundo a la derecha, su nombre cruzando la costura —negro sobre el papel,
 blanco sobre el mundo— y él y su avatar justo en el corte, en la misma
 postura y con el mismo polerón. Al bajar, el contenido sube encima como un
-telón: una presentación corta, proyectos, hackatones, stack, cómo está hecho,
+telón: una presentación corta, experiencia, proyectos, hackatones, stack,
 sobre mí y contacto.
 
 El «sobre mí» va partido (`COVER_ABOUT`). Entero antes de los proyectos eran
@@ -192,8 +192,18 @@ portada: los tiene justo debajo.
   costura, que ahí pasa por la media de `--cut-a` y `--cut-b`.
 - **La foto (`public/vicente.webp`) se sirve abierta**, como todo `public/`.
   Es un recorte sin fondo; el original no está en el repo.
-- Las tres cifras del bloque «Cómo está hecho» viven en `MADE`
-  (`portfolio.ts`) y salen de mediciones anotadas en este archivo.
+- **La experiencia es una línea de tiempo** (`EXPERIENCE`, en
+  `portfolio.ts`): una línea fina, un círculo por año —relleno donde algo
+  sigue hoy— y el año en grande, con lo que empezó ese año debajo. Sale del
+  CV de Vicente, con los cargos acortados y una línea por cargo; si cambia el
+  CV, cambia eso. La forma la eligió él entre siete, a partir de referencias
+  suyas. Agrupa por el año en que EMPEZÓ cada cosa: lo que cruza de año lleva
+  «hoy» en oliva.
+- **Este sitio va como un proyecto más** (`SITE_PROJECT`), el último del
+  índice, con enlace al repositorio. Fue una sección propia, «El mundo
+  también es ingeniería», con tres cifras grandes: hablaba de la página y no
+  de él, y repetía la entrada al mundo. Solo sale en la portada, no en el
+  cofre del mundo.
 
 ## Arquitectura del mundo
 

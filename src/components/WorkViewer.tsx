@@ -275,11 +275,18 @@ export default function WorkViewer({ works, id, onChange, onClose, thumbOf }: Wo
           ) : null}
           <p>{work.text}</p>
           {work.tech.length > 0 ? <p className={styles.tech}>{work.tech.join(', ')}</p> : null}
-          {work.url || work.jump || work.group === 'project' ? (
+          {work.url || work.repo || work.jump || work.group === 'project' ? (
             <div className={styles.actions}>
               {work.url ? (
                 <a className={styles.button} href={work.url} target="_blank" rel="noreferrer noopener">
                   Abrir la demo
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M6 3H3v10h10v-3M9 3h4v4M13 3L7 9" />
+                  </svg>
+                </a>
+              ) : work.repo ? (
+                <a className={styles.button} href={work.repo} target="_blank" rel="noreferrer noopener">
+                  Ver el código
                   <svg viewBox="0 0 16 16" aria-hidden="true">
                     <path d="M6 3H3v10h10v-3M9 3h4v4M13 3L7 9" />
                   </svg>
