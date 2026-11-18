@@ -65,6 +65,22 @@ servidores de nombres a Vercel.
 - La dirección pública para las previsualizaciones de enlace sale de la
   variable `NEXT_PUBLIC_SITE_URL` de Vercel (`layout.tsx`). Sin ella, la
   imagen de Open Graph apunta a la dirección interna de cada despliegue.
+- **Cabeceras y caché van en `next.config.ts`**, con su porqué al lado.
+  Tres cosas a tener presentes:
+  - **`public/` se cachea un día** (capas, hojas, texturas, fuentes, fotos de
+    eventos y de proyectos). Sus nombres no llevan huella, así que **una hoja
+    o una capa cambiada puede tardar hasta un día en llegar** a quien ya
+    visitó el sitio. La foto, el CV y `og.jpg` no se cachean: se reemplazan
+    con el mismo nombre y tienen que verse en el acto. Una carpeta nueva en
+    `public/` hay que añadirla a `CACHED`.
+  - **La política de contenido (CSP) solo deja cargar del propio dominio.**
+    Un script, fuente, imagen o `fetch` a otro sitio queda bloqueado sin
+    avisar más que en la consola: hay que añadirlo ahí. Lleva
+    `'unsafe-inline'` a propósito; quitarlo pide un nonce por petición y la
+    página dejaría de ser estática.
+  - **El CV lleva `noindex`**: se descarga desde el sitio pero no sale en
+    buscadores, donde competía con la portada y enseñaba el teléfono. Y el
+    optimizador de imágenes de Next está apagado: nada lo usa.
 - **El correo del sitio es `hola@vicente-araya.dev`**, que Cloudflare (Email
   Routing) reenvía al correo personal de Vicente. Solo recibe: las respuestas
   salen desde su correo de siempre. El personal no va en el código ni en el
