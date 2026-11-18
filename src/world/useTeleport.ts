@@ -26,6 +26,8 @@ interface TeleportDeps {
   sitRef: RefObject<number>
   podiumRef: RefObject<number>
   coverRef: RefObject<'on' | 'leaving' | 'off'>
+  teleportingRef: RefObject<boolean>
+  warmAtRef: RefObject<number | null>
   setActive: Dispatch<SetStateAction<string>>
   setCharacterState: Dispatch<SetStateAction<CharacterState>>
   setMenuOpen: Dispatch<SetStateAction<boolean>>
@@ -51,6 +53,8 @@ export function useTeleport({
   sitRef,
   podiumRef,
   coverRef,
+  teleportingRef,
+  warmAtRef,
   setActive,
   setCharacterState,
   setMenuOpen,
@@ -61,9 +65,6 @@ export function useTeleport({
   const [hidden, setHidden] = useState(false)
   /** El chat, mientras se escribe un `/tp` y hasta que se va su respuesta. */
   const [chat, setChat] = useState<ChatRequest | null>(null)
-  const teleportingRef = useRef(false)
-  /** Destino de un teletransporte en curso, para ir decodificando su bioma. */
-  const warmAtRef = useRef<number | null>(null)
   /** Adónde lleva el `/tp` que se está escribiendo: una sección, o la portada. */
   const chatTargetRef = useRef<{ at: number; id: string } | 'cover' | null>(null)
   /** `?tp=1` o `?tp=0`: siempre el comando, o siempre la perla. Para probar. */
@@ -265,8 +266,6 @@ export function useTeleport({
     chat,
     hidden,
     setHidden,
-    teleportingRef,
-    warmAtRef,
     navigate,
     tpToCover,
     sendChat,

@@ -11,7 +11,6 @@ import Character, {
 } from '@/components/Character'
 import { loopsByItself } from '@/components/characterSheets'
 import Chat from '@/components/Chat'
-import { easeFor } from '@/components/smoothing'
 import EnderPearl from '@/components/EnderPearl'
 import Book from '@/components/Book'
 import CraftingTable from '@/components/CraftingTable'
@@ -22,7 +21,6 @@ import WalkPad from '@/components/WalkPad'
 import Cover, { COVER_LEAVE_MS } from '@/components/Cover'
 import NightSky, { skyAt } from '@/components/NightSky'
 import Signs from '@/components/Signs'
-import type { WeatherState } from '@/components/Weather'
 import { BLOCK_PX_SOURCE, WORLD_UNIT } from '@/content/layers'
 import Weather from '@/components/Weather'
 import { play } from '@/lib/sounds'
@@ -32,33 +30,25 @@ import { SheetWarmer, WorldLoader, WorldNav } from '@/components/WorldChrome'
 import SpriteGrid from '@/components/SpriteGrid'
 
 import {
-  CATCH_UP_BLOCKS,
   CHAR_FEET_VH,
   CHAR_HEIGHT_VH,
   CLIFF_EDGE,
-  CLIFF_FROM,
   CLIFF_X,
   DUSK_FROM,
   ENTRY_FROM,
   ENTRY_SECONDS,
   ENTRY_TO,
-  GAIT_HOLD_SECONDS,
   HALF_RES_WIDTH,
   LAYER_ASPECT,
   LAYER_SPEED,
-  LITE_MS,
-  LITE_SAMPLE,
   MOUNT_RADIUS,
   NIGHT_AT,
   NIGHT_STEPS,
   PANEL_OPEN_AT,
-  PANEL_STEPS,
   PEEK,
   PEEK_CELL_VH,
   PEEK_CELL_VW,
   PORTRAIT_WORLD,
-  PREWARM_DROP,
-  PREWARM_RADIUS,
   RUN_SCREENS,
   SCROLL_LENGTH,
   SECTIONS,
@@ -66,47 +56,24 @@ import {
   STRIDE,
   THROW_MS,
   WALK_SCREENS,
-  WORLD_EASE,
   WORLD_LENGTH,
-  atOf,
   peekSrc,
   scrollFromWorld,
   wantsHalfLayers,
   wantsHalfSprites,
   worldFromScroll,
 } from '@/world/constants'
-import {
-  BOUNDS,
-  biomeAt,
-  nearestSection,
-  sectionsNear,
-  fitBounds,
-  layerSrc,
-  panelOpenness,
-  quantize,
-} from '@/world/geometry'
-import {
-  CHEST_GAP,
-  CHEST_PX,
-  MEDAL,
-  PODIUM_AT,
-  PODIUM_NEAR,
-  PODIUM_X,
-  STAGE,
-  podiumPose,
-} from '@/world/podium'
+import { BOUNDS, biomeAt, sectionsNear, fitBounds, quantize } from '@/world/geometry'
+import { CHEST_GAP, CHEST_PX, MEDAL, PODIUM_AT, PODIUM_X, STAGE } from '@/world/podium'
 
-import { advanceCycle, easePace, pickGait, stillTime } from '@/world/gait'
-import { stepClimb, stepSit } from '@/world/gestures'
-import { airAt, gust } from '@/world/air'
 import { useBackgroundFetch, useWorldLoading } from '@/world/useLoading'
 import { useTeleport } from '@/world/useTeleport'
+import { useWorldRefs } from '@/world/useWorldRefs'
+import { useWorldLoop } from '@/world/useWorldLoop'
+import type { CoverState, Phase } from '@/world/constants'
 
 import styles from './recorrido.module.css'
 
-/** `waiting`: cargado, con la portada todavía puesta y el mundo quieto detrás. */
-type Phase = 'loading' | 'waiting' | 'greeting' | 'entering' | 'ready'
-type CoverState = 'on' | 'leaving' | 'off'
 
 
 export default function RecorridoPage() {
@@ -115,6 +82,51 @@ export default function RecorridoPage() {
    *  que ir en el HTML servido. */
   const [cover, setCover] = useState<CoverState>('on')
   const coverRef = useRef<CoverState>('on')
+  const refs = useWorldRefs()
+  const {
+    worldDeltaRef,
+    worldAtRef,
+    actorXRef,
+    feetVhRef,
+    weatherRef,
+    mountKeyRef,
+    sandRef,
+    fogRef,
+    fogWrittenRef,
+    facingRef,
+    sitRef,
+    sitWantRef,
+    sitDirRef,
+    sitLockRef,
+    catchUpRef,
+    podiumRef,
+    podiumWantRef,
+    podiumDirRef,
+    chestAtRef,
+    podiumAskRef,
+    podiumAheadRef,
+    podiumLandRef,
+    podiumFromRef,
+    podiumFocusRef,
+    slowRef,
+    liteLockRef,
+    resumeRef,
+    stripsRef,
+    warmRef,
+    rootRef,
+    spriteRef,
+    farRef,
+    midRef,
+    nearRef,
+    groundRef,
+    markersRef,
+    propsRef,
+    actorRef,
+    stateRef,
+    snapRef,
+    teleportingRef,
+    warmAtRef,
+  } = refs
   /** Vuelve con un `/tp`: entra barriendo, al revés de como se aparta. */
   const [coverArrives, setCoverArrives] = useState(false)
   const [characterState, setCharacterState] = useState<CharacterState>('idle')
@@ -139,62 +151,8 @@ export default function RecorridoPage() {
   const [spriteHalf, setSpriteHalf] = useState(false)
   /** Biomas montados, por índice. Solo cambia al cruzar un radio, no por frame. */
   const [mounted, setMounted] = useState<number[]>([0])
-  /** Avance del mundo en el último frame: arrastra las partículas. */
-  const worldDeltaRef = useRef(0)
-  /**
-   * Todo lo que cambia en cada frame vive en refs y se escribe al DOM a mano.
-   * Como estado de React obligaba a reconciliar el árbol entero —cuatro capas,
-   * sus tiras y todas sus teselas— sesenta veces por segundo.
-   */
-  const worldAtRef = useRef(0)
-  const actorXRef = useRef(ENTRY_TO)
-  const feetVhRef = useRef(CHAR_FEET_VH)
-  const weatherRef = useRef<WeatherState>({ kind: null, power: 0 })
-  const mountKeyRef = useRef('0')
-  /** Fuerza actual de la tormenta de arena, ya cuantizada. */
-  const sandRef = useRef(-1)
-  /** Niebla de distancia. Solo la llevan la nieve y el desierto; en el bosque y
-   *  los cerezos el fondo se lee limpio. Se persigue con un suavizado en vez de
-   *  atarla a la frontera: aparecer de golpe en la línea del bioma canta. */
-  const fogRef = useRef(0)
-  const fogWrittenRef = useRef(-1)
-  /** Hacia dónde mira: 1 derecha, -1 izquierda. */
-  const facingRef = useRef(1)
-  /** Cuánto ha entrado en el gesto de sentarse, 0 a 1. Avanza por tiempo. */
-  const sitRef = useRef(0)
-  /** Si toca estar sentado. Cambia con histéresis, no en un solo umbral. */
-  const sitWantRef = useRef(false)
-  /** Sentido del gesto en curso: +1 sentándose, -1 levantándose. */
-  const sitDirRef = useRef(-1)
-  /** Posición del mundo congelada mientras dura el gesto, o null si no lo hay. */
-  const sitLockRef = useRef<number | null>(null)
-  /** Recuperando la distancia acumulada mientras el mundo estuvo congelado. */
-  const catchUpRef = useRef(false)
-  /** Lo mismo que `sitRef`, `sitWantRef` y `sitDirRef`, para subir al podio. */
-  const podiumRef = useRef(0)
-  const podiumWantRef = useRef(false)
-  const podiumDirRef = useRef(-1)
-  /** Posición del mundo en la que el personaje queda junto al cofre. No es una
-   *  constante: el escenario crece con el alto de la pantalla y el cofre con
-   *  el ancho, así que su sitio depende de las dos cosas. */
-  const chestAtRef = useRef(PODIUM_AT - 0.045)
-  /** Se pidió subir y aún no ha llegado. Lo pone el botón, lo consume el bucle. */
-  const podiumAskRef = useRef(false)
-  /** Baja hacia delante, por el tercer puesto, en vez de por donde subió. */
-  const podiumAheadRef = useRef(false)
-  /** Tocó suelo al otro lado: la posición del mundo que le corresponde ahí,
-   *  mientras el mundo no haya llegado hasta ella. */
-  const podiumLandRef = useRef<number | null>(null)
-  /** Desde dónde echó a andar hacia el podio. */
-  const podiumFromRef = useRef(PODIUM_AT)
-  /** Cuánto se ha corrido a la izquierda para dejarle sitio al escenario. */
-  const podiumFocusRef = useRef(0)
   const [podiumOpen, setPodiumOpen] = useState(0)
-  /** Frames lentos acumulados con el mundo en marcha. */
-  const slowRef = useRef({ frames: 0, total: 0 })
   const [lite, setLite] = useState(false)
-  /** `?lite=0`: el modo ligero no se enciende solo. Para comparar. */
-  const liteLockRef = useRef(false)
   /** `?fps`: enseña el medidor. */
   const [meter, setMeter] = useState(false)
 
@@ -206,41 +164,12 @@ export default function RecorridoPage() {
     if (query.get('lite') === '1') setLite(true)
     if (query.get('lite') === '0') liteLockRef.current = true
   }, [])
-  /**
-   * Sección a la que volver al recargar, o null si es una visita limpia.
-   *
-   * El navegador restaura el scroll solo, y lo deja en el píxel exacto donde
-   * estabas: si eso cae entre dos biomas, apareces plantado en la franja de la
-   * frontera. Aquí se redondea a la sección más cercana para llegar a un sitio
-   * que sea un lugar y no una coordenada.
-   */
-  const resumeRef = useRef<number | null>(null)
-  /** Tiras montadas con su geometría ya leída: el recorte se reescribe en cada
-   *  frame y no conviene volver a consultar el DOM para eso. */
-  const stripsRef = useRef<
-    { el: HTMLElement; from: number; to: number; speed: number; left: number; width: number }[]
-  >([])
-  /** Capas ya descomprimidas y retenidas. Sin esto, el decode de una imagen de
-   *  3840×1440 caía justo al cruzar la frontera y ahí se veía el tirón. */
-  const warmRef = useRef(new Map<string, HTMLImageElement>())
   const [menuOpen, setMenuOpen] = useState(false)
   const [compact, setCompact] = useState(false)
   /** La noche va cuantizada: cambiarla mueve un `filter` CSS sobre superficies
    *  del ancho del mundo, y re-filtrar eso en cada frame era carísimo. */
   const [night, setNight] = useState(0)
 
-  const rootRef = useRef<HTMLElement>(null)
-  const spriteRef = useRef<HTMLDivElement>(null)
-  const farRef = useRef<HTMLDivElement>(null)
-  const midRef = useRef<HTMLDivElement>(null)
-  const nearRef = useRef<HTMLDivElement>(null)
-  const groundRef = useRef<HTMLDivElement>(null)
-  const markersRef = useRef<HTMLDivElement>(null)
-  const propsRef = useRef<HTMLDivElement>(null)
-  const actorRef = useRef<HTMLDivElement>(null)
-  const stateRef = useRef<CharacterState>('idle')
-  /** Pide al bucle que salte sin suavizado ni tope: es un teletransporte. */
-  const snapRef = useRef(false)
 
   useEffect(() => setSplash(SPLASHES[Math.floor(Math.random() * SPLASHES.length)]), [])
   useEffect(() => setReduced(window.matchMedia('(prefers-reduced-motion: reduce)').matches), [])
@@ -577,381 +506,25 @@ export default function RecorridoPage() {
   }, [phase, worldPx, writeFrame, placeWorld])
 
   // --- recorrido: el scroll es una posición del mundo, no una línea de tiempo ---
-  useEffect(() => {
-    if (phase !== 'ready') return
-
-    let raf = 0
-    let current = 0
-    let target = 0
-    let stillFor = 0
-
-    const applyState = (next: CharacterState) => {
-      if (stateRef.current === next) return
-      stateRef.current = next
-      // Cortar el bucle CSS ya, sin esperar al re-render: si no, durante ese
-      // frame la animación de reposo sigue corriendo sobre el valor que acaba
-      // de escribir el bucle y arrastra el sprite entre dos celdas.
-      if (!loopsByItself(next) && spriteRef.current) {
-        spriteRef.current.dataset.driven = 'true'
-      }
-      setCharacterState(next)
-    }
-
-    const read = () => {
-      target = worldFromScroll(window.scrollY)
-    }
-
-    const block = BLOCK_PX_SOURCE * (worldPx / WORLD_UNIT)
-    let previous = 0
-    let last = performance.now()
-    /** Por dónde va la zancada, en ciclos. En ciclos y no en frames porque
-     *  `run` y `walk` no tienen los mismos: el frame 12 es media zancada en
-     *  una hoja y tres cuartos en la otra, y al cambiar de marcha el paso
-     *  daba un salto. */
-    let cycle = 0
-    let pace = 0
-    let gaitHeld = GAIT_HOLD_SECONDS
-
-    const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000)
-      last = now
-      if (podiumLandRef.current !== null) {
-        // Bajó por el otro lado del podio y el mundo sigue clavado donde subió.
-        // No se recoloca de golpe —sería un corte de cámara—: él se queda donde
-        // cayó y el mundo avanza hasta alcanzarlo. Mientras, la rueda no puede
-        // quedarse más atrás, o no lo alcanzaría nunca.
-        if (current >= podiumLandRef.current - 0.00003) {
-          podiumLandRef.current = null
-          podiumFocusRef.current = 0
-        } else if (target < podiumLandRef.current) {
-          target = podiumLandRef.current
-        }
-      }
-      const before = current
-
-      if (snapRef.current) {
-        // La perla no camina: llega.
-        snapRef.current = false
-        current = target
-        previous = current * WORLD_LENGTH
-        // Y cancela el gesto: no tiene sentido levantarse de un sitio en el que
-        // ya no estás. Sin esto el mundo se quedaba congelado en el acantilado.
-        sitRef.current = 0
-        sitLockRef.current = null
-        sitDirRef.current = -1
-        sitWantRef.current = false
-        podiumRef.current = 0
-        podiumDirRef.current = -1
-        podiumWantRef.current = false
-        catchUpRef.current = false
-      } else {
-        // Suavizado, sin tope: el mundo sigue al scroll y se detiene cuando
-        // tú te detienes. El paso sale del tiempo del frame, no es fijo: fijo,
-        // a 120 Hz el mundo respondía el doble de rápido que a 60.
-        current += (target - current) * easeFor(WORLD_EASE, dt)
-        if (Math.abs(target - current) < 0.00002) current = target
-      }
-
-      /*
-       * El personaje se sienta y se levanta EN EL SITIO: mientras dure el gesto
-       * —y mientras siga sentado— la posición del mundo queda clavada donde
-       * llegó. Sin esto, al retroceder se iba hacia atrás mientras se levantaba.
-       *
-       * Usa el `sitRef` del frame anterior. Eso evita subir el bloque del gesto
-       * por delante de `placeWorld`, que es lo que rompió el intento previo; el
-       * desfase de un frame no se ve en un gesto de segundo y medio.
-       */
-      if (sitRef.current > 0 || podiumRef.current > 0) {
-        if (sitLockRef.current === null) sitLockRef.current = current
-        current = sitLockRef.current
-      } else {
-        // Al soltar, el scroll puede haberse ido lejos mientras el mundo estaba
-        // quieto. Se marca para recuperarlo con tope en vez de de un salto.
-        if (sitLockRef.current !== null && Math.abs(target - sitLockRef.current) > 0.002) {
-          catchUpRef.current = true
-        }
-        sitLockRef.current = null
-      }
-
-      /*
-       * Recuperación acotada. Sin esto el primer frame tras levantarse cierra
-       * cientos de píxeles de golpe y el personaje sale disparado hacia atrás.
-       * El tope va en bloques por segundo, así que no depende de la resolución.
-       */
-      if (catchUpRef.current) {
-        const step = current - before
-        const cap = (CATCH_UP_BLOCKS * block * dt) / WORLD_LENGTH
-        if (Math.abs(step) > cap) current = before + Math.sign(step) * cap
-        if (Math.abs(target - current) < 0.0005) catchUpRef.current = false
-      }
-
-      const worldX = current * WORLD_LENGTH
-      // Capas, recortes, pies y hora del día. Lo mismo que usa el reaterrizaje.
-      const { index, blend, next } = placeWorld(current)
-
-      // Tres marchas por velocidad de avance: correr, caminar, parado.
-      const travelled = worldX - previous
-
-      // Vigilante de rendimiento. Solo mide con el mundo en marcha.
-      if (!lite && Math.abs(travelled) > 0.5) {
-        const sample = slowRef.current
-        sample.frames += 1
-        sample.total += dt * 1000
-        if (sample.frames >= LITE_SAMPLE) {
-          if (!liteLockRef.current && sample.total / sample.frames > LITE_MS) setLite(true)
-          sample.frames = 0
-          sample.total = 0
-        }
-      }
-      worldDeltaRef.current = travelled
-      const speed = dt > 0 ? Math.abs(travelled) / dt / block : 0
-      previous = worldX
-      pace = easePace(pace, speed, dt)
-      stillFor = stillTime(stillFor, speed, dt)
-
-      // Sentarse y subir al podio: las reglas de cada gesto están en
-      // `gestures.ts`. Aquí se guarda su estado y se atiende lo que tocan fuera.
-      const sit = stepSit(
-        { at: sitRef.current, dir: sitDirRef.current, want: sitWantRef.current },
-        current,
-        target,
-        dt,
-      )
-      sitRef.current = sit.at
-      sitDirRef.current = sit.dir
-      sitWantRef.current = sit.want
-      const sitAt = sit.at
-
-      const stepped = stepClimb(
-        {
-          at: podiumRef.current,
-          dir: podiumDirRef.current,
-          want: podiumWantRef.current,
-          ask: podiumAskRef.current,
-          ahead: podiumAheadRef.current,
-        },
-        { current, target, focus: podiumFocusRef.current, dt },
-      )
-      podiumRef.current = stepped.climb.at
-      podiumDirRef.current = stepped.climb.dir
-      podiumWantRef.current = stepped.climb.want
-      podiumAskRef.current = stepped.climb.ask
-      podiumAheadRef.current = stepped.climb.ahead
-      if (stepped.arrived) sitLockRef.current = PODIUM_AT
-      const podiumAt = stepped.climb.at
-      const leavingAhead = stepped.leavingAhead
-      if (stepped.landedAhead) {
-        podiumLandRef.current =
-          PODIUM_AT +
-          ((STAGE.exit.x * worldPx) / WORLD_UNIT -
-            (window.innerWidth * (ENTRY_TO - PODIUM_X)) / 100) /
-            WORLD_LENGTH
-        if (target < podiumLandRef.current) {
-          window.scrollTo({ top: scrollFromWorld(podiumLandRef.current), behavior: 'auto' })
-        }
-      }
-      const landed = podiumLandRef.current !== null
-      const podiumNow = podiumPose(podiumAt, leavingAhead)
-      const gesturing = sitAt > 0 || podiumAt > 0
-
-      if (!teleportingRef.current) {
-        // El retardo se cuenta en frames, no con un temporizador: dentro del
-        // bucle, un setTimeout se reiniciaba en cada vuelta y no llegaba a
-        // cumplirse nunca, así que se quedaba caminando para siempre.
-        if (sitAt > 0) applyState('sit')
-        else if (podiumAt >= 1) applyState('cheer')
-        else if (podiumAt > 0) applyState('climb')
-        // Quieto mientras la cámara lo alcanza: el mundo corre, pero él no.
-        else if (landed) applyState('idle')
-        else {
-          const gait = pickGait({ now: stateRef.current, speed, pace, stillFor, held: gaitHeld })
-          if (gait.state) applyState(gait.state)
-          gaitHeld = gait.held
-        }
-      }
-      gaitHeld += dt
-
-      // La zancada sale del suelo recorrido, y cada marcha cubre lo suyo.
-      // `stride` son los píxeles que avanza un ciclo completo, así que
-      // worldX/stride son ciclos y ×count da el frame. Character envuelve.
-      const active = stateRef.current
-      cycle = advanceCycle(cycle, active, travelled, block, dt)
-      if (active === 'sit') {
-        // El frame lo marca la posición, no la distancia recorrida: el gesto
-        // tiene principio y final, no es un ciclo.
-        writeFrame(Math.min(FRAME_COUNT.sit - 1, Math.floor(sitAt * FRAME_COUNT.sit)))
-      } else if (active === 'climb') {
-        writeFrame(podiumNow.frame)
-      } else if (!loopsByItself(active) && active !== 'throw') {
-        // En reposo manda el bucle CSS: escribirle el frame lo dejaría clavado.
-        // El lanzamiento lleva su propio reloj: escribirle aquí el frame de la
-        // zancada, que parado no avanza, lo pisaba y el gesto no se movía.
-        // El frame se cuenta sobre la hoja que el nodo enseña, que durante un
-        // frame aún es la de la marcha anterior.
-        const shown = spriteRef.current?.dataset.state
-        const sheet = shown === 'run' || shown === 'walk' ? shown : active
-        writeFrame(Math.floor(cycle * FRAME_COUNT[sheet]))
-      }
-
-      // Retroceder es darse la vuelta, no rebobinar. La banda muerta evita que
-      // un temblor de rueda lo haga girar sobre sí mismo. Sentado no se gira:
-      // la hoja está dibujada mirando al vacío y voltearla lo pondría de
-      // espaldas al horizonte mientras se levanta.
-      if (podiumAt > 0 && facingRef.current < 0) {
-        // Al podio se sube de frente al escenario, aunque se llegara de vuelta.
-        facingRef.current = 1
-        if (spriteRef.current) spriteRef.current.style.transform = ''
-      }
-      if (!teleportingRef.current && !gesturing && Math.abs(travelled) > 0.6) {
-        const facing = travelled < 0 ? -1 : 1
-        if (facing !== facingRef.current) {
-          facingRef.current = facing
-          if (spriteRef.current) {
-            spriteRef.current.style.transform = facing < 0 ? 'scaleX(-1)' : ''
-          }
-        }
-      }
-      setStarted(current > 0.004)
-
-      // Se abre el encuadre al acercarse al acantilado.
-      const toCliff = Math.min(1, Math.max(0, (current - CLIFF_FROM) / (1 - CLIFF_FROM)))
-      // Y se cierra a la izquierda mientras está en el podio, para dejarle sitio
-      // al escenario. Solo entonces: atado a la posición, quien cruzaba andando
-      // veía al personaje frenar y acelerar en mitad del bioma. De camino se
-      // corre al paso de lo que anda, y los dos acaban a la vez: por su cuenta
-      // patinaba de lado con el mundo ya quieto. Al bajar vuelve poco a poco.
-      const focused = podiumAskRef.current || podiumAt > 0 || podiumLandRef.current !== null
-      const walkIn = Math.abs(podiumFromRef.current - PODIUM_AT)
-      if (podiumAskRef.current && walkIn > PODIUM_NEAR) {
-        podiumFocusRef.current = Math.max(
-          podiumFocusRef.current,
-          1 - Math.min(1, Math.abs(current - PODIUM_AT) / walkIn),
-        )
-      } else {
-        podiumFocusRef.current += ((focused ? 1 : 0) - podiumFocusRef.current) * easeFor(0.1, dt)
-        if (Math.abs(podiumFocusRef.current - (focused ? 1 : 0)) < 0.002) {
-          podiumFocusRef.current = focused ? 1 : 0
-        }
-      }
-      const wantX =
-        ENTRY_TO + (CLIFF_X - ENTRY_TO) * toCliff + (PODIUM_X - ENTRY_TO) * podiumFocusRef.current
-      actorXRef.current = wantX
-      if (actorRef.current) {
-        actorRef.current.style.left = `${wantX}%`
-        // Lo que lo separa de la línea del suelo: el estrado bajo sus pies al
-        // cruzarlo andando, y los saltos mientras sube.
-        const scale = worldPx / WORLD_UNIT
-        const onStage =
-          ((window.innerWidth * (wantX - PODIUM_X)) / 100 + worldX - PODIUM_AT * WORLD_LENGTH) / scale
-        const edge = Math.min(onStage - STAGE.from, STAGE.to - onStage)
-        const walking = { x: 0, up: STAGE.lift * Math.min(1, Math.max(0, edge / 24)) }
-        // Tras bajar por el otro lado sigue donde cayó, y lo que avanza el
-        // mundo se le descuenta hasta que lo alcanza.
-        const spot =
-          podiumAt > 0
-            ? podiumNow.spot
-            : landed
-              ? { x: STAGE.exit.x - (worldX - PODIUM_AT * WORLD_LENGTH) / scale, up: STAGE.exit.up }
-              : walking
-        actorRef.current.style.transform = `translate3d(${spot.x * scale}px,${-spot.up * scale}px,0)`
-      }
-
-      // Qué cae y con cuánta fuerza: `air.ts`. La arena, además, a rachas.
-      const air = weatherRef.current
-      const mix = airAt(index, next, blend)
-      air.kind = mix.kind
-      air.power = mix.kind === 'sand' ? mix.power * gust(now) : mix.power
-
-      // La arena también quita visibilidad al fondo, no solo cae. Los velos son
-      // del tamaño de la pantalla, así que esto es composición y no re-filtrado.
-      const wantFog = 'fog' in SECTIONS[index] ? 1 : 0
-      fogRef.current += (wantFog - fogRef.current) * easeFor(0.05, dt)
-      const fog = quantize(fogRef.current, 24)
-      if (fog !== fogWrittenRef.current) {
-        fogWrittenRef.current = fog
-        rootRef.current?.style.setProperty('--fog', `${fog}`)
-      }
-
-      const sand = quantize(air.kind === 'sand' ? air.power : 0, 24)
-      if (sand !== sandRef.current) {
-        sandRef.current = sand
-        rootRef.current?.style.setProperty('--sand', `${sand}`)
-      }
-
-      // Apertura por distancia: es una función de la posición, no un
-      // disparador. Así no hay estado que sincronizar ni re-disparos al volver.
-      // El cajón del podio es la excepción: lo abre el gesto, no la distancia,
-      // y mientras está abierto cierra el del cofre, que queda a un paso.
-      const onPodium = quantize(podiumAt, PANEL_STEPS)
-      setPodiumOpen(onPodium)
-      setChestOpen(
-        quantize(panelOpenness(chestAtRef.current, current) * (1 - podiumAt), PANEL_STEPS),
-      )
-      setBookOpen(quantize(panelOpenness(atOf('sobre-mi'), current), PANEL_STEPS))
-      setSignsOpen(quantize(panelOpenness(atOf('contacto'), current), PANEL_STEPS))
-      setBenchOpen(quantize(panelOpenness(atOf('skills'), current), PANEL_STEPS))
-      setActive(nearestSection(current).id)
-
-      // Qué biomas están montados. Solo se toca al cruzar el radio, y ese es el
-      // único cambio de estado que rehace el árbol de capas.
-      const near = sectionsNear(current, MOUNT_RADIUS)
-      const key = near.join(',')
-      if (key !== mountKeyRef.current) {
-        mountKeyRef.current = key
-        setMounted(near)
-      }
-
-      // Precalentado: descomprime las capas del bioma que viene y retiene la
-      // imagen, para que montarla luego no cueste nada. Se sueltan pasado el
-      // radio, con holgura, porque son decenas de MB cada una.
-      const warm = warmRef.current
-      SECTIONS.forEach((section) => {
-        // El destino de un teletransporte cuenta como cercano desde que se
-        // pide: hay un segundo de gesto antes del salto, y sin esto se llegaba
-        // a un bioma sin decodificar, con el cielo pelado.
-        const distance = Math.min(
-          Math.abs(section.at - current),
-          warmAtRef.current === null ? Infinity : Math.abs(section.at - warmAtRef.current),
-        )
-        section.kinds.forEach((kind) => {
-          const src = layerSrc(section.biome, kind, half)
-          if (distance < PREWARM_RADIUS) {
-            if (!warm.has(src)) {
-              const image = new Image()
-              warm.set(src, image)
-              image.src = src
-              void image.decode().catch(() => {})
-            }
-          } else if (distance > PREWARM_DROP) {
-            warm.delete(src)
-          }
-        })
-      })
-
-      raf = requestAnimationFrame(frame)
-    }
-
-    const onScroll = read
-
-    read()
-
-    // La vuelta ya dejó el mundo colocado y el documento desplazado antes de la
-    // caminata; aquí solo se adopta como punto de partida.
-    if (resumeRef.current !== null) {
-      target = resumeRef.current
-      resumeRef.current = null
-      window.scrollTo({ top: scrollFromWorld(target), behavior: 'auto' })
-    }
-
-    current = target
-    window.addEventListener('scroll', onScroll, { passive: true })
-    raf = requestAnimationFrame(frame)
-
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      cancelAnimationFrame(raf)
-    }
-  }, [phase, worldPx, half, lite, writeFrame, placeWorld])
+  useWorldLoop({
+    refs,
+    phase,
+    worldPx,
+    half,
+    lite,
+    writeFrame,
+    placeWorld,
+    setCharacterState,
+    setLite,
+    setStarted,
+    setPodiumOpen,
+    setChestOpen,
+    setBookOpen,
+    setSignsOpen,
+    setBenchOpen,
+    setActive,
+    setMounted,
+  })
 
 
   useBackgroundFetch(phase !== 'loading', half, spriteHalf)
@@ -961,8 +534,6 @@ export default function RecorridoPage() {
     chat,
     hidden,
     setHidden,
-    teleportingRef,
-    warmAtRef,
     navigate,
     tpToCover,
     sendChat,
@@ -979,6 +550,8 @@ export default function RecorridoPage() {
     sitRef,
     podiumRef,
     coverRef,
+    teleportingRef,
+    warmAtRef,
     setActive,
     setCharacterState,
     setMenuOpen,

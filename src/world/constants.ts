@@ -315,3 +315,8 @@ export const SPLASHES = [
   'Ahora con parallax',
   'Se acepta feedback',
 ]
+
+/** `waiting`: cargado, con la portada todavía puesta y el mundo quieto detrás. */
+export type Phase = 'loading' | 'waiting' | 'greeting' | 'entering' | 'ready'
+/** La portada: puesta, apartándose o fuera. */
+export type CoverState = 'on' | 'leaving' | 'off'
