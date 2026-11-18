@@ -144,11 +144,26 @@
   }
 }
 
-/* En estrecho las flechas bajan junto al pie: a los lados pisaban la imagen,
-   que ya ocupa todo el ancho. El acompañante aquí ni se monta. */
+/* En estrecho la imagen ocupa todo el ancho y él no cabe a su lado: asoma
+   por la esquina de abajo a la izquierda, bajo la imagen, y la mira desde
+   ahí. Las flechas bajan junto al pie —a los lados pisaban la imagen— y van
+   a la derecha, para dejarle sitio. Estuvo sin salir en móvil. */
 @media (max-width: 760px) {
+  /* Más opaco que en ancho: debajo quedan los botones de andar, justo donde
+     van las flechas, y se leían como dos pares de flechas encimados. */
   .veil {
     padding: 64px 12px 84px;
+    background: rgb(6 9 12 / 0.95);
+  }
+
+  .companion {
+    margin-bottom: -84px;
+    margin-left: -12px;
+    translate: none;
+  }
+
+  .accompanied .caption {
+    padding-left: 0;
   }
 
   .arrow {
@@ -158,13 +173,13 @@
   }
 
   .previous {
-    left: calc(50% - 56px);
+    left: auto;
+    right: 72px;
   }
 
   .next {
-    right: calc(50% - 56px);
+    right: 16px;
   }
-
 }
 
 @media (prefers-reduced-motion: reduce) {

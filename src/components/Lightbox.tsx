@@ -10,15 +10,18 @@ import styles from './Lightbox.module.css'
 
 /** Alto de su celda respecto al de la ventana. */
 const WATCH_VH = 0.36
-/** Por debajo de este ancho no sale: la imagen ya ocupa toda la pantalla. */
+/** Por debajo de este ancho la imagen ocupa toda la pantalla y él no cabe a
+ *  su lado: asoma por la esquina de abajo, más pequeño. */
 const WATCH_MIN_WIDTH = 761
+/** Ancho de su celda respecto al de la ventana, en estrecho. */
+const WATCH_NARROW_VW = 0.6
 
-/** Baja la hoja antes de que haga falta, para que no asome tarde. No hace
- *  nada en pantallas donde el acompañante no sale. */
+const isNarrow = () => window.innerWidth < WATCH_MIN_WIDTH
+
+/** Baja la hoja antes de que haga falta, para que no asome tarde. */
 export function warmCompanion() {
-  if (window.innerWidth < WATCH_MIN_WIDTH) return
   const image = new Image()
-  image.src = WATCH.src
+  image.src = isNarrow() ? WATCH.halfSrc : WATCH.src
 }
 
 export interface LightboxItem {
@@ -48,16 +51,20 @@ export default function Lightbox({ items, index, onIndex, onClose }: LightboxPro
   const closeRef = useRef<HTMLButtonElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const total = items.length
-  /** Escala del acompañante, o `null` si en esta pantalla no sale. */
-  const [watchScale, setWatchScale] = useState<number | null>(null)
+  /** El acompañante: a qué escala va y si es la pantalla estrecha. `null`
+   *  hasta medir la ventana. */
+  const [watch, setWatch] = useState<{ scale: number; narrow: boolean } | null>(null)
 
   useEffect(() => {
-    const fit = () =>
-      setWatchScale(
-        window.innerWidth < WATCH_MIN_WIDTH
-          ? null
+    const fit = () => {
+      const narrow = isNarrow()
+      setWatch({
+        narrow,
+        scale: narrow
+          ? (window.innerWidth * WATCH_NARROW_VW) / WATCH.cellWidth
           : (window.innerHeight * WATCH_VH) / WATCH.cellHeight,
-      )
+      })
+    }
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
@@ -82,7 +89,7 @@ export default function Lightbox({ items, index, onIndex, onClose }: LightboxPro
   return createPortal(
     <div
       ref={boxRef}
-      className={`${styles.veil} ${watchScale === null ? '' : styles.accompanied}`}
+      className={`${styles.veil} ${watch === null ? '' : styles.accompanied}`}
       role="dialog"
       aria-modal="true"
       aria-label={item.caption}
@@ -111,9 +118,14 @@ export default function Lightbox({ items, index, onIndex, onClose }: LightboxPro
         </figcaption>
       </figure>
 
-      {watchScale === null ? null : (
+      {watch === null ? null : (
         <div className={styles.companion} aria-hidden="true">
-          <SpriteGrid {...WATCH} scale={watchScale} label="" />
+          <SpriteGrid
+            {...WATCH}
+            src={watch.narrow ? WATCH.halfSrc : WATCH.src}
+            scale={watch.scale}
+            label=""
+          />
         </div>
       )}
 

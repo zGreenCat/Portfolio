@@ -787,8 +787,13 @@ para reutilizarse con las fotos de los hackatones.
   seguidos: no paraba quieto y se leía como un tic. `SEGMENTS` está en el
   generador y en `watchSheet.ts`, y **tienen que coincidir**: lo vigila
   `npm test`, junto con que la hoja servida tenga la rejilla declarada.
-- **En estrecho ni se monta ni se descarga**: la imagen ya ocupa toda la
-  pantalla. No tiene salida propia: se va con el visor.
+- **En estrecho asoma por la esquina de abajo a la izquierda**, bajo la
+  imagen, más pequeño (60% del ancho) y con la hoja a la mitad
+  (`peek_watch@half`): la entera son 50 MB decodificada y en un teléfono va
+  encima del mundo. Estuvo sin montarse en móvil porque no cabe al lado de la
+  imagen; Vicente lo echó en falta. Las flechas, que iban centradas abajo, se
+  fueron a la derecha para dejarle sitio, y el velo es más opaco ahí: debajo
+  quedan los botones de andar. No tiene salida propia: se va con el visor.
 
 ### Modo ligero
 

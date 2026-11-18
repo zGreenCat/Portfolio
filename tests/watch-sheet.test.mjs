@@ -45,6 +45,13 @@ test('la hoja servida tiene sitio para todos los frames y celdas enteras', () =>
   )
 })
 
+test('la hoja a la mitad, la de pantallas estrechas, es la entera a la mitad', () => {
+  const [width, height] = webpSize(readFileSync(new URL(`public${WATCH.src}`, root)))
+  const [halfWidth, halfHeight] = webpSize(readFileSync(new URL(`public${WATCH.halfSrc}`, root)))
+  assert.deepEqual([halfWidth, halfHeight], [width / 2, height / 2])
+  assert.ok(halfWidth <= 4096, 'cabe en la textura de un móvil')
+})
+
 test('los tramos van seguidos y sin solaparse', () => {
   const all = Object.keys(SEGMENTS).flatMap((name) => segment(name))
   assert.deepEqual(all, Array.from({ length: total }, (_, i) => i))

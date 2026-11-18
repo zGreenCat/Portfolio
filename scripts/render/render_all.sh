@@ -65,11 +65,12 @@ magick "$WORK/peek_wave.png" -quality 90 "$OUT/peek_wave.webp"
 half peek_wave
 echo "peek_wave: $(ls "$WORK/peek_wave" | wc -l) frames"
 
-# The one who watches the picture in the viewer. No @half: phones never load it.
+# The one who watches the picture in the viewer. Phones load its @half.
 python3 $HERE/gen_watch.py "$WORK/peek_watch.json" 0.8
 render peek_watch "$WORK/peek_watch.json"
 magick montage "$WORK/peek_watch"/f*.png -tile 8x8 -geometry 512x384+0+0 -background none "$WORK/peek_watch.png"
 magick "$WORK/peek_watch.png" -quality 90 "$OUT/peek_watch.webp"
+half peek_watch
 echo "peek_watch: $(ls "$WORK/peek_watch" | wc -l) frames"
 
 # The cover: arms crossed, seven poses in a row, cut to the box all of them

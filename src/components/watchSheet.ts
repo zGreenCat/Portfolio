@@ -29,6 +29,9 @@ const times = (frames: number[], count: number) => Array.from({ length: count },
  */
 export const WATCH = {
   src: '/sprites/peek_watch.webp',
+  /** La mitad, para pantallas estrechas: la entera son 50 MB decodificada, y
+   *  en un teléfono va encima del mundo. */
+  halfSrc: '/sprites/peek_watch@half.webp',
   cellWidth: 640,
   cellHeight: 480,
   columns: 8,
