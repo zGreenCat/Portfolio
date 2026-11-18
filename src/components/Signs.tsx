@@ -57,7 +57,7 @@ export default function Signs({ openness, onFly }: SignsProps) {
           onClick={(event) => {
             // Con una tecla modificadora, o con otro botón, manda el
             // navegador: quien quiere una pestaña nueva la tiene.
-            if (!FLIES.has(item.id) || event.metaKey || event.ctrlKey || event.shiftKey) return
+            if (!FLIES.has(item.id) || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
             if (onFly(item.href)) event.preventDefault()
           }}
         >

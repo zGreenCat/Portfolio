@@ -92,8 +92,12 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
       const sprite = spriteRef.current
       const canvas = sparksRef.current
       const ctx = canvas?.getContext('2d')
+      // Ya va volando hacia un enlace: este clic queda atendido. Devolvía
+      // `false`, el cartel dejaba pasar el enlace y un doble clic lo abría
+      // dos veces: una pestaña nueva en el acto y esta al acabar el vuelo.
+      if (flyingRef.current) return true
       if (!sprite || !canvas || !ctx) return false
-      if (flyingRef.current || teleportingRef.current) return false
+      if (teleportingRef.current) return false
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false
 
       flyingRef.current = true
@@ -109,6 +113,9 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
       // pone de pie: la hoja de sentarse, al revés. Saltar de sentado a la
       // primera pose del despegue era un corte.
       const seated = sitRef.current > 0 && sprite.dataset.state === 'sit'
+      /** Cuánto llevaba sentado al pedirlo: a medio gesto se levanta desde
+       *  ahí, no desde sentado del todo. */
+      const sat = Math.min(1, sitRef.current)
       if (!seated) setCharacterState('fly')
 
       const density = window.devicePixelRatio || 1
@@ -133,7 +140,7 @@ export function useFlight({ refs, writeFrame, setCharacterState }: FlightDeps) {
       const step = (now: number) => {
         if (!stood) {
           if (now < start) {
-            writeFrame(standFrame(now - begun, FRAME_COUNT.sit))
+            writeFrame(standFrame(now - begun, FRAME_COUNT.sit, sat))
             rafRef.current = requestAnimationFrame(step)
             return
           }

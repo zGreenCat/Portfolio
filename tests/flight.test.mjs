@@ -78,3 +78,15 @@ test('sentado, se levanta con la hoja de sentarse al revés y acaba de pie', () 
     before = frame
   }
 })
+
+test('standFrame: a medio sentarse se levanta desde ahí, no desde sentado del todo', () => {
+  const frames = 31
+  assert.equal(standFrame(0, frames, 0.5), 15)
+  assert.equal(standFrame(STAND_MS, frames, 0.5), 0)
+  assert.equal(standFrame(0, frames, 2), frames - 1, 'no pasa de la última pose')
+  for (let ms = 0, last = Infinity; ms <= STAND_MS; ms += 30) {
+    const frame = standFrame(ms, frames, 0.5)
+    assert.ok(frame <= last)
+    last = frame
+  }
+})

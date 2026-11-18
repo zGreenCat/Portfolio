@@ -56,7 +56,10 @@ export const STAND_MS = 900
  * al revés, de la última —sentado— a la primera, que es de pie y es donde
  * arranca el despegue.
  */
-export function standFrame(ms: number, sitFrames: number): number {
+export function standFrame(ms: number, sitFrames: number, sat = 1): number {
   const done = Math.min(1, Math.max(0, ms / STAND_MS))
-  return Math.round((1 - done) * (sitFrames - 1))
+  // `sat` es cuánto llevaba sentado (0…1). Si lo pidió a medio sentarse,
+  // partir de la última pose era un salto: se sentaba de golpe para levantarse.
+  const from = Math.min(1, Math.max(0, sat)) * (sitFrames - 1)
+  return Math.round((1 - done) * from)
 }

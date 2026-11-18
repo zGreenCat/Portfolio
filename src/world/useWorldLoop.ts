@@ -8,7 +8,7 @@ import { loopsByItself } from '@/components/characterSheets'
 import { easeFor } from '@/components/smoothing'
 import { BLOCK_PX_SOURCE, WORLD_UNIT } from '@/content/layers'
 
-import { airAt, gust } from './air'
+import { CALM_GUST, airAt, gust } from './air'
 import {
   CATCH_UP_BLOCKS,
   CLIFF_FROM,
@@ -145,6 +145,7 @@ export function useWorldLoop({
     }
 
     const block = BLOCK_PX_SOURCE * (worldPx / WORLD_UNIT)
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let previous = 0
     let last = performance.now()
     /** Por dónde va la zancada, en ciclos. En ciclos y no en frames porque
@@ -156,7 +157,9 @@ export function useWorldLoop({
     let gaitHeld = GAIT_HOLD_SECONDS
 
     const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000)
+      // Sin bajar de cero: la marca del frame puede ser anterior al
+      // `performance.now()` de arriba, y un tiempo negativo desharía camino.
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000))
       last = now
       if (podiumLandRef.current !== null) {
         // Bajó por el otro lado del podio y el mundo sigue clavado donde subió.
@@ -403,7 +406,9 @@ export function useWorldLoop({
       const air = weatherRef.current
       const mix = airAt(index, next, blend)
       air.kind = mix.kind
-      air.power = mix.kind === 'sand' ? mix.power * gust(now) : mix.power
+      // Con movimiento reducido la arena no va a rachas: el velo subía y
+      // bajaba sin parar, y no hay forma de detenerlo. Se queda en su media.
+      air.power = mix.kind === 'sand' ? mix.power * (calm ? CALM_GUST : gust(now)) : mix.power
 
       // La arena también quita visibilidad al fondo, no solo cae. Los velos son
       // del tamaño de la pantalla, así que esto es composición y no re-filtrado.
@@ -487,6 +492,11 @@ export function useWorldLoop({
     }
 
     current = target
+    // Desde donde está, no desde cero: el efecto se rehace al redimensionar,
+    // al encenderse el modo ligero o al volver a una sección, y en su primer
+    // frame creía haber recorrido el mundo entero. El clima daba un latigazo
+    // y el personaje enseñaba un instante de carrera.
+    previous = current * WORLD_LENGTH
     window.addEventListener('scroll', onScroll, { passive: true })
     raf = requestAnimationFrame(frame)
 

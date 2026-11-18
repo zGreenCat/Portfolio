@@ -145,10 +145,16 @@ export default function WorkViewer({ works, id, onChange, onClose, thumbOf }: Wo
 
   const cancelLeaveRef = useRef<(() => void) | null>(null)
   useEffect(() => () => cancelLeaveRef.current?.(), [])
+  // El cambio de ficha pendiente se cancela al cerrar: una flecha y Escape
+  // seguidos cambiaban de ficha con el visor ya saliendo.
+  const swapTimerRef = useRef(0)
+  useEffect(() => () => window.clearTimeout(swapTimerRef.current), [])
 
   /** Al cerrar: la imagen vuelve a la fila de lo que se estaba mirando. */
   const close = useCallback(() => {
     if (stageRef.current !== 'open') return
+    window.clearTimeout(swapTimerRef.current)
+    setSwapping(false)
     const thumb = thumbOf(id)
     const frame = frameRef.current
     const first = work.shots[0]
@@ -182,7 +188,7 @@ export default function WorkViewer({ works, id, onChange, onClose, thumbOf }: Wo
         return
       }
       setSwapping(true)
-      window.setTimeout(() => {
+      swapTimerRef.current = window.setTimeout(() => {
         onChange(to)
         setSwapping(false)
       }, SWAP_MS)

@@ -161,9 +161,17 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
       avatar.style.backgroundPositionX = framePosition(frame)
     }
     const later = (run: () => void, ms: number) => {
-      timers.push(window.setTimeout(run, ms))
+      // Cada uno se borra al dispararse: el parpadeo se reprograma solo, y
+      // la lista crecía mientras la portada siguiera puesta.
+      const timer = window.setTimeout(() => {
+        timers.splice(timers.indexOf(timer), 1)
+        run()
+      }, ms)
+      timers.push(timer)
     }
     const onMove = (event: PointerEvent) => {
+      // Con movimiento reducido no sigue al puntero: mira al frente.
+      if (still) return
       const box = avatar.getBoundingClientRect()
       gaze = gazeFrame(event.clientX, box.left + box.width / 2, window.innerWidth * GAZE_REACH)
       if (!blinking) show(gaze)
@@ -210,7 +218,7 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
       driving = false
     }
     const step = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000)
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000))
       last = now
       const gap = target - current
       if (Math.abs(gap) < 0.5) {
@@ -267,7 +275,8 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
 
   const toWork = useCallback(() => {
     stopScrollRef.current?.()
-    sheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    sheetRef.current?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
   }, [])
 
   return (

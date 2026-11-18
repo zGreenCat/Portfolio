@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { airAt, gust } from '../src/world/air.ts'
+import { CALM_GUST, airAt, gust } from '../src/world/air.ts'
 import { MOUNT_RADIUS, SECTIONS } from '../src/world/constants.ts'
 import { nearestSection, resumeIndex, sectionsNear } from '../src/world/geometry.ts'
 
@@ -87,4 +87,11 @@ test('resumeIndex: Inicio es una visita limpia, y un ancla que no es sección no
   // Con un ancla ajena, la posición sigue valiendo.
   const skills = SECTIONS.findIndex((section) => section.id === 'skills')
   assert.equal(resumeIndex(SECTIONS[skills].at, 'x', false), skills)
+})
+
+test('CALM_GUST es la media de las rachas', () => {
+  let sum = 0
+  const samples = 200000
+  for (let i = 0; i < samples; i += 1) sum += gust(i * 37)
+  assert.ok(Math.abs(sum / samples - CALM_GUST) < 0.01)
 })

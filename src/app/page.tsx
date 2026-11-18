@@ -275,9 +275,7 @@ export default function RecorridoPage() {
 
   /** Coloca la tesela del acantilado para que el borde del vacío caiga justo
    *  donde se planta el personaje cuando el mundo llega a su fin. */
-  const cliffAnchor =
-    WORLD_LENGTH + (typeof window === 'undefined' ? 0 : window.innerWidth * (CLIFF_X / 100)) -
-    CLIFF_EDGE * tileWidth
+  const cliffAnchor = WORLD_LENGTH + viewW * (CLIFF_X / 100) - CLIFF_EDGE * tileWidth
 
   /** Lo que comparten las tres piezas de capas: qué biomas hay montados y a
    *  qué medida se pintan. */

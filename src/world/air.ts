@@ -37,6 +37,9 @@ export function airAt(
  * fuerza, con lo que arrastra a la vez partículas, velo y visibilidad del
  * fondo: si solo pulsara una de las tres, se notaría el truco.
  */
+/** La fuerza media de las rachas: lo que vale la arena cuando no respira. */
+export const CALM_GUST = 0.725
+
 export function gust(now: number): number {
   const wave = 0.6 * Math.sin(now / 3200) + 0.4 * Math.sin(now / 7900 + 1.7)
   return 0.45 + 0.55 * (wave * 0.5 + 0.5)
