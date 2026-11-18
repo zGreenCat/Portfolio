@@ -12,6 +12,8 @@ const STAR_COUNT = 150
 interface NightSkyProps {
   /** 0 = pleno día, 1 = noche cerrada. */
   night: number
+  /** Cuánto ha salido el sol, de 0 a 1. Solo sale al amanecer del tema oscuro. */
+  sun?: number
 }
 
 function mix(a: number[], b: number[], t: number): string {
@@ -64,7 +66,7 @@ export function skyAt(night: number) {
   }
 }
 
-export default function NightSky({ night }: NightSkyProps) {
+export default function NightSky({ night, sun = 0 }: NightSkyProps) {
   // Las estrellas solo asoman cuando el cielo ya está oscuro.
   const visible = Math.max(0, (night - 0.55) / 0.45)
 
@@ -73,6 +75,15 @@ export default function NightSky({ night }: NightSkyProps) {
       {/* Los `--sky-*` los pone la página en la raíz: los comparte con la
           niebla de las capas, que va en otra rama del árbol. */}
       <div className={styles.sky} />
+      {/* El sol del amanecer: cuadrado, como el del juego, y sube desde el
+          horizonte según amanece. */}
+      {sun > 0 ? (
+        <span
+          className={styles.sun}
+          style={{ opacity: Math.min(1, sun * 1.6), translate: `0 ${(1 - sun) * 46}vh` }}
+          aria-hidden="true"
+        />
+      ) : null}
       {visible > 0 ? (
         <div className={styles.stars} style={{ opacity: visible }} aria-hidden="true">
           {STARS.map((star, index) => (

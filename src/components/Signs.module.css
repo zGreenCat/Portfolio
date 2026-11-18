@@ -1,6 +1,10 @@
 /* Clavados en el suelo del mundo, que en vertical no llega abajo del todo.
    El ancla es su borde derecho: la fila crece hacia la izquierda. */
 .row {
+  /* El ancho de un cartel y el de la farola, a la misma escala: los dos
+     renders salen de la misma cámara (399 px el cartel, 533 la farola). */
+  --sign: clamp(72px, 11vh, 132px);
+  --lamp: calc(var(--sign) * 533 / 399);
   position: absolute;
   bottom: var(--char-feet);
   translate: -100% 0;
@@ -13,28 +17,46 @@
   filter: brightness(calc(1 - var(--night, 0) * 0.1));
 }
 
-/* El poste con el farol: 201×668, a la misma escala que el cartel (399 de
-   ancho por sus 24 píxeles de textura; este mide 12). */
+/* La farola (533×788): base de piedra, poste, travesaño y un farol colgando
+   de cada punta. Va detrás de los carteles y en el centro de la fila; es
+   simétrica por eso, y asoma por encima con un farol a cada lado. Fue un
+   poste liso con un solo farol, al final de la fila. */
 .lamp {
-  position: relative;
-  flex: none;
-  width: calc(clamp(72px, 11vh, 132px) * 201 / 399);
-  aspect-ratio: 201 / 668;
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: -1;
+  width: var(--lamp);
+  aspect-ratio: 533 / 788;
+  translate: -50% 0;
   background: url('/textures/lamp.webp') center / 100% 100% no-repeat;
 }
 
-/* Su luz: un halo cálido centrado en el farol, que crece con la noche. Va
-   por encima de los carteles y los aclara; no recibe el ratón. */
-.lamp::after {
+/* Su luz: un halo cálido por farol, que crece con la noche. Lo pone la fila,
+   por delante de los carteles, para aclararlos; no recibe el ratón. Los
+   faroles están al 9% y al 91% del ancho de la farola, y al 69% de su alto. */
+.row::after {
+  --reach: calc(var(--lamp) * 1.7);
   content: '';
   position: absolute;
-  left: 67%;
-  top: 31%;
-  width: 1100%;
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(255 196 104 / 0.5), rgb(255 170 70 / 0.16) 45%, rgb(255 160 60 / 0));
+  left: 50%;
+  bottom: calc(var(--lamp) * 788 / 533 * 0.69);
+  width: calc(var(--lamp) * 4.4);
+  aspect-ratio: 1.25;
+  translate: -50% 50%;
+  background:
+    radial-gradient(
+      circle at calc(50% - var(--lamp) * 0.41) 50%,
+      rgb(255 196 104 / 0.46),
+      rgb(255 170 70 / 0.14) calc(var(--reach) * 0.45),
+      rgb(255 160 60 / 0) var(--reach)
+    ),
+    radial-gradient(
+      circle at calc(50% + var(--lamp) * 0.41) 50%,
+      rgb(255 196 104 / 0.46),
+      rgb(255 170 70 / 0.14) calc(var(--reach) * 0.45),
+      rgb(255 160 60 / 0) var(--reach)
+    );
   mix-blend-mode: screen;
   opacity: calc(0.15 + var(--night, 0) * 0.85);
   pointer-events: none;
@@ -49,7 +71,7 @@
 .sign {
   position: relative;
   flex: none;
-  width: clamp(72px, 11vh, 132px);
+  width: var(--sign);
   aspect-ratio: 399 / 435;
   background: url('/textures/sign.webp') center / 100% 100% no-repeat;
   text-decoration: none;
@@ -90,8 +112,11 @@
    queda en su mínimo y se le acorta el poste: se enseña la imagen sin su
    cuarto de abajo, como si estuviera más clavado. */
 @media (orientation: portrait) {
+  .row {
+    --sign: clamp(72px, 5.6vh, 132px);
+  }
+
   .sign {
-    width: clamp(72px, 5.6vh, 132px);
     aspect-ratio: 399 / 330;
     background-size: 100% auto;
     background-position: top;
@@ -109,13 +134,11 @@
 @media (orientation: portrait) and (max-width: 520px) {
   .row {
     --sign: calc((41vw - 22px) / 2);
+    /* Algo más grande que a escala: tiene que asomar sobre dos filas. */
+    --lamp: calc(var(--sign) * 1.6);
     flex-wrap: wrap;
     gap: 0 6px;
     width: calc(var(--sign) * 2 + 6px);
-  }
-
-  .sign {
-    width: var(--sign);
   }
 
   .sign:nth-child(-n + 2) {
@@ -126,14 +149,6 @@
     height: 100%;
   }
 
-  .lamp {
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    z-index: -1;
-    width: calc(var(--sign) * 0.74);
-    translate: -30% 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

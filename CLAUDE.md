@@ -245,6 +245,34 @@ WORLD_LENGTH  = 12000   px de mundo recorridos
 LAYER_SPEED   = { far: 0.15, mid: 0.3, near: 0.55, ground: 1 }
 ```
 
+### Claro y oscuro: la hora del día (`daylight.ts`)
+
+El mundo tiene una sola «hora», de 0 (día) a 1 (noche), y de ella cuelgan el
+cielo, las estrellas, lo que se oscurece el terreno y la luz del farol. **El
+tema oscuro no pinta nada: recorre esa escala al revés.**
+
+- Claro: de día casi todo el recorrido, y anochece hacia el acantilado.
+- Oscuro: de noche casi todo el recorrido, y **amanece** hacia el acantilado.
+  No llega a pleno día: se queda en `DAWN`, el punto del cielo anaranjado, y
+  sale un sol cuadrado por donde de noche está la luna.
+
+Decisiones:
+
+- **Por defecto, claro, y no sigue al sistema.** Vicente lo pidió así: es como
+  se diseñó el sitio. Se elige con el interruptor —arriba a la derecha en la
+  portada, junto a «Sonido» en la barra del mundo— y se recuerda en este
+  navegador (`localStorage`, clave `tema`).
+- **La foto y el avatar no cambian** con el tema, ni su contorno claro.
+- El tema va en `data-theme` de la raíz del documento, no de la página: el
+  visor de la portada es un portal y cuelga del `body`.
+- `placeWorld` lee el tema de una ref (`themeRef`); al cambiarlo se vuelve a
+  colocar el mundo donde está, y no se reinicia el bucle.
+- De rendimiento no cuesta: el filtro de las capas está siempre puesto, de
+  día también; la noche solo le cambia los valores.
+
+Con el oscuro puesto, quien recarga ve un instante el claro: el tema guardado
+se lee al montar, y la página se sirve en claro.
+
 ### Capas y biomas
 
 Cada bioma (`b1`…`b5`) tiene hasta cuatro capas en `public/layers/`. Por orden
@@ -458,9 +486,12 @@ vista.
 - **A Contacto se aterriza a media pantalla del cantil** (`contactLanding`),
   no en el `at` de la sección: en un móvil los carteles quedaban una pantalla
   más allá de donde caía.
-- **El farol** es un poste de tablas con el farol del juego colgando
-  (`props.py lamp`), a la misma escala que los carteles. Su halo crece con la
-  noche y va por encima de ellos; por eso ya casi no se oscurecen.
+- **La farola** (`props.py lamp`) es como las que se construyen en el juego:
+  base de piedra, poste de tablas, travesaño oscuro bajo una losa y un farol
+  colgando de cada punta. Va **detrás de los carteles, en el centro de la
+  fila**, y es simétrica por eso. Fue un poste liso con un solo farol al
+  final de la fila; a Vicente le pareció poco. Sus dos halos crecen con la
+  noche y van por delante de los carteles; por eso ya casi no se oscurecen.
 - **En un móvil van de dos en dos, apilados**, como se apilan en el juego:
   a la izquierda del asiento solo caben dos. Los de arriba son solo la tabla.
   El farol asoma por detrás.

@@ -42,6 +42,7 @@ import {
   worldFromScroll,
 } from '@/world/constants'
 import { signsAnchor } from '@/world/geometry'
+import { storeTheme, storedTheme, sunAt, type Theme } from '@/world/daylight'
 import { CHEST_GAP, CHEST_PX, MEDAL, PODIUM_AT, PODIUM_X, STAGE } from '@/world/podium'
 
 import { useBackgroundFetch } from '@/world/useLoading'
@@ -165,6 +166,34 @@ export default function RecorridoPage() {
     setCharacterState,
   })
 
+
+  // --- tema: claro u oscuro. En el mundo es la hora del día. ---
+  const [theme, setTheme] = useState<Theme>('light')
+  const applyTheme = useCallback(
+    (next: Theme) => {
+      refs.themeRef.current = next
+      setTheme(next)
+      // En la raíz del documento: el visor va en un portal, fuera de la página.
+      document.documentElement.dataset.theme = next
+      // La hora sale de la posición y del tema: se recoloca donde está.
+      placeWorld(refs.worldAtRef.current)
+    },
+    // `refs` es un objeto nuevo en cada render; sus refs no cambian.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [placeWorld],
+  )
+  const toggleTheme = useCallback(() => {
+    const next: Theme = refs.themeRef.current === 'dark' ? 'light' : 'dark'
+    storeTheme(next, (key, value) => window.localStorage.setItem(key, value))
+    applyTheme(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyTheme])
+  // Quien eligió oscuro en otra visita lo recupera. Sin elección, claro.
+  useEffect(() => {
+    if (storedTheme((key) => window.localStorage.getItem(key)) === 'dark') applyTheme('dark')
+    // Solo al montar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // --- recorrido: el scroll es una posición del mundo, no una línea de tiempo ---
   useWorldLoop({
@@ -307,7 +336,7 @@ export default function RecorridoPage() {
       </p>
 
       <div className={styles.stage} inert={cover !== 'off'}>
-        <NightSky night={night} />
+        <NightSky night={night} sun={sunAt(night, theme)} />
 
         <BackLayers space={space} farRef={farRef} midRef={midRef} nearRef={nearRef} />
 
@@ -445,6 +474,8 @@ export default function RecorridoPage() {
           active={active}
           onNavigate={navigate}
           onCover={tpToCover}
+          theme={theme}
+          onTheme={toggleTheme}
         />
 
         <WorldLoader done={phase !== 'loading' || cover !== 'off'} progress={progress} />
@@ -459,7 +490,13 @@ export default function RecorridoPage() {
         />
       ) : null}
       {cover === 'off' ? null : (
-        <Cover leaving={cover === 'leaving'} arrives={coverArrives} onEnter={enterWorld} />
+        <Cover
+          leaving={cover === 'leaving'}
+          arrives={coverArrives}
+          onEnter={enterWorld}
+          theme={theme}
+          onTheme={toggleTheme}
+        />
       )}
     </main>
   )

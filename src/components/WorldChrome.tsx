@@ -5,6 +5,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import styles from '@/app/recorrido.module.css'
 import { isMuted, play, setMuted } from '@/lib/sounds'
 import { BAR_CELLS, SECTIONS } from '@/world/constants'
+import type { Theme } from '@/world/daylight'
 
 import { CELL_WIDTH, SHEET_GEOMETRY } from './Character'
 import { CELL_HEIGHT, STATES, sheetSrc } from './characterSheets'
@@ -23,6 +24,8 @@ interface WorldNavProps {
   active: string
   onNavigate: (section: Section) => void
   onCover: () => void
+  theme: Theme
+  onTheme: () => void
 }
 
 /** La barra del mundo: secciones, sonido y la vuelta a la portada. */
@@ -35,6 +38,8 @@ export function WorldNav({
   active,
   onNavigate,
   onCover,
+  theme,
+  onTheme,
 }: WorldNavProps) {
   const [muted, setMutedState] = useState(false)
   useEffect(() => setMutedState(isMuted()), [])
@@ -82,6 +87,18 @@ export function WorldNav({
           aria-label={muted ? 'Activar sonido' : 'Silenciar'}
         >
           {muted ? '🔇 Sonido' : '🔊 Sonido'}
+        </button>
+        <button
+          type="button"
+          className={styles.navButton}
+          onClick={() => {
+            play('button')
+            onTheme()
+          }}
+          aria-pressed={theme === 'dark'}
+          aria-label={theme === 'dark' ? 'Pasar a tema claro' : 'Pasar a tema oscuro'}
+        >
+          {theme === 'dark' ? '☀ Día' : '☾ Noche'}
         </button>
         <button
           type="button"

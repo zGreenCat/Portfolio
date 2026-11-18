@@ -50,8 +50,9 @@ export default function Signs({ openness }: SignsProps) {
           <span className={styles.board}>{item.label}</span>
         </a>
       ))}
-      {/* El farol: un poste de tablas con el farol del juego colgando, y la
-          luz que les da a los carteles. Va el último, del lado del cantil. */}
+      {/* La farola: base de piedra, poste, travesaño y dos faroles del juego.
+          Va detrás de los carteles, en el centro de la fila; su luz la pone
+          la fila por delante. */}
       <span className={styles.lamp} aria-hidden="true" />
     </div>
   )

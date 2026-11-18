@@ -46,10 +46,28 @@
   right: 16%;
   width: 84px;
   height: 84px;
+  /* Lo que se aparta de su sitio lo escribe la página: en oscuro cruza el
+     cielo con el recorrido. */
+  translate: var(--moon-x, 0) var(--moon-y, 0);
   background: #eef1f8;
   box-shadow:
     0 0 0 10px rgb(238 241 248 / 0.09),
     0 0 46px 12px rgb(180 200 255 / 0.16);
+}
+
+/* El sol, cuadrado también. Sale por donde de noche está la luna: es hacia
+   donde mira el personaje sentado en el cantil. */
+.sun {
+  position: absolute;
+  top: 30%;
+  right: 16%;
+  z-index: 0;
+  width: 96px;
+  height: 96px;
+  background: #ffe9a8;
+  box-shadow:
+    0 0 0 12px rgb(255 214 130 / 0.16),
+    0 0 90px 30px rgb(255 170 90 / 0.3);
 }
 
 @media (prefers-reduced-motion: reduce) {

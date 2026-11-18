@@ -8,6 +8,7 @@ import WorkViewer from './WorkViewer'
 import { OTHER_EVENTS, PODIUM_WORKS, PROJECT_WORKS, WORKS } from './works'
 import { DUO, framePosition, gazeFrame, knobSpot, wantsHalfDuo } from './coverSheet'
 import { easeFor, wheelPixels } from './smoothing'
+import type { Theme } from '@/world/daylight'
 import styles from './Cover.module.css'
 
 /** Lo que tarda la portada en apartarse. La página espera esto para quitarla. */
@@ -33,6 +34,8 @@ interface CoverProps {
   /** Llega con un `/tp` desde el mundo: entra barriendo, al revés. */
   arrives: boolean
   onEnter: () => void
+  theme: Theme
+  onTheme: () => void
 }
 
 /**
@@ -51,7 +54,7 @@ interface CoverProps {
  * que esconde la portada cuando se llega con el ancla de una sección del
  * mundo, y un ancla propia la escondería a ella misma.
  */
-export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
+export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: CoverProps) {
   const boxRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<HTMLDivElement>(null)
@@ -314,6 +317,22 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
             aria-label="Su avatar de bloques, con el mismo polerón y la misma postura"
           />
         </div>
+
+        <button
+          type="button"
+          className={styles.theme}
+          onClick={onTheme}
+          aria-pressed={theme === 'dark'}
+          aria-label={theme === 'dark' ? 'Pasar a tema claro' : 'Pasar a tema oscuro'}
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            {theme === 'dark' ? (
+              <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4M13.2 10a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0z" />
+            ) : (
+              <path d="M16.2 12.1A6.6 6.6 0 0 1 7.9 3.8a6.6 6.6 0 1 0 8.3 8.3z" />
+            )}
+          </svg>
+        </button>
 
         {/* El tirador: una pastilla sobre la costura. Su sitio dice lo que
             hace —mueve esta línea— y por eso no es un botón en una esquina. */}

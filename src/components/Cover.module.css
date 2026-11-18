@@ -12,6 +12,10 @@
   --gold: #b88a12;
   --iron: #7d848a;
   --copper: #a85a34;
+  --gold-ink: #8f6a05;
+  --iron-ink: #5f666c;
+  --copper-ink: #96492a;
+  --pic: #dfe2d3;
   /* El corte, de arriba abajo: dónde cruza la diagonal el borde superior y
      el inferior. En vertical se tumba y pasan a ser alturas. */
   --cut-a: 60%;
@@ -26,11 +30,27 @@
   /* La barra, del color de la tinta y sin carril: la gris del sistema era lo
      único de la página que no estaba diseñado, y caía sobre el mundo. */
   scrollbar-width: thin;
-  scrollbar-color: rgb(26 29 21 / 0.42) transparent;
+  scrollbar-color: color-mix(in srgb, var(--ink) 42%, transparent) transparent;
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.6;
   color: var(--ink);
+}
+
+/* El tema oscuro: el mismo papel, de noche. Lo pone la página en la raíz
+   del documento. La foto y el avatar no cambian, ni su contorno claro. */
+:global(html[data-theme='dark']) .cover {
+  --paper: #15170f;
+  --ink: #eceee3;
+  --muted: #a7ad97;
+  --line: #33372b;
+  --olive: #d3c96c;
+  --olive-fill: #b9ae4a;
+  --on-olive: #17180e;
+  --gold-ink: #e0b43a;
+  --iron-ink: #b4bbc1;
+  --copper-ink: #d98a5e;
+  --pic: #24271c;
 }
 
 /* Quien llega con el ancla de una sección del mundo (`/#contacto`) va directo
@@ -274,6 +294,39 @@
    112 ms por frame con ella, 42 sin ella, renderizando por software). Mira
    y parpadea, que solo repinta cuando cambia de pose. */
 
+/* El interruptor de tema, arriba a la derecha, sobre el mundo. */
+.theme {
+  position: absolute;
+  top: 16px;
+  right: max(16px, 2vw);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.3);
+  transition: opacity 0.35s ease;
+}
+
+.theme svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.leaving .theme {
+  opacity: 0;
+}
+
 /* El tirador. Una pastilla clara sobre la costura, entre el nombre y sus
    cabezas; su sitio exacto lo mide el componente (`--knob-x`, `--knob-y`) y
    esto es lo que vale hasta entonces. Se da tres empujones al entrar, hacia
@@ -442,15 +495,15 @@
 }
 
 .gold {
-  --metal: #8f6a05;
+  --metal: var(--gold-ink);
 }
 
 .iron {
-  --metal: #5f666c;
+  --metal: var(--iron-ink);
 }
 
 .copper {
-  --metal: #96492a;
+  --metal: var(--copper-ink);
 }
 
 /* ---------- proyectos: un índice ---------- */
@@ -480,7 +533,7 @@
 .thumb {
   display: block;
   overflow: hidden;
-  background: #dfe2d3;
+  background: var(--pic);
 }
 
 .thumb img {
@@ -765,6 +818,13 @@
 
   .tally {
     display: none;
+  }
+
+  /* Arriba el nombre ocupa todo el ancho: va a la derecha de los botones. */
+  .theme {
+    top: calc(22px + 36vw + 56px);
+    right: 20px;
+    box-shadow: 0 0 0 1px var(--line);
   }
 
   .row {

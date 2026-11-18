@@ -101,7 +101,9 @@
 .sandFar,
 .sandMid,
 .sandNear {
-  background: rgb(226 200 140);
+  /* De día la arena es clara; de noche, parda oscura. Con un color fijo, en
+     el tema oscuro el desierto se veía a pleno día bajo un cielo de noche. */
+  background: color-mix(in srgb, rgb(226 200 140), rgb(46 38 26) calc(var(--night, 0) * 100%));
 }
 
 .fogFar {

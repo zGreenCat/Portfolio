@@ -23,6 +23,19 @@
   color: var(--ink);
 }
 
+:global(html[data-theme='dark']) .viewer {
+  --paper: #15170f;
+  --ink: #eceee3;
+  --muted: #a7ad97;
+  --line: #33372b;
+  --fill: #b9ae4a;
+  --on-fill: #17180e;
+  --pic: #24271c;
+  --gold-ink: #e0b43a;
+  --iron-ink: #b4bbc1;
+  --copper-ink: #d98a5e;
+}
+
 .viewer ::selection {
   background: var(--fill);
   color: var(--on-fill);

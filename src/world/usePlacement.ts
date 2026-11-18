@@ -1,23 +1,22 @@
 'use client'
 
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 
 import { FRAME_COUNT, type CharacterState } from '@/components/Character'
 import { BLOCK_PX_SOURCE, WORLD_UNIT } from '@/content/layers'
 
 import {
   CHAR_FEET_VH,
-  DUSK_FROM,
   ENTRY_FROM,
   ENTRY_SECONDS,
   ENTRY_TO,
   LAYER_SPEED,
-  NIGHT_AT,
   NIGHT_STEPS,
   STRIDE,
   WORLD_LENGTH,
   type Phase,
 } from './constants'
+import { moonAt, nightAt } from './daylight'
 import { biomeAt, quantize } from './geometry'
 import type { WorldRefs } from './useWorldRefs'
 
@@ -63,11 +62,13 @@ export function usePlacement({
     rootRef,
     stateRef,
     stripsRef,
+    themeRef,
     worldAtRef,
   } = refs
   /** La noche va cuantizada: cambiarla mueve un `filter` CSS sobre superficies
    *  del ancho del mundo, y re-filtrar eso en cada frame era carísimo. */
   const [night, setNight] = useState(0)
+  const moonRef = useRef('')
 
   // Releer la geometría de las tiras montadas. El recorte se reescribe en cada
   // frame y consultar el DOM ahí dentro sería absurdo.
@@ -126,8 +127,16 @@ export function usePlacement({
       feetVhRef.current = feet
       rootRef.current?.style.setProperty('--char-feet', `${feet * worldPx}px`)
 
-      const dark = Math.min(1, Math.max(0, (at - DUSK_FROM) / (NIGHT_AT - DUSK_FROM)))
-      setNight(quantize(dark, NIGHT_STEPS))
+      setNight(quantize(nightAt(at, themeRef.current), NIGHT_STEPS))
+      // La luna cruza el cielo con el recorrido. Va cuantizada y solo se
+      // escribe al cambiar: es una variable en la raíz.
+      const moon = moonAt(at, themeRef.current)
+      const moonKey = `${Math.round(moon.x * 400)},${Math.round(moon.y * 400)}`
+      if (moonKey !== moonRef.current) {
+        moonRef.current = moonKey
+        rootRef.current?.style.setProperty('--moon-x', `${(moon.x * 100).toFixed(2)}vw`)
+        rootRef.current?.style.setProperty('--moon-y', `${(moon.y * 100).toFixed(2)}vh`)
+      }
       return spot
     },
     [worldPx],

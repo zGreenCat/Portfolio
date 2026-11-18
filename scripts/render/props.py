@@ -5,12 +5,14 @@ Usage: blender -b -P props.py -- <chest|sign|lamp> <texture.png> <out_dir>
 
 A chest is a 14x14x14 model with a lid on a hinge and a latch, unwrapped on a
 64x64 sheet (entity/chest/normal.png). A sign is a board on a stick, on a
-32x32 one (block/oak_sign.png). The lamp is a post of planks with an arm and a
-lantern hanging from it; it takes two textures, so it is fed one 32x32 sheet
-with the lantern's first frame at the left and the planks at the right:
+32x32 one (block/oak_sign.png). The lamp post is built from four block
+textures, so it is fed one 64x64 sheet with them side by side along the top:
+the lantern's first frame, oak planks, stone bricks and dark oak planks.
 
-  magick -size 32x32 xc:none \( lantern.png -crop 16x16+0+0 +repage \) \
-    -geometry +0+0 -composite oak_planks.png -geometry +16+0 -composite lamp_sheet.png
+  magick -size 64x64 xc:none \( lantern.png -crop 16x16+0+0 +repage \) \
+    -geometry +0+0 -composite oak_planks.png -geometry +16+0 -composite \
+    stone_bricks.png -geometry +32+0 -composite \
+    dark_oak_planks.png -geometry +48+0 -composite lamp_sheet.png
 
 None of them goes through world.py, which only
 knows cubes with one texture per face. They do share its camera and its light,
@@ -38,7 +40,7 @@ FRONT, END = 0.9, 0.72
 # edge of the canvas, and the box it can reach, in texture pixels. The chest
 # stands left of the stage, lid up included; the sign, in the middle.
 SHEET, AT_X, REACH = {"chest": (64, 5.2, (16, 22, 24)), "sign": (32, 14.4, (24, 16, 26)),
-                      "lamp": (32, 14.4, (20, 16, 42))}[KIND]
+                      "lamp": (64, 14.4, (40, 16, 50))}[KIND]
 OVERSAMPLE = 2
 # The lid swings a quarter turn back, as in the game.
 OPEN = -90.0
@@ -144,33 +146,46 @@ def sign(_):
 
 
 def lamp(_):
-    """A post of planks two and a half blocks tall, an arm, and the game's
-    hanging lantern under its end: chain, cap and body, each mapped to the
-    part of the lantern's sheet the game uses for it."""
+    """A lamp post as players build them: a stone footing, a post of planks, a
+    dark crossbar under a stone cap, and a lantern hanging from each end. It
+    is symmetric on purpose: it stands behind the middle of a row of signs.
+
+    Each lantern is the game's hanging one, chain, cap and body, each mapped
+    to the part of the lantern's sheet the game uses for it."""
     verts, polys, uvs = [], [], []
-    # The planks are at the right of the sheet. The post takes a strip four
-    # pixels wide of them, one block of height at a time.
-    for z0, z1 in ((0, 16), (16, 32), (32, 40)):
-        rows = (0, z1 - z0)
-        side = (16, 20, *rows)
-        box(verts, polys, uvs, (6, 6, z0), (10, 10, z1), faces={
-            "front": side, "back": side, "left": (20, 24, *rows), "right": (20, 24, *rows),
-            "top": (16, 20, 0, 4), "bottom": (16, 20, 0, 4)})
-    arm = (20, 28, 4, 6)
-    box(verts, polys, uvs, (10, 7, 36), (18, 9, 38), faces={
-        "front": arm, "back": arm, "left": (20, 22, 4, 6), "right": (20, 22, 4, 6),
-        "top": (20, 28, 6, 8), "bottom": (20, 28, 6, 8)})
+    OAK, STONE, DARK = 16, 32, 48
+
+    def block(lo, hi, sheet, u=0, v=0):
+        """A box wrapped in a block texture, one texel per pixel, starting at
+        (u, v) of that texture."""
+        w, d, h = hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]
+        front = (sheet + u, sheet + u + w, v, v + h)
+        side = (sheet + u, sheet + u + d, v, v + h)
+        top = (sheet + u, sheet + u + w, v, v + d)
+        box(verts, polys, uvs, lo, hi, faces={"front": front, "back": front, "left": side,
+                                              "right": side, "top": top, "bottom": top})
+
+    block((14, 3, 0), (26, 13, 6), STONE, 2, 0)
+    block((16, 4, 6), (24, 12, 10), STONE, 4, 8)
+    for z0, z1 in ((10, 26), (26, 42)):
+        block((18, 6, z0), (22, 10, z1), OAK, 6, 0)
+    block((17, 5, 39), (23, 11, 42), DARK, 0, 0)
+    # The crossbar is two blocks long; a texture is one.
+    block((4, 6, 42), (20, 10, 45), DARK, 0, 4)
+    block((20, 6, 42), (36, 10, 45), DARK, 0, 4)
+    block((15, 4, 45), (25, 12, 47), STONE, 3, 0)
     cap = (1, 5, 0, 2)
     chain = (2, 3, 0, 2)
-    box(verts, polys, uvs, (13.5, 7.5, 33), (14.5, 8.5, 36), faces={
-        "front": chain, "back": chain, "left": chain, "right": chain, "top": chain, "bottom": chain})
-    box(verts, polys, uvs, (12, 6, 31), (16, 10, 33), faces={
-        "front": cap, "back": cap, "left": cap, "right": cap,
-        "top": (1, 5, 10, 14), "bottom": (1, 5, 10, 14)})
     body = (0, 6, 2, 9)
-    box(verts, polys, uvs, (11, 5, 24), (17, 11, 31), faces={
-        "front": body, "back": body, "left": body, "right": body,
-        "top": (0, 6, 9, 15), "bottom": (0, 6, 9, 15)})
+    for x in (7, 33):
+        box(verts, polys, uvs, (x - 0.5, 7.5, 38), (x + 0.5, 8.5, 42), faces={
+            "front": chain, "back": chain, "left": chain, "right": chain, "top": chain, "bottom": chain})
+        box(verts, polys, uvs, (x - 2, 6, 36), (x + 2, 10, 38), faces={
+            "front": cap, "back": cap, "left": cap, "right": cap,
+            "top": (1, 5, 10, 14), "bottom": (1, 5, 10, 14)})
+        box(verts, polys, uvs, (x - 3, 5, 29), (x + 3, 11, 36), faces={
+            "front": body, "back": body, "left": body, "right": body,
+            "top": (0, 6, 9, 15), "bottom": (0, 6, 9, 15)})
     return link("lamp", verts, polys, uvs)
 
 

@@ -6,6 +6,7 @@ import type { CharacterState } from '@/components/Character'
 import type { WeatherState } from '@/components/Weather'
 
 import { CHAR_FEET_VH, ENTRY_TO } from './constants'
+import type { Theme } from './daylight'
 import { PODIUM_AT } from './podium'
 
 /**
@@ -101,12 +102,15 @@ export function useWorldRefs() {
   const stateRef = useRef<CharacterState>('idle')
   /** Pide al bucle que salte sin suavizado ni tope: es un teletransporte. */
   const snapRef = useRef(false)
+  /** El tema, para quien coloca el mundo: de él sale la hora. */
+  const themeRef = useRef<Theme>('light')
   /** Hay un teletransporte en curso: el bucle no elige marcha ni gira. */
   const teleportingRef = useRef(false)
   /** Destino de un teletransporte en curso, para ir decodificando su bioma. */
   const warmAtRef = useRef<number | null>(null)
 
   return {
+    themeRef,
     teleportingRef,
     warmAtRef,
     worldDeltaRef,

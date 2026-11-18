@@ -44,13 +44,23 @@ export const metadata: Metadata = {
   },
 }
 
+/** La clave es la de `storedTheme` (`src/world/daylight.ts`). */
+const THEME_BOOT =
+  "try{if(localStorage.getItem('tema')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}"
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* El tema guardado se pone antes de pintar: sin esto, quien eligió
+            oscuro veía un instante el claro al recargar. La página lo
+            vuelve a leer al montar; esto solo adelanta los colores. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
     </html>
   )
