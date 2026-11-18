@@ -39,8 +39,11 @@ export const peekSrc = (half: boolean) => `/sprites/peek_wave${half ? '@half' : 
 export const WALK_SCREENS = 0.4
 export const RUN_SCREENS = 1.25
 
-/** Lo que el mundo se acerca al scroll en un frame a 60 Hz. */
-export const WORLD_EASE = 0.12
+/** Lo que el mundo se acerca al scroll en un frame a 60 Hz. Estuvo en 0,12 y
+ *  se sentía demasiado rápido: cada golpe de rueda era un tirón. Más bajo, el
+ *  mismo golpe se reparte en más tiempo y su velocidad punta baja en la misma
+ *  proporción. */
+export const WORLD_EASE = 0.08
 
 /** Alto de página dedicado al recorrido. */
 export const SCROLL_LENGTH = 7000
