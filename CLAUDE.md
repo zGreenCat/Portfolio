@@ -157,6 +157,15 @@ la pantalla de muerte del juego. Responde 404 de verdad.
   plana de siempre la isla era un recorte sin relieve.
 - Siempre oscura, con el tema claro también.
 
+**Lo que leen los buscadores** sale de `layout.tsx`: dirección canónica
+(la portada responde igual en `/`, `/index` y con cualquier `?…`), la
+descripción —habla de él, no del «mundo de bloques»; es también el texto que
+sale al compartir el enlace— y los datos estructurados (`person`, un
+`ProfilePage` con su `Person`), que es lo que une el sitio con su GitHub y su
+LinkedIn. Todo lee de `portfolio.ts`, ciudad incluida (`LOCATION`, que también
+sale en la portada). `robots.ts` y `sitemap.ts` declaran una sola dirección.
+La dirección pública está en `src/content/site.ts`.
+
 **El contenido va en el HTML servido gracias a la portada.** En el mundo los
 paneles se montan al acercarse caminando, así que por sí solo no sirve ningún
 proyecto: buscadores, previsualizaciones de enlace y lectores de pantalla no

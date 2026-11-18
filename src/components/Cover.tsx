@@ -10,6 +10,7 @@ import {
   PLACE_LABEL,
   PROJECTS,
   RECIPES,
+  LOCATION,
 } from '@/content/portfolio'
 
 import WorkViewer from './WorkViewer'
@@ -285,7 +286,14 @@ export default function Cover({ leaving, arrives, onEnter, theme, onTheme }: Cov
         </span>
 
         <div className={styles.under}>
-          <span className={styles.role}>Desarrollador full-stack</span>
+          <span className={styles.role}>
+            Desarrollador full-stack
+            {/* En su línea: seguido, con un punto, la columna lo partía por
+                donde caía y dejaba el punto colgando. */}
+            <span className={styles.place}>
+              {LOCATION.city}, {LOCATION.country}
+            </span>
+          </span>
           <p className={styles.pitch}>{COVER_ABOUT.degree}</p>
           <div className={styles.actions}>
             <button type="button" className={`${styles.button} ${styles.fill}`} onClick={toWork}>

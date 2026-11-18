@@ -188,6 +188,12 @@
   color: var(--olive);
 }
 
+.place {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
 .pitch {
   font-size: clamp(0.95rem, 1.4vw, 1.15rem);
   color: var(--muted);
@@ -896,8 +902,10 @@
   }
 
   /* Arriba el nombre ocupa todo el ancho: va a la derecha de los botones. */
+  /* Los 78 px son las dos líneas del rol —oficio y ciudad— y el texto de
+     debajo: lo dejan a la altura de los botones. */
   .theme {
-    top: calc(22px + 36vw + 56px);
+    top: calc(22px + 36vw + 78px);
     right: 20px;
     box-shadow: 0 0 0 1px var(--line);
   }
@@ -944,6 +952,18 @@
     gap: 10px;
     padding: 7px 16px 7px 8px;
     font-size: 0.98rem;
+  }
+}
+
+/* En un teléfono muy bajo (320×568) la línea de la ciudad empujaba los
+   botones contra el tirador. Ahí no sale; sigue en el HTML. */
+@media (max-width: 760px) and (max-height: 620px) {
+  .place {
+    display: none;
+  }
+
+  .theme {
+    top: calc(22px + 36vw + 56px);
   }
 }
 

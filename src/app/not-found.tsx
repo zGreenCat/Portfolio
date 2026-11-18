@@ -7,6 +7,10 @@ import styles from './not-found.module.css'
 
 export const metadata: Metadata = {
   title: 'Te perdiste · Vicente Araya',
+  // Las suyas, no las de la portada: un enlace roto compartido se presentaba
+  // con la tarjeta del portfolio.
+  description: 'Esta página no existe.',
+  openGraph: { title: 'Te perdiste · Vicente Araya', description: 'Esta página no existe.' },
   robots: { index: false },
 }
 

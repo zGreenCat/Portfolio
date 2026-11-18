@@ -216,6 +216,10 @@ export const PLACE_LABEL: Record<1 | 2 | 3, string> = {
   3: '3.er lugar',
 }
 
+/** Dónde vive. Sale en la portada, en la descripción del sitio y en los
+ *  datos estructurados: es por lo que lo busca quien contrata cerca. */
+export const LOCATION = { city: 'Antofagasta', country: 'Chile', countryCode: 'CL' } as const
+
 export const CONTACT = [
   { id: 'github', label: 'GitHub', href: 'https://github.com/zGreenCat' },
   {

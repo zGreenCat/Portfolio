@@ -48,6 +48,9 @@ export function WorldNav({
     <nav
       className={`${styles.nav} ${shown ? styles.navIn : ''}`}
       aria-label="Secciones"
+      // Va antes que la portada en el HTML: sin esto un buscador podía armar
+      // el fragmento del resultado con los botones de la barra.
+      data-nosnippet=""
     >
       <button
         type="button"
@@ -118,6 +121,7 @@ export function WorldLoader({ done, progress }: { done: boolean; progress: numbe
   return (
     <div
       className={`${styles.loader} ${done ? styles.loaderDone : ''}`}
+      data-nosnippet=""
     >
       <span className={styles.loaderTitle}>Cargando mundo</span>
       <div
