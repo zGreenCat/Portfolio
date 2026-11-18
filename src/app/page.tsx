@@ -92,6 +92,8 @@ import {
 import {
   BOUNDS,
   biomeAt,
+  nearestSection,
+  sectionsNear,
   clearingPhase,
   fitBounds,
   layerSrc,
@@ -111,6 +113,7 @@ import {
 
 import { advanceCycle, easePace, pickGait, stillTime } from '@/world/gait'
 import { stepClimb, stepSit } from '@/world/gestures'
+import { airAt, gust } from '@/world/air'
 
 import styles from './recorrido.module.css'
 
@@ -406,10 +409,7 @@ export default function RecorridoPage() {
 
     // El bioma tiene que estar montado antes de colocar el mundo: si no, no hay
     // tiras que recortar y la caminata ocurre sobre el terreno equivocado.
-    const near: number[] = []
-    SECTIONS.forEach((section, i) => {
-      if (Math.abs(section.at - at) < MOUNT_RADIUS) near.push(i)
-    })
+    const near = sectionsNear(at, MOUNT_RADIUS)
     mountKeyRef.current = near.join(',')
     setMounted(near)
     setActive(SECTIONS[index].id)
@@ -951,37 +951,11 @@ export default function RecorridoPage() {
         actorRef.current.style.transform = `translate3d(${spot.x * scale}px,${-spot.up * scale}px,0)`
       }
 
-      // El clima se desvanece cerca de la frontera en vez de cortarse: nieve
-      // que para en una línea vertical se lee como un fallo.
-      const here = SECTIONS[index]
-      const there = SECTIONS[next]
-      const own = 'weather' in here ? here.weather : null
-      const upcoming = 'weather' in there ? there.weather : null
+      // Qué cae y con cuánta fuerza: `air.ts`. La arena, además, a rachas.
       const air = weatherRef.current
-      if (blend > 0.5 && upcoming) {
-        air.kind = upcoming
-        air.power = (blend - 0.5) * 2
-      } else if (own) {
-        air.kind = own
-        air.power = Math.max(0, 1 - blend * 2)
-      } else {
-        air.kind = upcoming ?? null
-        air.power = upcoming ? Math.max(0, blend * 2 - 1) : 0
-      }
-
-      /*
-       * Rachas. La tormenta sube y baja en vez de quedarse plana, y en las
-       * calmas asoma el templo del fondo: taparlo siempre o no taparlo nunca
-       * eran las dos malas respuestas.
-       *
-       * Dos senos de periodo inconmensurable, así no se oye el bucle. Multiplica
-       * la fuerza, con lo que arrastra a la vez partículas, velo y visibilidad
-       * del fondo: si solo pulsara una de las tres, se notaría el truco.
-       */
-      if (air.kind === 'sand') {
-        const wave = 0.6 * Math.sin(now / 3200) + 0.4 * Math.sin(now / 7900 + 1.7)
-        air.power *= 0.45 + 0.55 * (wave * 0.5 + 0.5)
-      }
+      const mix = airAt(index, next, blend)
+      air.kind = mix.kind
+      air.power = mix.kind === 'sand' ? mix.power * gust(now) : mix.power
 
       // La arena también quita visibilidad al fondo, no solo cae. Los velos son
       // del tamaño de la pantalla, así que esto es composición y no re-filtrado.
@@ -1011,18 +985,11 @@ export default function RecorridoPage() {
       setBookOpen(quantize(panelOpenness(atOf('sobre-mi'), current), PANEL_STEPS))
       setSignsOpen(quantize(panelOpenness(atOf('contacto'), current), PANEL_STEPS))
       setBenchOpen(quantize(panelOpenness(atOf('skills'), current), PANEL_STEPS))
-      setActive(
-        SECTIONS.reduce((best, s) =>
-          Math.abs(s.at - current) < Math.abs(best.at - current) ? s : best,
-        ).id,
-      )
+      setActive(nearestSection(current).id)
 
       // Qué biomas están montados. Solo se toca al cruzar el radio, y ese es el
       // único cambio de estado que rehace el árbol de capas.
-      const near: number[] = []
-      SECTIONS.forEach((section, i) => {
-        if (Math.abs(section.at - current) < MOUNT_RADIUS) near.push(i)
-      })
+      const near = sectionsNear(current, MOUNT_RADIUS)
       const key = near.join(',')
       if (key !== mountKeyRef.current) {
         mountKeyRef.current = key

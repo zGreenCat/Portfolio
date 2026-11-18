@@ -112,3 +112,19 @@ export function biomeAt(world: number): { index: number; blend: number; next: nu
     edge === Infinity ? 0 : Math.min(1, Math.max(0, (world - (edge - FEET_EASE)) / FEET_EASE))
   return { index, blend, next }
 }
+
+/** Los biomas que hay que tener montados estando en `at`. */
+export function sectionsNear(at: number, radius: number): number[] {
+  const near: number[] = []
+  SECTIONS.forEach((section, i) => {
+    if (Math.abs(section.at - at) < radius) near.push(i)
+  })
+  return near
+}
+
+/** La sección más cercana: la que marca la barra. */
+export function nearestSection(at: number): (typeof SECTIONS)[number] {
+  return SECTIONS.reduce((best, section) =>
+    Math.abs(section.at - at) < Math.abs(best.at - at) ? section : best,
+  )
+}
