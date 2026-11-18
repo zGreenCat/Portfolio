@@ -2,7 +2,15 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
-import { DUO, framePosition, gazeFrame, wantsHalfDuo } from '../src/components/coverSheet.ts'
+import {
+  DUO,
+  SEAM,
+  framePosition,
+  gazeFrame,
+  knobSpot,
+  seamX,
+  wantsHalfDuo,
+} from '../src/components/coverSheet.ts'
 
 const root = new URL('..', import.meta.url)
 
@@ -63,4 +71,24 @@ test('cada pose tiene su sitio en la hoja y las de fuera fallan', () => {
 test('la mitad se sirve salvo en pantallas grandes', () => {
   assert.equal(wantsHalfDuo(528), true)
   assert.equal(wantsHalfDuo(713), false)
+})
+
+test('la costura cruza la pantalla de arriba abajo por donde dice el recorte', () => {
+  assert.equal(seamX(0, 1000, 500), 1000 * SEAM.top)
+  assert.equal(seamX(500, 1000, 500), 1000 * SEAM.bottom)
+  assert.equal(seamX(250, 1000, 500), 500, 'a media altura, por el centro')
+  assert.throws(() => seamX(10, 1000, 0))
+})
+
+test('el tirador cae sobre la costura, a media altura del hueco entre nombre y cabezas', () => {
+  for (const [width, height, nameBottom, pairTop] of [
+    [1280, 800, 175, 344],
+    [1920, 1080, 263, 464],
+    [982, 727, 135, 364],
+  ]) {
+    const spot = knobSpot(nameBottom, pairTop, width, height)
+    assert.equal(spot.y, (nameBottom + pairTop) / 2)
+    assert.equal(spot.x, seamX(spot.y, width, height))
+    assert.ok(spot.x > width * SEAM.bottom && spot.x < width * SEAM.top)
+  }
 })

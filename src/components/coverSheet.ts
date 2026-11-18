@@ -42,3 +42,28 @@ export function framePosition(frame: number): string {
   }
   return `${(frame / (DUO.frames - 1)) * 100}%`
 }
+
+/** Dónde corta la diagonal de la portada el borde de arriba y el de abajo,
+ *  como fracción del ancho. Las mismas del `clip-path` de `.paper`. */
+export const SEAM = { top: 0.6, bottom: 0.4 } as const
+
+/** La x de la costura a una altura `y`, en una pantalla de `width` × `height`. */
+export function seamX(y: number, width: number, height: number): number {
+  if (!(height > 0)) throw new Error(`seamX: el alto tiene que ser positivo, llegó ${height}`)
+  return width * (SEAM.top + (SEAM.bottom - SEAM.top) * (y / height))
+}
+
+/**
+ * Dónde va el tirador de «Recorrer el mundo»: sobre la costura, a media
+ * altura del hueco que queda entre el nombre y sus cabezas. `nameBottom` y
+ * `pairTop` son esas dos alturas, en píxeles.
+ */
+export function knobSpot(
+  nameBottom: number,
+  pairTop: number,
+  width: number,
+  height: number,
+): { x: number; y: number } {
+  const y = (nameBottom + pairTop) / 2
+  return { x: seamX(y, width, height), y }
+}

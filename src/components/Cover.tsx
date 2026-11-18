@@ -6,7 +6,7 @@ import { CONTACT, COVER_ABOUT, MADE, PLACE_LABEL, PROJECTS, RECIPES } from '@/co
 
 import WorkViewer from './WorkViewer'
 import { OTHER_EVENTS, PODIUM_WORKS, PROJECT_WORKS, WORKS } from './works'
-import { DUO, framePosition, gazeFrame, wantsHalfDuo } from './coverSheet'
+import { DUO, framePosition, gazeFrame, knobSpot, wantsHalfDuo } from './coverSheet'
 import { easeFor, wheelPixels } from './smoothing'
 import styles from './Cover.module.css'
 
@@ -55,6 +55,9 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
   const boxRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<HTMLDivElement>(null)
+  const nameRef = useRef<HTMLHeadingElement>(null)
+  const pairRef = useRef<HTMLDivElement>(null)
+  const knobRef = useRef<HTMLButtonElement>(null)
   const [duoHalf, setDuoHalf] = useState(true)
   /** Al llegar se monta apartada y se asienta en el frame siguiente: así la
    *  entrada es la misma transición que la salida, vista al revés. */
@@ -93,6 +96,40 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
+  }, [])
+
+  // El tirador va sobre la costura, en mitad del hueco entre el nombre y sus
+  // cabezas. Ese hueco depende de la forma de la ventana —el nombre crece con
+  // el ancho y ellos con el alto—, así que se mide. En vertical la diagonal
+  // está tumbada y su sitio lo pone el CSS.
+  useEffect(() => {
+    const place = () => {
+      const knob = knobRef.current
+      const name = nameRef.current
+      const pair = pairRef.current
+      const hero = knob?.parentElement
+      if (!knob || !name || !pair || !hero) return
+      if (window.innerWidth <= 760) {
+        knob.style.removeProperty('--knob-x')
+        knob.style.removeProperty('--knob-y')
+        return
+      }
+      const frame = hero.getBoundingClientRect()
+      // La caja del nombre ocupa toda la pantalla: lo que mide es su texto.
+      const range = document.createRange()
+      range.selectNodeContents(name)
+      const spot = knobSpot(
+        range.getBoundingClientRect().bottom - frame.top,
+        pair.getBoundingClientRect().top - frame.top,
+        frame.width,
+        frame.height,
+      )
+      knob.style.setProperty('--knob-x', `${spot.x}px`)
+      knob.style.setProperty('--knob-y', `${spot.y}px`)
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
   }, [])
 
   // La mirada y el parpadeo se escriben al nodo: no son estado de React.
@@ -224,7 +261,9 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
     >
       <header className={styles.hero}>
         <div className={styles.paper} />
-        <h1 className={`${styles.name} ${styles.ink}`}>Vicente Araya</h1>
+        <h1 ref={nameRef} className={`${styles.name} ${styles.ink}`}>
+          Vicente Araya
+        </h1>
         <span className={`${styles.name} ${styles.snow}`} aria-hidden="true">
           Vicente Araya
         </span>
@@ -257,7 +296,7 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
           </div>
         </dl>
 
-        <div className={styles.pair}>
+        <div ref={pairRef} className={styles.pair}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className={styles.me}
@@ -276,8 +315,15 @@ export default function Cover({ leaving, arrives, onEnter }: CoverProps) {
           />
         </div>
 
-        <button type="button" className={`${styles.button} ${styles.fill} ${styles.enter}`} onClick={enter}>
-          Recorrer el mundo ▶
+        {/* El tirador: una pastilla sobre la costura. Su sitio dice lo que
+            hace —mueve esta línea— y por eso no es un botón en una esquina. */}
+        <button ref={knobRef} type="button" className={styles.enter} onClick={enter}>
+          <span className={styles.enterIcon}>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M4 10h12M11 5l5 5-5 5" />
+            </svg>
+          </span>
+          Recorrer el mundo
         </button>
       </header>
 

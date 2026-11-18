@@ -173,9 +173,18 @@ portada: los tiene justo debajo.
 - **Los dos van recortados como una pegatina**: contorno claro y filo oscuro
   alrededor de la silueta de ambos (`drop-shadow` encadenados). Es lo que
   hace que una foto y un muñeco de bloques se lean como una sola cosa.
+- **«Recorrer el mundo» es un tirador sobre la costura**: una pastilla clara,
+  en el hueco entre el nombre y sus cabezas. Fue un botón oliva abajo a la
+  derecha y pasaba desapercibido: pequeño, en la esquina que menos se mira y
+  del color de la tierra. Sobre la diagonal dice con su sitio lo que hace
+  —mueve esta línea—; suelto de ella sería un botón más. Para abrirle hueco,
+  la foto y el avatar se achicaron un 14%.
+  Su sitio se mide (`knobSpot`, en `coverSheet.ts`): el nombre crece con el
+  ancho y ellos con el alto, así que el hueco cambia con la forma de la
+  ventana. Se da tres empujones al entrar y se queda quieto; en bucle cansaba.
 - **En vertical la diagonal se tumba**: papel arriba con el nombre, mundo
-  abajo con los dos. Las cifras no salen y el botón de entrar va sobre el
-  cielo; abajo les tapaba las piernas.
+  abajo con los dos. Las cifras no salen, y el tirador va centrado sobre la
+  costura, que ahí pasa por la media de `--cut-a` y `--cut-b`.
 - **La foto (`public/vicente.webp`) se sirve abierta**, como todo `public/`.
   Es un recorte sin fondo; el original no está en el repo.
 - Las tres cifras del bloque «Cómo está hecho» viven en `MADE`

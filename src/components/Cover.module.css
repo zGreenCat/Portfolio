@@ -233,7 +233,9 @@
   position: absolute;
   left: 50%;
   bottom: 0;
-  height: min(66vh, 43vw);
+  /* Algo más chicos de lo que cabría: dejan hueco bajo el nombre para el
+     tirador, que va sobre la costura. */
+  height: min(57vh, 37vw);
   translate: -50% 0;
   display: flex;
   align-items: flex-end;
@@ -272,11 +274,68 @@
    112 ms por frame con ella, 42 sin ella, renderizando por software). Mira
    y parpadea, que solo repinta cuando cambia de pose. */
 
+/* El tirador. Una pastilla clara sobre la costura, entre el nombre y sus
+   cabezas; su sitio exacto lo mide el componente (`--knob-x`, `--knob-y`) y
+   esto es lo que vale hasta entonces. Se da tres empujones al entrar, hacia
+   el lado al que se aparta la página, y se queda quieta: en bucle cansaba. */
 .enter {
   position: absolute;
-  right: max(20px, 2.4vw);
-  bottom: max(22px, 4vh);
-  box-shadow: 0 8px 22px rgb(0 0 0 / 0.3);
+  left: var(--knob-x, 53.2%);
+  top: var(--knob-y, 34%);
+  translate: -50% -50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 20px 9px 10px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--paper);
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 1.5vw, 1.3rem);
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 6px 22px rgb(0 0 0 / 0.34);
+  animation: nudge 2.6s cubic-bezier(0.16, 1, 0.3, 1) 1.4s 3;
+}
+
+.enterIcon {
+  display: grid;
+  place-items: center;
+  width: 2.2em;
+  height: 2.2em;
+  border-radius: 50%;
+  background: var(--olive-fill);
+  color: var(--on-olive);
+  transition: translate 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.enterIcon svg {
+  width: 1.1em;
+  height: 1.1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.enter:hover .enterIcon,
+.enter:focus-visible .enterIcon {
+  translate: -4px 0;
+}
+
+@keyframes nudge {
+  0%,
+  60%,
+  100% {
+    translate: -50% -50%;
+  }
+
+  30% {
+    translate: calc(-50% - 14px) -50%;
+  }
 }
 
 /* ---------- apartarse ---------- */
@@ -742,13 +801,14 @@
     height: min(50vh, 72vw);
   }
 
-  /* Sobre el cielo, por encima de sus cabezas: abajo les tapaba las piernas. */
+  /* La costura va tumbada, de `--cut-b` a la izquierda a `--cut-a` a la
+     derecha: en el centro pasa justo por la media de las dos. */
   .enter {
-    top: calc(var(--cut-a) + 5%);
-    right: 12px;
-    bottom: auto;
-    padding: 9px 13px;
-    font-size: 0.84rem;
+    left: 50%;
+    top: calc((var(--cut-a) + var(--cut-b)) / 2);
+    gap: 10px;
+    padding: 7px 16px 7px 8px;
+    font-size: 0.98rem;
   }
 }
 
@@ -764,6 +824,11 @@
     transition: none;
   }
 
+  .enter {
+    animation: none;
+  }
+
+  .enterIcon,
   .rowTitle,
   .arrow,
   .step .thumb img {
