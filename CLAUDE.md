@@ -147,17 +147,34 @@ repartido, y lo que se calcula no vive en React:
 | `src/world/gestures.ts` | Sentarse y subir al podio, como pasos puros |
 | `src/world/podium.ts` | Tablas y saltos del podio |
 | `src/world/air.ts` | Qué clima cae y con cuánta fuerza |
+| `src/world/useWorldRefs.ts` | Las cuarenta refs que comparten los hooks, en un objeto |
+| `src/world/useViewport.ts` | Lo que sale del tamaño de la ventana |
+| `src/world/useWorldLoop.ts` | **El bucle** |
+| `src/world/usePlacement.ts` | `placeWorld` y la entrada caminando |
+| `src/world/useSprite.ts` | `writeFrame`, el reposo y el lanzamiento |
+| `src/world/useEntry.ts` | Portada, carga y reaterrizaje: en qué fase arranca el mundo |
 | `src/world/useLoading.ts` | Pantalla de carga y descarga en segundo plano |
 | `src/world/useTeleport.ts` | Perla, `/tp` y vuelta a la portada |
 | `src/components/WorldLayers.tsx` | Capas del fondo, suelo y escenario |
 | `src/components/WorldChrome.tsx` | Barra, pantalla de carga y calentado de hojas |
 
-Fue un solo componente de 2.200 líneas. Al partirlo se movió el código tal
-cual, un paso por commit, comparando el mundo con `smoke.mjs` tras cada uno.
-**El estado de los gestos sigue en refs de la página**: `gestures.ts` recibe
-el estado, devuelve el nuevo y dice qué tiene que atender el bucle (clavar el
-mundo, mover el scroll). Las reglas que siguen hablan de «el bucle»: es el
-efecto grande de `page.tsx`.
+Fue un solo componente de 2.240 líneas; hoy la página son unas 465. Al
+partirlo se movió el código tal cual, un paso por commit, comparando el mundo
+con `smoke.mjs` tras cada uno. Tres cosas que explican la forma que tiene:
+
+- **Las refs viajan juntas** (`useWorldRefs`). Todo lo que cambia por frame
+  vive en refs, y las comparten casi todos los hooks: una a una eran una
+  treintena de argumentos. Cada hook recibe el objeto y saca las que usa. El
+  objeto es nuevo en cada render y las refs no: no va en dependencias.
+- **El estado de los gestos sigue en refs**: `gestures.ts` recibe el estado,
+  devuelve el nuevo y dice qué tiene que atender el bucle (clavar el mundo,
+  mover el scroll).
+- **Los hooks se llaman en un orden que importa**: `useViewport` antes que
+  nada, `useEntry` antes que `useTeleport` —que necesita `landingFor` y
+  `openCover`—, y `hidden` vive en la página porque lo tocan los dos.
+
+Las reglas que siguen hablan de «el bucle»: es el efecto de
+`useWorldLoop.ts`.
 
 ### El scroll es una posición, no una línea de tiempo
 
@@ -736,21 +753,19 @@ propósito — se añade un proyecto sin abrir el código de la animación.
 
 Nada de esto está empezado. Queda escrito para que no se pierda entre sesiones.
 
-### Terminar de partir `page.tsx`
+### Lo que queda de partir `page.tsx`
 
-Bajó de 2.240 líneas a unas 1.230 (ver *Arquitectura del mundo*). Lo que
-queda dentro y por qué:
+Hecho casi todo (ver *Arquitectura del mundo*). Quedan dos cosas menores:
 
-- **El bucle** (unas 330 líneas). Usa una treintena de refs. Sacarlo a un
-  hook pide antes agruparlas en un solo objeto; pasadas una a una sería peor
-  que tenerlo aquí.
-- **`placeWorld` y la entrada caminando**, que escriben al DOM con esas
-  mismas refs.
-- **El reaterrizaje** (`resumeTarget`, `landingFor`, `armResume`):
-  `landingFor` se puede hacer puro y probar.
-- **Los marcadores de sección y los paneles** del árbol, unas 150 líneas.
-
-El orden sensato: agrupar las refs, sacar el bucle, y lo demás cae solo.
+- **Los marcadores de sección y los paneles** siguen en el árbol de la
+  página, unas 150 líneas de JSX. Saldrían a un componente; no se hizo
+  porque la página ya se lee entera.
+- **`useWorldLoop` son 430 líneas en un solo efecto.** Lo que calcula ya está
+  fuera y probado; lo que queda es el orden y las escrituras al DOM. Se
+  podría trocear por tramos (encuadre, paneles, precalentado), con cuidado:
+  comparten variables del cierre (`current`, `target`, `cycle`).
+- El reaterrizaje al recargar (`armResume`) no lo cubre `smoke.mjs`: su
+  navegador no recarga la página.
 
 ### Easter egg: blackjack en el templo
 
