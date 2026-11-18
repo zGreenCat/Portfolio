@@ -23,6 +23,10 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* La barra, del color de la tinta y sin carril: la gris del sistema era lo
+     único de la página que no estaba diseñado, y caía sobre el mundo. */
+  scrollbar-width: thin;
+  scrollbar-color: rgb(26 29 21 / 0.42) transparent;
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.6;
@@ -259,15 +263,14 @@
   background-size: 700% 100%;
   background-position: 50% 0;
   background-repeat: no-repeat;
-  transform-origin: 50% 100%;
-  animation: breathe 4.4s ease-in-out infinite;
 }
 
-@keyframes breathe {
-  50% {
-    transform: scaleY(1.008);
-  }
-}
+/* Respiraba: un 0,8% de alto, en bucle. Estaba dentro del contorno de
+   pegatina de `.pair`, que son seis `drop-shadow` encadenados, y cada frame
+   de la animación obligaba a recalcularlos todos, también con la hoja ya
+   encima. Era casi dos tercios del coste de desplazar la portada (medido:
+   112 ms por frame con ella, 42 sin ella, renderizando por software). Mira
+   y parpadea, que solo repinta cuando cambia de pose. */
 
 .enter {
   position: absolute;
@@ -314,10 +317,15 @@
   z-index: 2;
   border-top: 4px solid var(--olive-fill);
   background: var(--paper);
-  box-shadow: 0 -18px 40px rgb(0 0 0 / 0.28);
   transition: opacity 0.3s ease;
 }
 
+/* Sin sombra sobre el mundo, a propósito. Con cualquier cosa translúcida
+   asomando por encima de su borde —un `box-shadow`, o un degradado—, la hoja
+   deja de ser opaca para el navegador y este repinta en cada frame las capas
+   del mundo que tiene debajo, con sus filtros, aunque ya no se vean. Opaca,
+   las descarta. Medido por software: 43 ms por frame con sombra, 17 sin
+   ella. La separa del mundo su filo oliva. */
 .section {
   max-width: 1120px;
   margin: 0 auto;
@@ -754,10 +762,6 @@
   .enter,
   .sheet {
     transition: none;
-  }
-
-  .avatar {
-    animation: none;
   }
 
   .rowTitle,

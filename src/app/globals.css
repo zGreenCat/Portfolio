@@ -67,3 +67,10 @@
     border-color: var(--color-green);
   }
 }
+
+/* La barra del documento es la posición en el mundo: fina, y en los tonos de
+   la noche del mundo en vez de la gris del sistema. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #6b7a63 #14171b;
+}
