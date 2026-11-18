@@ -12,7 +12,9 @@ npx tsc --noEmit  # type-check (no hay script definido)
 npm test          # tests, con el ejecutor de Node
 ```
 
-No hay linter propio. `npm run build` sí pasa ESLint.
+No hay linter: ESLint no está instalado ni configurado, y `npm run build` no
+pasa ninguno. Los `eslint-disable` que hay en el código no hacen nada hoy;
+quedan de cuando lo hubo, y por si vuelve.
 
 **Los tests van en `tests/*.test.mjs` y no llevan framework**: `node --test`
 importa los `.ts` tal cual. Por eso solo alcanzan a módulos sin React, sin
@@ -101,6 +103,7 @@ Next.js 15 (App Router) + React 19 + TypeScript strict + CSS Modules.
 Tailwind v4 está instalado y `globals.css` hace `@import "tailwindcss"`, pero
 **ningún componente del mundo usa clases de Tailwind**: todo va en módulos CSS.
 
+La portada va en Geist y Geist Mono (`next/font`, en `layout.tsx`).
 `--font-display` (Space Grotesk, variable, en `public/fonts/`) para titulares y
 navegación. Los paneles del juego van en monoespaciada a propósito. **No es una
 fuente de píxel**: el mundo ya es Minecraft entero y repetirlo en el texto lo
@@ -309,7 +312,7 @@ repartido, y lo que se calcula no vive en React:
 | `src/components/WorldLayers.tsx` | Capas del fondo, suelo y escenario |
 | `src/components/WorldChrome.tsx` | Barra, pantalla de carga y calentado de hojas |
 
-Fue un solo componente de 2.240 líneas; hoy la página son unas 465. Al
+Fue un solo componente de 2.240 líneas; hoy la página son unas 500. Al
 partirlo se movió el código tal cual, un paso por commit, comparando el mundo
 con `smoke.mjs` tras cada uno. Tres cosas que explican la forma que tiene:
 
@@ -446,8 +449,8 @@ Reglas al tocar el bucle:
 - **Frame del sprite** → `writeFrame(index)`. Lee la hoja del `data-state` del
   propio nodo, **nunca de `stateRef`**: el cambio de estado llega al DOM un
   frame más tarde. Cuando `run` y `walk` tenían distinto ancho de celda, el
-  desplazamiento caía entre dos celdas y se veían dos poses a la vez. Hoy las
-  cinco hojas comparten geometría, pero la regla sigue: una hoja nueva puede
+  desplazamiento caía entre dos celdas y se veían dos poses a la vez. Hoy todas
+  las hojas comparten geometría, pero la regla sigue: una hoja nueva puede
   no hacerlo.
 - **Lo que sí es estado** va cuantizado: `NIGHT_STEPS = 24`, `PANEL_STEPS = 20`.
   La noche mueve un `filter` CSS sobre superficies del ancho del mundo, y
@@ -939,7 +942,7 @@ significa nada. La noche no se pierde: pasa a un velo del tamaño de la pantalla
 
 ### Sprites por script (`scripts/render/`)
 
-Las catorce hojas del personaje salen de aquí, no de Mine-imator: un generador o
+Las quince hojas del personaje salen de aquí, no de Mine-imator: un generador o
 un archivo de `poses/` da las poses y `rig.py` las renderiza con Blender sin
 ventana. **`scripts/render/render_all.sh` las rehace todas** desde
 `public/skin.png` en minuto y medio, con sus `@half`.

@@ -8,7 +8,7 @@ import styles from './Book.module.css'
 interface BookProps {
   title: string
   /** Párrafos sueltos. La paginación la decide este componente, no el
-   *  contenido: `/simple` los quiere todos seguidos y aquí van por tandas. */
+   *  contenido: la portada los quiere sueltos y aquí van por tandas. */
   pages: string[]
   /** Cuántos párrafos caben en una vuelta. En el cajón lateral entran de
    *  sobra tres; en el libro pequeño de antes solo cabía uno. */

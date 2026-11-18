@@ -16,7 +16,7 @@
 
 /* En móvil la hoja es media pantalla. Las cinco recetas van en dos columnas
    y sin la nota de en qué proyectos se usó cada una: en una columna solo se
-   veían tres y había que deslizar. La nota sigue en escritorio y en /simple. */
+   veían tres y había que deslizar. La nota sigue en escritorio y en la portada. */
 @media (max-width: 760px) {
   /* Columnas de texto y no rejilla: en rejilla cada fila medía lo que su
      receta más larga y la quinta se caía de la hoja. Así se reparten por

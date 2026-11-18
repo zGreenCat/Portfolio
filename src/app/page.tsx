@@ -72,30 +72,13 @@ export default function RecorridoPage() {
     actorXRef,
     feetVhRef,
     weatherRef,
-    mountKeyRef,
-    sandRef,
-    fogRef,
-    fogWrittenRef,
     facingRef,
     sitRef,
-    sitWantRef,
-    sitDirRef,
-    sitLockRef,
-    catchUpRef,
     podiumRef,
-    podiumWantRef,
-    podiumDirRef,
     chestAtRef,
     podiumAskRef,
-    podiumAheadRef,
-    podiumLandRef,
     podiumFromRef,
-    podiumFocusRef,
-    slowRef,
     liteLockRef,
-    resumeRef,
-    stripsRef,
-    warmRef,
     rootRef,
     spriteRef,
     farRef,
@@ -118,8 +101,8 @@ export default function RecorridoPage() {
   const [bookOpen, setBookOpen] = useState(0)
   const [signsOpen, setSignsOpen] = useState(0)
   const [benchOpen, setBenchOpen] = useState(0)
-  /** Si el sistema pide menos movimiento, la versión en texto deja de ser un
-   *  enlace más de la barra y se señala: ya dijeron que no quieren esto. */
+  /** Si el sistema pide menos movimiento, «Portada» deja de ser un botón más
+   *  de la barra y se señala: ya dijeron que no quieren esto. */
   const [reduced, setReduced] = useState(false)
   /** Biomas montados, por índice. Solo cambia al cruzar un radio, no por frame. */
   const [mounted, setMounted] = useState<number[]>([0])

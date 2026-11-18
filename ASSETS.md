@@ -177,7 +177,7 @@ Nunca ha hecho falta.
   El saludo se rehízo de frente con el rig, a 1,5×, con una variante a la mitad
   para pantallas pequeñas. La hoja a mano se asomaba por la izquierda con un
   brazo; de ella se conserva el ritmo.
-- **Las cinco hojas de perfil comparten cámara.** Era el motivo del reescalado
+- **Las hojas de perfil comparten cámara.** Era el motivo del reescalado
   entre hojas y de que el blanco no coincidiera.
 - **`sit` se rehízo, con Blender por script.** La hoja de Mine-imator rotaba el
   cuerpo en bloque y leía como caerse de espaldas. La nueva baja la pelvis en
@@ -474,7 +474,7 @@ se suman a los del canvas y se ve cargado.
 ## Herramientas
 
 - **Mine-imator** — rápido, alfa nativo. La opción por defecto.
-- **`scripts/render/render_all.sh`** — rehace las catorce hojas del personaje y
+- **`scripts/render/render_all.sh`** — rehace las quince hojas del personaje y
   sus `@half` desde `public/skin.png`. La última, `duo`, es el avatar de la
   portada: imprime la medida de su celda, que hay que copiar a `coverSheet.ts`
   si cambia. Es lo que hay que lanzar tras tocar la

@@ -1,15 +1,27 @@
 # Portfolio · Vicente Araya
 
-Portfolio recorrible con estética de Minecraft. En vez de secciones apiladas,
-el sitio es **un mundo continuo** que se recorre de izquierda a derecha: el
-scroll desplaza el mundo y las secciones son lugares dentro de él.
+**[vicente-araya.dev](https://vicente-araya.dev)**
+
+[![La portada: su nombre cruzando una diagonal entre una página en papel y un mundo de bloques](public/og.jpg)](https://vicente-araya.dev)
+
+Dos cosas en una página. Arriba, una portada en texto: quién soy, experiencia,
+proyectos y hackatones, para leer en un minuto. Detrás, **un mundo de bloques
+que se recorre caminando**: el scroll desplaza el mundo de izquierda a derecha
+y las secciones son lugares dentro de él.
+
+Next.js 15, React 19 y TypeScript, sin librerías de animación: el mundo lo
+mueve un bucle propio.
 
 ```bash
+npm install
 npm run dev     # http://localhost:3000
 npm run build
 npx tsc --noEmit
 npm test
 ```
+
+Pide Node 22.18 o posterior: los tests importan los `.ts` tal cual, sin
+compilar.
 
 ## Cómo funciona
 
@@ -52,7 +64,7 @@ la perla está fuera de pantalla, así que no hay nada que disimular.
 mundo, recortes, frame del sprite, clima— se escribe al DOM por referencias.
 Como estado, React reconciliaba el árbol entero sesenta veces por segundo.
 
-**Hay un modo ligero que se enciende solo.** Si el recorrido baja de 30 fps
+**Hay un modo ligero que se enciende solo.** Si el recorrido baja de 40 fps
 —el caso típico es la aceleración por hardware desactivada— apaga los filtros
 de las capas, fuerza media resolución y quita el clima. Sin GPU, esos filtros
 obligan a repintar decenas de megapíxeles en cada frame.
@@ -69,18 +81,26 @@ los paneles se montan al acercarse caminando, así que por sí solo no sirve
 ningún proyecto a buscadores, previsualizaciones de enlace ni lectores de
 pantalla. `/simple`, que cumplía ese papel, redirige a `/`.
 
+Una dirección que no existe cae en el End: el personaje aterriza en una isla
+flotando en el vacío, y al elegir una salida se tira de ella y el mundo lo
+recibe cayendo del cielo.
+
 ## Estructura
 
 ```
-src/app/page.tsx            el recorrido completo
+src/app/page.tsx            el mundo: estado, montaje y poco más
+src/app/not-found.tsx       la 404, en el End
 src/app/recorrido.module.css
 src/components/Cover.tsx    la portada, encima del mundo
-src/components/             personaje, paneles, perla, cielo, clima
-src/content/portfolio.ts    proyectos, sobre mí, skills, contacto
-src/content/layers.ts       generado — alto de cada capa y escala
-src/world/                  medidas y reglas del mundo, sin React, con tests
+src/components/             personaje, paneles, visores, perla, cielo, clima
+src/content/portfolio.ts    proyectos, experiencia, skills, contacto
+src/content/layers.ts       alto de cada capa y escala
+src/world/                  el mundo por dentro: medidas y reglas sin React,
+                            con tests, y los hooks que las usan (el bucle,
+                            la entrada, el teletransporte, el vuelo)
+tests/                      `node --test`, sin framework
 scripts/import-layers.py    recorta y codifica los renders
-scripts/render/             Blender por script: personaje, escenario y cofre
+scripts/render/             Blender por script: personaje, escenario, 404
 public/layers/              capas de mundo por bioma (b1…b5)
 public/sprites/             hojas de sprites del personaje
 public/projects/            capturas de los proyectos
@@ -101,3 +121,11 @@ encuadre, montaje de hojas, la tubería de importación y los pendientes están 
 
 La arquitectura por dentro, y las trampas que ya costaron una vez, en
 **[CLAUDE.md](./CLAUDE.md)**.
+
+## Créditos
+
+Minecraft es de Mojang. Los bloques del mundo son renders hechos con sus
+texturas, que no están en este repositorio; el personaje, su skin y sus
+animaciones son propios, generados por `scripts/render/`. Sitio de fans, sin
+relación con Mojang ni con Microsoft. Space Grotesk va bajo la SIL Open Font
+License.

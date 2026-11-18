@@ -103,7 +103,7 @@
 
 /* En móvil la hoja es media pantalla y no desliza: cada evento se queda en
    puesto, nombre y foto. El resumen de qué se construyó sigue en ancho y en
-   /simple. */
+   la portada. */
 @media (max-width: 760px) {
   .places,
   .others {

@@ -172,7 +172,7 @@ export function useTeleport({
    * Sin vuelo: el personaje se deshace en partículas donde está y se rehace
    * en destino, y el salto del mundo ocurre entre una cosa y otra.
    */
-  const chatTo = useCallback((at: number, section: Section, settled: boolean) => {
+  const chatTo = useCallback((at: number, section: Section) => {
     play('button')
     setMenuOpen(false)
     teleportingRef.current = true
@@ -264,7 +264,7 @@ export function useTeleport({
       const how = teleportingRef.current
         ? 'pearl'
         : pickTeleport({ settled, roll: Math.random(), force: tpForceRef.current })
-      if (how === 'chat') chatTo(at, section, settled)
+      if (how === 'chat') chatTo(at, section)
       else pearlTo(at, section.id)
     },
     [pearlTo, chatTo, landingFor],

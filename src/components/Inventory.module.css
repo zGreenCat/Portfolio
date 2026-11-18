@@ -235,7 +235,7 @@
 /* En móvil la hoja es media pantalla, arriba. La captura a todo el ancho se
    la comía entera, así que va pequeña a la izquierda con el texto al lado; en
    grande se ve pulsándola. La descripción se corta a cuatro líneas y las
-   etiquetas a una fila: el texto completo sigue en escritorio y en /simple. */
+   etiquetas a una fila: el texto completo sigue en escritorio y en la portada. */
 @media (max-width: 760px) {
   .lead {
     display: flex;

@@ -12,7 +12,11 @@ cualquier capa. Recortar cada una por su cuenta las descuadraría.
 import json, os, sys
 from PIL import Image
 
-SRC = "/home/zgreencat/videos-portofolio/world"
+# De dónde salen los renders: `python3 scripts/import-layers.py <carpeta>`, o
+# la variable LAYERS_SRC. No están en el repo.
+SRC = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("LAYERS_SRC", "")).rstrip("/")
+if not SRC or not os.path.isdir(SRC):
+    sys.exit("Uso: import-layers.py <carpeta de renders>  (o LAYERS_SRC=<carpeta>)")
 OUT = "public/layers"
 BIOMES = {"b1": ["far","mid","near","ground"], "b2": ["far","mid","near","ground","stage"],
           "b3": ["far","mid","near","ground"], "b4": ["far","mid","near","ground"],
