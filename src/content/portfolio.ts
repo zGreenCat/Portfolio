@@ -223,7 +223,7 @@ export const CONTACT = [
     label: 'LinkedIn',
     href: 'https://www.linkedin.com/in/vicente-araya-a1ab8528a',
   },
-  { id: 'mail', label: 'Correo', href: 'mailto:vicente.araya9821@gmail.com' },
+  { id: 'mail', label: 'Correo', href: 'mailto:hola@vicente-araya.dev' },
   { id: 'cv', label: 'CV en PDF', href: '/cv-vicente-araya.pdf', download: true },
 ] as const
 

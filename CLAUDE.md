@@ -48,6 +48,31 @@ software: vale para posiciones y tamaños, no para medir rendimiento.
 **No lances `npm run build` con `npm run dev` corriendo**: comparten `.next` y el
 resultado son 500 hasta que se borra el directorio.
 
+## Dónde vive
+
+`https://vicente-araya.dev`, en Vercel, que redespliega solo con cada push a
+`main`. El dominio está registrado en Cloudflare (2026-11-18), y con Cloudflare
+como registrador **el DNS se queda en Cloudflare**: no se pueden pasar los
+servidores de nombres a Vercel.
+
+- Dos registros, los dos en «DNS only» (nube gris): un `A` para la raíz y un
+  `CNAME` para `www`, con los valores que da Vercel en *Domains*. **Con el
+  proxy de Cloudflare encendido** Vercel no valida el dominio ni emite el
+  certificado.
+- `www.vicente-araya.dev` redirige a la corta con un 308, **desde Vercel**. No
+  añadir además una regla de redirección en Cloudflare: quedarían dos
+  encadenadas.
+- La dirección pública para las previsualizaciones de enlace sale de la
+  variable `NEXT_PUBLIC_SITE_URL` de Vercel (`layout.tsx`). Sin ella, la
+  imagen de Open Graph apunta a la dirección interna de cada despliegue.
+- **El correo del sitio es `hola@vicente-araya.dev`**, que Cloudflare (Email
+  Routing) reenvía al correo personal de Vicente. Solo recibe: las respuestas
+  salen desde su correo de siempre. El personal no va en el código ni en el
+  sitio; estuvo, y sigue en el historial de git anterior al 2026-11-18. El
+  dominio lleva SPF y DMARC en `quarantine`, no `reject`: si algún día se
+  envía desde el dominio, con `reject` rebotarían sus propios correos hasta
+  ajustarlo. El CV en PDF es un archivo aparte y hay que actualizarlo a mano.
+
 ## Stack
 
 Next.js 15 (App Router) + React 19 + TypeScript strict + CSS Modules.
@@ -832,11 +857,6 @@ crupier.
 que el mundo que ya existe. Lo que sí aporta es que se note que alguien se lo
 pasó bien construyendo esto.
 
-### Dominio propio
-
-El sitio está en Vercel y se redespliega solo con cada push a `main`. **Nunca se
-configuró un dominio.** Se habló de NIC Chile y del GitHub Student Pack, sin
-decidir nada.
 
 ### Perla
 
